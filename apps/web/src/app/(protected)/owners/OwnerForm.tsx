@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Owner } from '@/types'
 import { createOwner, updateOwner, parseIdCard } from './actions'
 import type { OwnerInput } from './actions'
+import AddressSelector from '@/components/shared/AddressSelector'
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -128,6 +129,7 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
   const [isOcrPending, startOcr] = useTransition()
   const [ocrMessage, setOcrMessage] = useState('')
   const [isUploadingIdCard, setIsUploadingIdCard] = useState(false)
+  const [uploadIdCardError, setUploadIdCardError] = useState('')
   const [isUploadingSig, setIsUploadingSig] = useState(false)
 
   const ocrInputRef = useRef<HTMLInputElement>(null)
@@ -176,28 +178,36 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
 
   // ─── Uploads ─────────────────────────────────────────────
 
-  async function uploadToStorage(bucket: string, file: File): Promise<string | null> {
-    const supabase = createClient()
-    const path = `${Date.now()}-${file.name.replace(/\s/g, '_')}`
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(path, file, { upsert: true })
-    if (error || !data) return null
-    const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(data.path)
-    return publicUrl
-  }
-
   async function handleIdCardUpload(file: File) {
     setIsUploadingIdCard(true)
-    const url = await uploadToStorage('id-cards', file)
-    if (url) set('id_card_url', url)
+    setUploadIdCardError('')
+    const supabase = createClient()
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `id-cards/${Date.now()}-${safeName}`
+    const { data, error } = await supabase.storage
+      .from('documents')
+      .upload(path, file, { upsert: true })
+    if (error || !data) {
+      setUploadIdCardError('อัปโหลดไม่สำเร็จ: ' + (error?.message ?? 'กรุณาตรวจสอบ storage'))
+    } else {
+      const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(data.path)
+      set('id_card_url', publicUrl)
+    }
     setIsUploadingIdCard(false)
   }
 
   async function handleSigUpload(file: File) {
     setIsUploadingSig(true)
-    const url = await uploadToStorage('signatures', file)
-    if (url) set('signature_url', url)
+    const supabase = createClient()
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `signatures/${Date.now()}-${safeName}`
+    const { data, error } = await supabase.storage
+      .from('documents')
+      .upload(path, file, { upsert: true })
+    if (!error && data) {
+      const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(data.path)
+      set('signature_url', publicUrl)
+    }
     setIsUploadingSig(false)
   }
 
@@ -235,7 +245,6 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
             ref={ocrInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             className="hidden"
             onChange={e => {
               const file = e.target.files?.[0]
@@ -348,6 +357,9 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
                   {isUploadingIdCard ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                   {isUploadingIdCard ? 'กำลังอัปโหลด...' : 'อัปโหลดรูปบัตร'}
                 </button>
+                {uploadIdCardError && (
+                  <p className="text-xs text-red-600 mt-1">{uploadIdCardError}</p>
+                )}
               </>
             )}
           </div>
@@ -356,13 +368,18 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
 
       {/* ที่อยู่ */}
       <Section title="ที่อยู่">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="บ้านเลขที่" value={form.address_no} onChange={v => set('address_no', v)} placeholder="123/4" />
-          <Field label="ถนน / ซอย" value={form.address_road} onChange={v => set('address_road', v)} placeholder="ถ.สุขุมวิท ซ.21" />
-          <Field label="แขวง / ตำบล" value={form.subdistrict} onChange={v => set('subdistrict', v)} placeholder="แขวง" />
-          <Field label="เขต / อำเภอ" value={form.district} onChange={v => set('district', v)} placeholder="เขต" />
-          <Field label="จังหวัด" value={form.province} onChange={v => set('province', v)} placeholder="กรุงเทพมหานคร" />
-          <Field label="รหัสไปรษณีย์" value={form.zip} onChange={v => set('zip', v.replace(/\D/g, '').slice(0, 5))} placeholder="10110" maxLength={5} />
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="บ้านเลขที่" value={form.address_no} onChange={v => set('address_no', v)} placeholder="123/4" />
+            <Field label="ถนน / ซอย" value={form.address_road} onChange={v => set('address_road', v)} placeholder="ถ.สุขุมวิท ซ.21" />
+          </div>
+          <AddressSelector
+            province={form.province}
+            district={form.district}
+            subdistrict={form.subdistrict}
+            zip={form.zip}
+            onChange={(field, value) => set(field, value)}
+          />
         </div>
       </Section>
 

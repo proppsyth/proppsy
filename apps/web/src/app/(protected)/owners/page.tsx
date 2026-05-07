@@ -20,7 +20,7 @@ export default async function OwnersPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="p-4 lg:p-8 pt-6 max-w-4xl">
+    <div className="p-4 lg:p-8 pt-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-gray-900">เจ้าของทรัพย์</h1>

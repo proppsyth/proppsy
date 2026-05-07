@@ -56,7 +56,7 @@ export default async function ContractsPage({
   const list = contracts ?? []
 
   return (
-    <div className="p-4 lg:p-8 pt-6 max-w-4xl">
+    <div className="p-4 lg:p-8 pt-6">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-gray-900">สัญญา</h1>

@@ -7,7 +7,7 @@ import { Sparkles, X, Plus, Upload, Loader2, ChevronDown, ChevronUp } from 'luci
 import { createClient } from '@/lib/supabase/client'
 import { ownerDisplayName } from '@/types'
 import type { Stock, Owner, Project } from '@/types'
-import { createStock, updateStock, parseStockText } from './actions'
+import { createStock, updateStock, parseStockTextWithEntities } from './actions'
 import type { StockInput } from './actions'
 
 // ─── Constants ───────────────────────────────────────────────
@@ -143,6 +143,9 @@ export default function StockForm({ owners, projects, initialData, stockId }: Pr
   const [form, setForm] = useState<FormState>(() =>
     initialData ? stockToForm(initialData) : DEFAULT
   )
+  const [localOwners, setLocalOwners] = useState<OwnerOption[]>(owners)
+  const [localProjects, setLocalProjects] = useState<ProjectOption[]>(projects)
+  const [aiEntities, setAiEntities] = useState<{ ownerDisplay?: string; ownerCreated?: boolean; projectDisplay?: string; projectCreated?: boolean } | null>(null)
   const [error, setError] = useState('')
   const [uploading, setUploading] = useState(false)
   const [aiOpen, setAiOpen] = useState(!stockId)
@@ -171,34 +174,57 @@ export default function StockForm({ owners, projects, initialData, stockId }: Pr
     }))
   }
 
-  // ── AI parse
+  // ── AI parse with entity creation
   function handleAIParse() {
     if (!aiText.trim()) return
     setAiMsg('')
+    setAiEntities(null)
     startAIParse(async () => {
-      const res = await parseStockText(aiText)
+      const res = await parseStockTextWithEntities(aiText)
       if ('error' in res) { setAiMsg(`❌ ${res.error}`); return }
-      const filled = Object.entries(res).filter(([, v]) =>
+
+      const { stock: s, owner_id, owner_created, owner_display, project_id, project_created, project_display } = res
+      const filled = Object.entries(s).filter(([, v]) =>
         v !== null && v !== undefined && (Array.isArray(v) ? v.length > 0 : String(v).trim() !== '')
       ).length
+
       setForm(f => ({
         ...f,
-        project_name: res.project_name ?? f.project_name,
-        unit_no: res.unit_no ?? f.unit_no,
-        building: res.building ?? f.building,
-        floor: res.floor != null ? String(res.floor) : f.floor,
-        room_type: res.room_type ?? f.room_type,
-        size_sqm: res.size_sqm != null ? String(res.size_sqm) : f.size_sqm,
-        view_direction: res.view_direction ?? f.view_direction,
-        listing_type: res.listing_type ?? f.listing_type,
-        rent_price: res.rent_price != null ? String(res.rent_price) : f.rent_price,
-        sale_price: res.sale_price != null ? String(res.sale_price) : f.sale_price,
-        deposit: res.deposit != null ? String(res.deposit) : f.deposit,
-        contract_term: res.contract_term != null ? String(res.contract_term) : f.contract_term,
-        furniture: res.furniture?.length ? res.furniture : f.furniture,
-        facilities: res.facilities?.length ? res.facilities : f.facilities,
-        notes: res.notes ?? f.notes,
+        unit_no: s.unit_no ?? f.unit_no,
+        building: s.building ?? f.building,
+        floor: s.floor != null ? String(s.floor) : f.floor,
+        room_type: s.room_type ?? f.room_type,
+        size_sqm: s.size_sqm != null ? String(s.size_sqm) : f.size_sqm,
+        view_direction: s.view_direction ?? f.view_direction,
+        listing_type: s.listing_type ?? f.listing_type,
+        rent_price: s.rent_price != null ? String(s.rent_price) : f.rent_price,
+        sale_price: s.sale_price != null ? String(s.sale_price) : f.sale_price,
+        deposit: s.deposit != null ? String(s.deposit) : f.deposit,
+        contract_term: s.contract_term != null ? String(s.contract_term) : f.contract_term,
+        furniture: s.furniture?.length ? s.furniture : f.furniture,
+        facilities: s.facilities?.length ? s.facilities : f.facilities,
+        notes: s.notes ?? f.notes,
+        owner_id: owner_id ?? f.owner_id,
+        project_id: project_id ?? f.project_id,
+        project_name: s.project_name ?? f.project_name,
       }))
+
+      // Add newly created owner/project to local lists so dropdowns reflect them
+      if (owner_id && !localOwners.find(o => o.id === owner_id)) {
+        const nameParts = (owner_display ?? '').split(' ')
+        setLocalOwners(prev => [...prev, {
+          id: owner_id,
+          first_name_th: nameParts[0] ?? owner_display ?? '',
+          last_name_th: nameParts.slice(1).join(' '),
+          nickname: undefined,
+          phone: undefined,
+        }])
+      }
+      if (project_id && project_display && !localProjects.find(p => p.id === project_id)) {
+        setLocalProjects(prev => [...prev, { id: project_id, name_th: project_display, name_en: undefined }])
+      }
+
+      setAiEntities({ ownerDisplay: owner_display, ownerCreated: owner_created, projectDisplay: project_display, projectCreated: project_created })
       setAiMsg(`✓ เติมข้อมูล ${filled} ฟิลด์แล้ว`)
       setAiOpen(false)
     })
@@ -288,6 +314,16 @@ export default function StockForm({ owners, projects, initialData, stockId }: Pr
                 </span>
               )}
             </div>
+            {aiEntities && (aiEntities.ownerDisplay || aiEntities.projectDisplay) && (
+              <div className="text-xs text-violet-700 space-y-0.5 pt-1">
+                {aiEntities.ownerDisplay && (
+                  <p>👤 เจ้าของ: <strong>{aiEntities.ownerDisplay}</strong>{aiEntities.ownerCreated ? ' (สร้างใหม่)' : ' (พบในระบบ)'}</p>
+                )}
+                {aiEntities.projectDisplay && (
+                  <p>🏢 โครงการ: <strong>{aiEntities.projectDisplay}</strong>{aiEntities.projectCreated ? ' (สร้างใหม่)' : ' (พบในระบบ)'}</p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -302,14 +338,14 @@ export default function StockForm({ owners, projects, initialData, stockId }: Pr
               value={form.project_name}
               onChange={e => {
                 const name = e.target.value
-                const match = projects.find(p => p.name_th === name)
+                const match = localProjects.find(p => p.name_th === name)
                 setForm(f => ({ ...f, project_name: name, project_id: match?.id ?? '' }))
               }}
               placeholder="ค้นหาหรือพิมพ์ชื่อโครงการ..."
               className={INPUT_CLS}
             />
             <datalist id="projects-list">
-              {projects.map(p => <option key={p.id} value={p.name_th} />)}
+              {localProjects.map(p => <option key={p.id} value={p.name_th} />)}
             </datalist>
           </div>
           <div>
@@ -392,7 +428,7 @@ export default function StockForm({ owners, projects, initialData, stockId }: Pr
         <Label text="เลือกเจ้าของ" />
         <select value={form.owner_id} onChange={setField('owner_id')} className={INPUT_CLS}>
           <option value="">-- ไม่ระบุ --</option>
-          {owners.map(o => (
+          {localOwners.map(o => (
             <option key={o.id} value={o.id}>
               {ownerDisplayName(o)}{o.phone ? ` — ${o.phone}` : ''}
             </option>

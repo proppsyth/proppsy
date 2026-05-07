@@ -7,6 +7,7 @@ import { Sparkles, Loader2, Plus, X } from 'lucide-react'
 import type { Project } from '@/types'
 import { createProject, updateProject, enrichProject } from './actions'
 import type { ProjectInput } from './actions'
+import AddressSelector from '@/components/shared/AddressSelector'
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -235,16 +236,19 @@ export default function ProjectForm({ initialData, projectId }: Props) {
 
       {/* ที่ตั้ง */}
       <Section title="ที่ตั้ง">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="บ้านเลขที่" value={form.address_no} onChange={v => set('address_no', v)} placeholder="123" />
-          <Field label="ถนน / ซอย" value={form.address_road} onChange={v => set('address_road', v)} placeholder="ถ.สุขุมวิท" />
-          <Field label="แขวง / ตำบล" value={form.subdistrict} onChange={v => set('subdistrict', v)} placeholder="แขวง" />
-          <Field label="เขต / อำเภอ" value={form.district} onChange={v => set('district', v)} placeholder="เขต" />
-          <Field label="จังหวัด" value={form.province} onChange={v => set('province', v)} placeholder="กรุงเทพมหานคร" />
-          <Field label="รหัสไปรษณีย์" value={form.zip} onChange={v => set('zip', v.replace(/\D/g, '').slice(0, 5))} placeholder="10110" maxLength={5} />
-          <div className="sm:col-span-2">
-            <Field label="ลิงก์แผนที่ (Google Maps)" value={form.map_url} onChange={v => set('map_url', v)} placeholder="https://maps.google.com/..." />
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="บ้านเลขที่" value={form.address_no} onChange={v => set('address_no', v)} placeholder="123" />
+            <Field label="ถนน / ซอย" value={form.address_road} onChange={v => set('address_road', v)} placeholder="ถ.สุขุมวิท" />
           </div>
+          <AddressSelector
+            province={form.province}
+            district={form.district}
+            subdistrict={form.subdistrict}
+            zip={form.zip}
+            onChange={(field, value) => set(field, value)}
+          />
+          <Field label="ลิงก์แผนที่ (Google Maps)" value={form.map_url} onChange={v => set('map_url', v)} placeholder="https://maps.google.com/..." />
         </div>
       </Section>
 

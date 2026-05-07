@@ -19,7 +19,7 @@ export default async function ProjectsPage() {
     .order('name_th')
 
   return (
-    <div className="p-4 lg:p-8 pt-6 max-w-5xl">
+    <div className="p-4 lg:p-8 pt-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-gray-900">โครงการ</h1>
