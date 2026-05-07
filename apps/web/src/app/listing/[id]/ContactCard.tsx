@@ -5,6 +5,7 @@ import { Phone, MessageCircle, ChevronDown } from 'lucide-react'
 
 interface Agent {
   name?: string
+  email?: string
   phone?: string
   line_id?: string
   logo_url?: string
@@ -61,9 +62,12 @@ export default function ContactCard({ agent, stockId }: Props) {
               </a>
             )}
             {!agent?.phone && !agent?.line_id && (
-              <p className="text-xs text-center text-gray-400 py-2">
-                กรุณาติดต่อผ่านทางอีเมล proppsyth@gmail.com
-              </p>
+              <a
+                href={`mailto:${agent?.email ?? 'proppsyth@gmail.com'}`}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition"
+              >
+                ติดต่อทางอีเมล
+              </a>
             )}
           </div>
         )}
