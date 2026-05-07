@@ -1,5 +1,5 @@
 # Proppsy — Claude Working Notes
-> อัปเดตล่าสุด: 2026-05-07 | อ่านไฟล์นี้ก่อนทุก session แทนการ explore codebase ใหม่
+> อัปเดตล่าสุด: 2026-05-08 | อ่านไฟล์นี้ก่อนทุก session แทนการ explore codebase ใหม่
 
 ---
 
@@ -9,52 +9,94 @@
 - ✅ Phase 3: Contracts — wizard (9 doc types), PDF bundle (Sarabun font), status workflow
 - ✅ Phase 4: Public website — / listing, /listing/[id] detail
 - ✅ Phase 5: Appointments, Calendar (merged page), Commission, PWA
-- ✅ Phase 6: UX Polish — full-width lists, mobile zoom fix, ID card upload fix, AI owner/project auto-create, address dropdowns, ContactCard fix
+- ✅ Phase 6: UX Polish — full-width lists, mobile zoom fix, ID card upload, AI entity create, address dropdowns
+- ✅ Phase 7: Site Expansion — logo+text, forgot pwd, admin CRUD users, stock mobile fix, commission year, public pages (news/about/contact), admin news CMS
 
 ---
 
-## Latest Commits (master → main, May 2026)
+## Latest Commits (main, May 2026)
 | Commit | Description |
 |--------|-------------|
-| `73b3ee1` | ContactCard email fallback เป็น mailto link |
+| `fec4602` | 7 UX improvements: logo, forgot pwd, admin users CRUD, stock mobile, commission year, news CMS, about/contact |
+| `0a901ab` | CLAUDE_NOTES.md system overview update |
+| `73b3ee1` | ContactCard email fallback เป็น mailto |
 | `0a2b014` | Full-width lists, mobile zoom, ID card upload, AI entity create, address dropdowns |
-| `8009ce6` | Merge calendar+appointments, fix sidebar width, add loading states |
-| `2b76708` | Contract bundle expansion Steps 2-5 complete |
+| `8009ce6` | Merge calendar+appointments, loading states |
+| `2b76708` | Contract bundle expansion complete |
 
 ---
 
-## Architecture
+## Route Map (ทุก route ในระบบ)
 
-### Monorepo
-- Root: `C:\Users\Arnon\proppsy-web\proppsy\`
-- App: `apps/web/src/`
-- Run dev: `npm run dev` (from root)
-- TypeScript check: `cd apps/web && npx tsc --noEmit`
-
-### Next.js Routes
+### Public (no auth)
 ```
-src/app/
-├── (auth)/          login, register  (no sidebar)
-├── (protected)/     dashboard, stock, owners, customers, projects,
-│   │                contracts, calendar, appointments, commission, profile
-│   └── layout.tsx   sidebar + mobile bottom nav + overflow-x-hidden min-w-0
-├── listing/         / (public listing), /[id] (detail + ContactCard)
-└── api/places/      GET → serves places.csv as nested JSON (province→district→subdistrict→zip)
+/                   หน้าแรก — listing ทรัพย์ว่าง + hero banner + filter + news section
+/listing/[id]       รายละเอียดทรัพย์สาธารณะ + ContactCard
+/news               ข่าวสารทั้งหมด (admin publish เท่านั้น)
+/news/[id]          อ่านข่าวรายชิ้น
+/about              เกี่ยวกับ Proppsy
+/contact            ติดต่อเรา
+/login              เข้าสู่ระบบ (มี "ลืมรหัสผ่าน?" link)
+/register           สมัครเป็นเอเจนต์
+/forgot-password    ขอ reset password (ส่งอีเมล)
+/reset-password     ตั้งรหัสผ่านใหม่ (จาก email link)
 ```
 
-### Key Source Files
+### Protected (ต้อง login + approved)
+```
+/dashboard          KPI overview
+/stock              รายการทรัพย์ทั้งหมด
+/stock/new          เพิ่มทรัพย์ใหม่ (AI paste + OCR)
+/stock/[id]         รายละเอียดทรัพย์ (photo gallery aspect-video)
+/stock/[id]/edit    แก้ไขทรัพย์
+/owners             รายการเจ้าของทรัพย์
+/owners/new         เพิ่มเจ้าของ (OCR บัตรประชาชน + AddressSelector)
+/owners/[id]        รายละเอียด/แก้ไขเจ้าของ
+/customers          รายการลูกค้า
+/customers/new      เพิ่มลูกค้า (OCR + AddressSelector)
+/customers/[id]     รายละเอียด/แก้ไขลูกค้า
+/projects           รายการโครงการ
+/projects/new       เพิ่มโครงการ (AI enrich + AddressSelector)
+/projects/[id]      รายละเอียด/แก้ไขโครงการ
+/contracts          รายการสัญญา
+/contracts/new      สร้างสัญญา (4-step wizard)
+/contracts/[id]     รายละเอียดสัญญา + download PDF
+/calendar           นัดหมาย & ปฏิทิน (merged page, 2 views)
+/appointments/new   สร้างนัดหมาย
+/commission         คอมมิชชัน (year selector + bar chart)
+/profile            โปรไฟล์ของตัวเอง
+```
+
+### Admin only (role = 'admin')
+```
+/admin/users        จัดการผู้ใช้ — approve/reject/edit/delete ทุก user
+/admin/news         จัดการข่าวสาร — list + toggle publish
+/admin/news/new     เพิ่มข่าวใหม่
+/admin/news/[id]/edit  แก้ไขข่าว
+```
+
+### API
+```
+/api/places         GET — serve places.csv เป็น JSON (province→district→subdistrict→zip)
+```
+
+---
+
+## Key Source Files
 | File | Purpose |
 |------|---------|
 | `src/lib/supabase/server.ts` | Server-side Supabase client |
 | `src/lib/supabase/client.ts` | Browser Supabase client |
 | `src/types/index.ts` | All TypeScript interfaces + helpers |
-| `src/app/(protected)/layout.tsx` | Sidebar layout (has `overflow-x-hidden min-w-0` on main) |
-| `src/components/shared/Sidebar.tsx` | Desktop sidebar nav |
+| `src/app/(protected)/layout.tsx` | Sidebar layout (`overflow-x-hidden min-w-0` on main) |
+| `src/components/shared/Sidebar.tsx` | Desktop sidebar (logo-icon.jpg + "Proppsy" text) |
 | `src/components/shared/MobileBottomNav.tsx` | Mobile bottom nav |
-| `src/components/shared/AddressSelector.tsx` | Cascading province/district/subdistrict/zip dropdowns |
+| `src/components/shared/AddressSelector.tsx` | Cascading province/district/subdistrict/zip |
 | `src/lib/pdf/ContractDocument.tsx` | PDF template (react-pdf, Sarabun font) |
 | `public/fonts/Sarabun-*.ttf` | Thai font for PDF |
-| `public/template-doc/สัญญา.md` | Contract template with `<<variable>>` syntax |
+| `public/logo/logo-icon.jpg` | Icon-only logo (ใช้ใน sidebar + public nav) |
+| `public/logo/logo.png` | Full logo (ใช้ใน login page) |
+| `public/template-doc/สัญญา.md` | Contract template `<<variable>>` syntax |
 | `public/template-doc/places.csv` | 7435 rows: province, district, subdistrict, zip |
 
 ---
@@ -66,25 +108,29 @@ src/app/
 **Tables:**
 | Table | Key Fields |
 |-------|------------|
-| `profiles` | id, agent_uid, name, email, phone, line_id, role, account_status |
+| `profiles` | id, email, name, nickname, phone, line_id, role (admin/manager/user), account_status (pending/approved/rejected), permissions{} |
 | `projects` | id (PRJ-xxxx), name_th, name_en, developer, province, district, address_road, bts_mrt[], facilities[] |
 | `owners` | id (OWN-xxxx), first_name_th, last_name_th, nickname, phone, line_id, id_card_url |
 | `customers` | id (CUS-xxxx), first_name_th, last_name_th, nickname, phone, line_id, id_card_url |
-| `stock` | id (STK-xxxx), agent_uid, owner_id, project_id, project_name, unit_no, status (available/rented/sold/reserved) |
-| `contracts` | id (BK-xxxx), stock_id, owner_id, customer_id, doc_type, status, rent_price, deposit, ... |
+| `stock` | id (STK-xxxx), agent_uid, owner_id, project_id, project_name, unit_no, status (available/rented/sold/unavailable), listing_type (rent/sale/both), photo_urls[] |
+| `contracts` | id (BK-xxxx), stock_id, owner_id, customer_id, doc_type, status (draft/sent/signed/cancelled), commission_net |
 | `appointments` | id, agent_uid, stock_id, customer_id, datetime, status |
-| `news` | id, agent_uid, title, body |
+| `news` | id (UUID), title, summary, content, cover_url, published (bool), created_by, created_at |
 
 **Storage Buckets:**
-- `stock-photos` — รูปทรัพย์
-- `documents` — บัตรประชาชน (id-cards/...), ลายเซ็น (signatures/...), เอกสาร PDF
-- `logos` — โลโก้บริษัท
+- `stock-photos` — รูปทรัพย์ (stock form upload)
+- `documents` — id-cards/..., signatures/..., PDF เอกสาร
+- `logos` — โลโก้บริษัท/เอเจนต์
 
-**RLS Pattern:** `.eq('agent_uid', user.id)` — ข้อมูลแต่ละคนแยกกัน
+**RLS:** ข้อมูล agent ใช้ `.eq('agent_uid', user.id)` | news ใช้ `is_admin()` function | public stock ใช้ `.eq('status', 'available')` ไม่มี agent filter
+
+**Admin Client:** `createAdminClient()` จาก `server.ts` — bypass RLS สำหรับ admin actions
 
 ---
 
-## ID Generation Pattern
+## Patterns
+
+### ID Generation
 ```ts
 async function nextId(table: string, prefix: string): Promise<string> {
   const { data } = await supabase.from(table).select('id')
@@ -95,15 +141,8 @@ async function nextId(table: string, prefix: string): Promise<string> {
 // Prefixes: STK, OWN, CUS, PRJ, BK
 ```
 
----
-
-## Established Patterns
-
-### Server Component
+### Server Component (data fetch)
 ```tsx
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
@@ -115,15 +154,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 ### Server Action
 ```ts
 'use server'
-import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
-
 export async function doThing(input: Input): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
   const { error } = await supabase.from('table').insert({ agent_uid: user.id, ...input })
-  if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
+  if (error) return { error: error.message }
   revalidatePath('/path')
   return {}
 }
@@ -132,14 +168,8 @@ export async function doThing(input: Input): Promise<{ error?: string }> {
 ### Client Form
 ```tsx
 'use client'
-import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
-
 export default function MyForm() {
-  const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [error, setError] = useState('')
-
   function handleSubmit() {
     startTransition(async () => {
       const res = await myAction(...)
@@ -150,9 +180,8 @@ export default function MyForm() {
 }
 ```
 
-### Storage Upload (client)
+### Storage Upload (client-side)
 ```ts
-const supabase = createClient()  // from '@/lib/supabase/client'
 const path = `subdir/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
 const { data, error } = await supabase.storage.from('documents').upload(path, file, { upsert: true })
 const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(data.path)
@@ -162,19 +191,14 @@ const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(
 ```tsx
 import AddressSelector from '@/components/shared/AddressSelector'
 // Props: province, district, subdistrict, zip, onChange(field, value)
-// Cascading: จังหวัด → เขต/อำเภอ → แขวง/ตำบล → รหัสไปรษณีย์ (auto-fill)
-// Data source: /api/places → public/template-doc/places.csv (module-level cache)
+// Cascades: จังหวัด → เขต/อำเภอ → แขวง/ตำบล → zip auto-fill
+// ข้อมูลจาก /api/places → places.csv (cached module-level)
 ```
 
-### Loading State
+### searchParams (Next.js 15+)
 ```tsx
-// ทุก route ใน (protected) มี loading.tsx แล้ว (spinners)
-export default function Loading() {
-  return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { tab = 'all' } = await searchParams
 }
 ```
 
@@ -182,44 +206,42 @@ export default function Loading() {
 
 ## AI Features
 
-### parseStockTextWithEntities (actions.ts ใน /stock)
-- รับ rawtext → Gemini → สกัดข้อมูล stock + owner + project
-- **Owner:** ตรวจ phone ก่อน → ตรวจ line_id → ถ้าไม่พบสร้างใหม่ (revalidatePath /owners)
-- **Project:** ตรวจ ilike name_th → ถ้าไม่พบ: Gemini enrich → สร้างใหม่ (revalidatePath /projects)
-- Returns: `ParseWithEntitiesResult { stock, owner_id?, owner_created, owner_display?, project_id?, project_created, project_display? }`
+### parseStockTextWithEntities (stock/actions.ts)
+- rawtext → Gemini → stock fields + owner_name/phone/line + project_name
+- Owner: ค้นหาด้วย phone → line_id → สร้างใหม่ถ้าไม่พบ
+- Project: ilike name_th → Gemini enrich → สร้างใหม่ถ้าไม่พบ
+- Returns: `ParseWithEntitiesResult`
 
-### Gemini Model
-- `gemini-2.0-flash` via `@google/generative-ai`
-- Key: GEMINI_API_KEY env var
-- OCR: ถ่ายบัตร → สกัดชื่อ/เลขบัตร/วันเกิด/ที่อยู่
+### Gemini Model: `gemini-2.0-flash` | Key: `GEMINI_API_KEY`
+### OCR: ถ่ายบัตร → สกัดชื่อ/เลขบัตร/วันเกิด/ที่อยู่
 
 ---
 
 ## Contract System
 
-### Doc Types (ContractDocType)
-`rental_agreement | reservation | invoice_reservation | receipt_reservation | invoice_deposit | receipt_deposit | commission_confirm | renewal | co_agent`
+### Doc Types: `rental_agreement | reservation | invoice_reservation | receipt_reservation | invoice_deposit | receipt_deposit | commission_confirm | renewal | co_agent`
 
-### PDF Bundle
-- `ContractDocument.tsx` ออก PDF หลายหน้า จาก template-doc/*.md
-- Variables: `<<variable_name>>` syntax
-- Thai number-to-words: bahtText() function
+### PDF: `ContractDocument.tsx` → `<<variable>>` syntax | Thai bahtText() | Sarabun font
 
-### DB Migration Files
-- `supabase/migrations/001_initial.sql` — base schema
-- `supabase/migrations/002_contracts_expansion.sql` — fields ใหม่ (water/electric/internet/parking fees, payment info, commission)
+### DB Migrations: `001_initial.sql` | `002_contracts_expansion.sql` (fees, payment, commission fields)
 
 ---
 
-## Known Manual Steps Required
-1. **Supabase Site URL** — ต้องตั้งใน Dashboard → Authentication → URL Configuration → Site URL เป็น Vercel production URL (ไม่งั้น email verification link ไป localhost)
-2. **Profile phone/LINE** — เอเจนต์ต้องกรอกเบอร์โทรและ LINE ID ในหน้า Profile ถึงจะแสดงใน public listing ContactCard
+## News System (admin-only CMS)
+- DB: `news` table — title, summary, content, cover_url, published (bool), created_by
+- RLS: SELECT → published=true หรือ is_admin() | INSERT/UPDATE/DELETE → is_admin() เท่านั้น
+- Admin เขียนข่าว → toggle published → แสดงใน /news สาธารณะ
+- หน้าแรก (/) แสดง latestNews 3 รายการ (published=true)
 
 ---
 
-## searchParams Pattern (Next.js 15+)
-```tsx
-export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { tab = 'all' } = await searchParams
-}
-```
+## Public Listing Filters
+FilterBar รองรับ: listing_type, room_type, price_bucket, province, **district** (ขึ้นเมื่อเลือก province), **bts_mrt**
+ข้อมูล filter options ดึงจาก projects table (province, district, bts_mrt[])
+
+---
+
+## Known Manual Steps
+1. **Supabase Site URL** → Dashboard → Authentication → URL Configuration → Site URL = Vercel URL (ไม่งั้น email ไป localhost)
+2. **Profile phone/LINE** → เอเจนต์ต้องกรอกในหน้า /profile เพื่อให้ ContactCard แสดงข้อมูล
+3. **Reset password flow** → ต้องตั้ง Site URL ก่อน ถึงจะส่ง reset email ไปถูก URL
