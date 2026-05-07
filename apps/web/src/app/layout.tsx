@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Sans_Thai, IBM_Plex_Sans } from 'next/font/google'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import '@workspace/ui/globals.css'
 import './globals.css'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
@@ -54,6 +55,7 @@ export default function RootLayout({
       <body className={`${ibmPlexSansThai.variable} ${ibmPlexSans.variable} font-thai antialiased`}>
         <ServiceWorkerRegister />
         {children}
+        <SpeedInsights />
       </body>
     </html>
   )
