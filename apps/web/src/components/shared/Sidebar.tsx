@@ -68,7 +68,7 @@ export default function Sidebar({ profile }: SidebarProps) {
       {/* ── Desktop Sidebar ── */}
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 flex-col z-30">
         <div className="p-5 border-b border-gray-100">
-          <Image src="/logo/logo.png" alt="Proppsy" width={120} height={40} className="object-contain" />
+          <Image src="/logo/logo.png" alt="Proppsy" width={90} height={30} className="object-contain" />
         </div>
 
         <div className="px-4 py-3 border-b border-gray-100">
@@ -136,7 +136,7 @@ export default function Sidebar({ profile }: SidebarProps) {
 
       {/* ── Mobile: top bar ── */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur border-b border-gray-100 flex items-center justify-between px-4 z-30">
-        <Image src="/logo/logo.png" alt="Proppsy" width={80} height={26} className="object-contain" />
+        <Image src="/logo/logo.png" alt="Proppsy" width={60} height={20} className="object-contain" />
         <button
           onClick={() => setMoreOpen(true)}
           className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm active:bg-blue-200 transition"

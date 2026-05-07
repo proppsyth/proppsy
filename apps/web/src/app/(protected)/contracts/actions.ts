@@ -24,6 +24,23 @@ export type ContractInput = {
   commission_net?: number | null
   vat_7: boolean
   wht_3: boolean
+  // Monthly expenses
+  water_unit_price?: number | null
+  electric_unit_price?: number | null
+  internet_fee?: number | null
+  common_fee?: number | null
+  parking_fee?: number | null
+  // Payment details
+  payment_date?: string | null
+  payment_method?: string
+  bank_ref?: string | null
+  reservation_expire_date?: string | null
+  payment_grace_days?: number | null
+  payment_day_of_month?: number | null
+  // Commission split
+  commission_rate_pct?: number | null
+  commission_from_owner?: number | null
+  commission_from_customer?: number | null
 }
 
 // ─── ID Generator ────────────────────────────────────────────
@@ -138,6 +155,20 @@ export async function generateContractPdf(
         commission_net: contract.commission_net,
         vat_7: contract.vat_7 ?? false,
         wht_3: contract.wht_3 ?? false,
+        water_unit_price: contract.water_unit_price,
+        electric_unit_price: contract.electric_unit_price,
+        internet_fee: contract.internet_fee,
+        common_fee: contract.common_fee,
+        parking_fee: contract.parking_fee,
+        payment_date: contract.payment_date,
+        payment_method: contract.payment_method,
+        bank_ref: contract.bank_ref,
+        reservation_expire_date: contract.reservation_expire_date,
+        payment_grace_days: contract.payment_grace_days,
+        payment_day_of_month: contract.payment_day_of_month,
+        commission_rate_pct: contract.commission_rate_pct,
+        commission_from_owner: contract.commission_from_owner,
+        commission_from_customer: contract.commission_from_customer,
       },
       stock: contract.stock ?? null,
       owner: contract.owner ?? null,
@@ -148,6 +179,10 @@ export async function generateContractPdf(
         phone: profile?.phone,
         logo_url: profile?.logo_url,
         signature_url: profile?.signature_url,
+        bank_name: profile?.bank_name,
+        bank_account_no: profile?.bank_account_no,
+        bank_account_name: profile?.bank_account_name,
+        tax_id: profile?.tax_id,
       },
     })
 
