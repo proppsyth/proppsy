@@ -9,16 +9,16 @@ export default function PhotoGallery({ urls }: { urls: string[] }) {
 
   if (urls.length === 0) {
     return (
-      <div className="aspect-[4/3] bg-gray-100 rounded-xl flex items-center justify-center">
+      <div className="w-full aspect-video bg-gray-100 rounded-xl flex items-center justify-center">
         <Home className="w-14 h-14 text-gray-300" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-2">
+    <div className="w-full space-y-2">
       {/* Main photo */}
-      <div className="relative aspect-[4/3] bg-gray-100 rounded-xl overflow-hidden group">
+      <div className="relative w-full aspect-video bg-gray-100 rounded-xl overflow-hidden group">
         <Image
           src={urls[current]!}
           alt={`ภาพที่ ${current + 1}`}

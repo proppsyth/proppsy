@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Building2, Maximize, Layers, MapPin } from 'lucide-react'
+import { Building2, Maximize, Layers, MapPin, Newspaper } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import type { Stock } from '@/types'
@@ -28,30 +28,34 @@ const SALE_RANGES: Record<string, [number, number]> = {
 export default async function PublicListingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ listing_type?: string; room_type?: string; province?: string; price_bucket?: string }>
+  searchParams: Promise<{ listing_type?: string; room_type?: string; province?: string; district?: string; bts_mrt?: string; price_bucket?: string }>
 }) {
-  const { listing_type, room_type, province, price_bucket } = await searchParams
+  const { listing_type, room_type, province, district, bts_mrt, price_bucket } = await searchParams
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Fetch available provinces for the filter
-  const { data: provinceRows } = await supabase
-    .from('stock')
-    .select('project:projects(province)')
-    .eq('status', 'available')
-    .not('project_id', 'is', null)
+  // Fetch filter options + latest news in parallel
+  const [{ data: projectRows }, { data: latestNews }] = await Promise.all([
+    supabase
+      .from('projects')
+      .select('province, district, bts_mrt')
+      .not('province', 'is', null),
+    supabase
+      .from('news')
+      .select('id, title, summary, created_at')
+      .eq('published', true)
+      .order('created_at', { ascending: false })
+      .limit(3),
+  ])
 
-  const provinces = [...new Set(
-    (provinceRows ?? [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((r: any) => r.project?.province as string | undefined)
-      .filter((p): p is string => !!p)
-  )].sort()
+  const provinces = [...new Set((projectRows ?? []).map((r: { province?: string }) => r.province).filter((p): p is string => !!p))].sort()
+  const districts = [...new Set((projectRows ?? []).filter(r => !province || province === 'all' || r.province === province).map((r: { district?: string }) => r.district).filter((d): d is string => !!d))].sort()
+  const btsMrtOptions = [...new Set((projectRows ?? []).flatMap((r: { bts_mrt?: string[] }) => r.bts_mrt ?? []).filter(Boolean))].sort()
 
   let query = supabase
     .from('stock')
-    .select('id, unit_no, room_type, size_sqm, floor, rent_price, sale_price, listing_type, photo_urls, project_name, project_id, project:projects(province, district)')
+    .select('id, unit_no, room_type, size_sqm, floor, rent_price, sale_price, listing_type, photo_urls, project_name, project_id, project:projects(province, district, bts_mrt)')
     .eq('status', 'available')
     .order('created_at', { ascending: false })
 
@@ -63,7 +67,6 @@ export default async function PublicListingPage({
   if (room_type && room_type !== 'all') {
     query = query.eq('room_type', room_type)
   }
-
   if (price_bucket && price_bucket !== 'all') {
     if (listing_type === 'sale') {
       const range = SALE_RANGES[price_bucket]
@@ -75,23 +78,28 @@ export default async function PublicListingPage({
   }
 
   const { data: stocksRaw } = await query
-  type StockWithProject = Stock & { project?: { province?: string; district?: string } | null }
+  type StockWithProject = Stock & { project?: { province?: string; district?: string; bts_mrt?: string[] } | null }
   let stocks = (stocksRaw ?? []) as unknown as StockWithProject[]
 
-  if (province && province !== 'all') {
-    stocks = stocks.filter(s => s.project?.province === province)
-  }
+  if (province && province !== 'all') stocks = stocks.filter(s => s.project?.province === province)
+  if (district && district !== 'all') stocks = stocks.filter(s => s.project?.district === district)
+  if (bts_mrt && bts_mrt !== 'all') stocks = stocks.filter(s => s.project?.bts_mrt?.includes(bts_mrt))
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navbar */}
       <nav className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-blue-600" />
+        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
+          <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={28} height={28} className="object-contain rounded-lg" />
             <span className="font-bold text-lg text-gray-900">Proppsy</span>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-5 text-sm text-gray-600">
+            <Link href="/news" className="hover:text-gray-900 transition">ข่าวสาร</Link>
+            <Link href="/about" className="hover:text-gray-900 transition">เกี่ยวกับเรา</Link>
+            <Link href="/contact" className="hover:text-gray-900 transition">ติดต่อเรา</Link>
+          </div>
+          <div className="flex items-center gap-2">
             {user ? (
               <Link href="/dashboard" className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
                 แดชบอร์ด
@@ -110,10 +118,20 @@ export default async function PublicListingPage({
         </div>
       </nav>
 
-      {/* Hero */}
-      <div className="bg-gradient-to-br from-blue-700 to-blue-900 text-white py-10 px-4 text-center">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2">ค้นหาที่พักในฝัน</h1>
-        <p className="text-blue-200 text-sm">ทรัพย์สินคุณภาพในประเทศไทย พร้อมเอเจนต์มืออาชีพ</p>
+      {/* Hero Banner */}
+      <div className="relative bg-gradient-to-br from-blue-800 via-blue-700 to-indigo-800 text-white overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")', backgroundRepeat: 'repeat' }} />
+        </div>
+        <div className="relative max-w-6xl mx-auto px-4 py-12 sm:py-16 text-center">
+          <div className="flex justify-center mb-4">
+            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={56} height={56} className="object-contain rounded-2xl shadow-lg" />
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold mb-3">ค้นหาที่พักในฝัน</h1>
+          <p className="text-blue-200 text-sm sm:text-base max-w-lg mx-auto">
+            ทรัพย์สินคุณภาพในประเทศไทย พร้อมเอเจนต์มืออาชีพดูแลคุณตลอด 24 ชั่วโมง
+          </p>
+        </div>
       </div>
 
       {/* Filter bar */}
@@ -123,8 +141,12 @@ export default async function PublicListingPage({
             currentListingType={listing_type ?? 'all'}
             currentRoomType={room_type ?? 'all'}
             currentProvince={province ?? 'all'}
+            currentDistrict={district ?? 'all'}
+            currentBtsMrt={bts_mrt ?? 'all'}
             currentPriceBucket={price_bucket ?? 'all'}
             provinces={provinces}
+            districts={districts}
+            btsMrtOptions={btsMrtOptions}
           />
         </div>
       </div>
@@ -151,9 +173,41 @@ export default async function PublicListingPage({
         )}
       </div>
 
+      {/* News Section */}
+      {(latestNews?.length ?? 0) > 0 && (
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Newspaper className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg font-bold text-gray-900">ข่าวสาร & อัปเดต</h2>
+            </div>
+            <Link href="/news" className="text-sm text-blue-600 hover:underline">ดูทั้งหมด →</Link>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {latestNews!.map(n => (
+              <Link key={n.id} href={`/news/${n.id}`} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition block">
+                <p className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1">{n.title}</p>
+                {n.summary && <p className="text-xs text-gray-400 line-clamp-2">{n.summary}</p>}
+                <p className="text-xs text-gray-300 mt-2">{new Date(n.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
-      <footer className="border-t border-gray-100 mt-8 py-8 text-center text-xs text-gray-400">
-        © {new Date().getFullYear()} Proppsy · Real Estate Management Platform
+      <footer className="border-t border-gray-100 mt-4 py-8">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
+          <div className="flex items-center gap-2">
+            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={20} height={20} className="object-contain rounded" />
+            <span>© {new Date().getFullYear()} Proppsy · Real Estate Management Platform</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link href="/news" className="hover:text-gray-600 transition">ข่าวสาร</Link>
+            <Link href="/about" className="hover:text-gray-600 transition">เกี่ยวกับเรา</Link>
+            <Link href="/contact" className="hover:text-gray-600 transition">ติดต่อเรา</Link>
+          </div>
+        </div>
       </footer>
     </div>
   )

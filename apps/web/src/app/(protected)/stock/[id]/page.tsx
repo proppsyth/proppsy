@@ -61,7 +61,7 @@ export default async function StockDetailPage({
   })
 
   return (
-    <div className="p-4 lg:p-8 pt-6 max-w-5xl">
+    <div className="p-4 lg:p-8 pt-6 max-w-5xl overflow-x-hidden">
       {/* Back + header */}
       <div className="mb-5">
         <Link href="/stock" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition mb-3 w-fit">
@@ -244,9 +244,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function InfoItem({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs text-gray-500 mb-0.5">{label}</p>
-      <p className={`text-sm font-medium ${highlight ? 'text-blue-600' : 'text-gray-900'}`}>{value}</p>
+      <p className={`text-sm font-medium break-words ${highlight ? 'text-blue-600' : 'text-gray-900'}`}>{value}</p>
     </div>
   )
 }

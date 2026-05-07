@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { TrendingUp, ArrowRight } from 'lucide-react'
+import { TrendingUp, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
@@ -17,10 +17,18 @@ function monthLabel(ym: string) {
 
 type MonthEntry = { ym: string; total: number; count: number }
 
-export default async function CommissionPage() {
+export default async function CommissionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string }>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  const currentYear = new Date().getFullYear()
+  const { year: yearStr } = await searchParams
+  const selectedYear = yearStr ? parseInt(yearStr) : currentYear
 
   const { data: contracts } = await supabase
     .from('contracts')
@@ -30,12 +38,24 @@ export default async function CommissionPage() {
     .not('commission_net', 'is', null)
     .order('created_at', { ascending: false })
 
+  // All years available
+  const allYears = [...new Set((contracts ?? []).map(c => parseInt(c.created_at.slice(0, 4))))].sort((a, b) => b - a)
+  if (allYears.length === 0) allYears.push(currentYear)
+
+  // Filter by selected year
+  const filtered = (contracts ?? []).filter(c => parseInt(c.created_at.slice(0, 4)) === selectedYear)
+
   // Group by year-month
   const byMonth = new Map<string, MonthEntry>()
   let grandTotal = 0
+  let grandAllTotal = 0
   for (const c of contracts ?? []) {
     if (!c.commission_net) continue
-    const ym = c.created_at.slice(0, 7) // "YYYY-MM"
+    grandAllTotal += c.commission_net
+  }
+  for (const c of filtered) {
+    if (!c.commission_net) continue
+    const ym = c.created_at.slice(0, 7)
     const entry = byMonth.get(ym) ?? { ym, total: 0, count: 0 }
     entry.total += c.commission_net
     entry.count += 1
@@ -43,13 +63,16 @@ export default async function CommissionPage() {
     grandTotal += c.commission_net
   }
 
-  const months = [...byMonth.values()].sort((a, b) => b.ym.localeCompare(a.ym))
+  const months = [...byMonth.values()].sort((a, b) => a.ym.localeCompare(b.ym))
   const maxTotal = months.reduce((m, e) => Math.max(m, e.total), 0) || 1
 
-  // This month
   const thisYm = new Date().toISOString().slice(0, 7)
   const thisMonth = byMonth.get(thisYm)
-  const lastYm = months.find(m => m.ym !== thisYm)
+  const prevYm = months.length > 1 ? months[months.length - 2] : undefined
+
+  const prevYear = selectedYear - 1
+  const nextYear = selectedYear + 1
+  const hasNext = nextYear <= currentYear
 
   return (
     <div className="p-4 lg:p-8 pt-6 max-w-3xl">
@@ -64,23 +87,71 @@ export default async function CommissionPage() {
         </div>
       </div>
 
+      {/* Year Selector */}
+      <div className="flex items-center justify-between bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 mb-6">
+        <Link
+          href={`/commission?year=${prevYear}`}
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-500"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </Link>
+        <div className="text-center">
+          <p className="text-lg font-bold text-gray-900">
+            {new Date(selectedYear, 0, 1).toLocaleDateString('th-TH', { year: 'numeric' })}
+          </p>
+          {selectedYear === currentYear && <p className="text-xs text-emerald-600">ปีปัจจุบัน</p>}
+        </div>
+        <Link
+          href={hasNext ? `/commission?year=${nextYear}` : '#'}
+          className={`w-8 h-8 flex items-center justify-center rounded-full transition ${hasNext ? 'hover:bg-gray-100 text-gray-500' : 'text-gray-200 cursor-default'}`}
+        >
+          <ChevronRight className="w-5 h-5" />
+        </Link>
+      </div>
+
+      {/* Year selector pills (all available years) */}
+      {allYears.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 mb-6 scrollbar-none">
+          {allYears.map(y => (
+            <Link
+              key={y}
+              href={`/commission?year=${y}`}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition flex-shrink-0 ${
+                y === selectedYear ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {new Date(y, 0, 1).toLocaleDateString('th-TH', { year: 'numeric' })}
+            </Link>
+          ))}
+        </div>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+        <div className="bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm p-4">
+          <p className="text-xs text-emerald-600 mb-1">รวมปีนี้</p>
+          <p className="text-2xl font-bold text-emerald-700">฿{fmt(grandTotal)}</p>
+          <p className="text-xs text-emerald-500 mt-0.5">{filtered.length} สัญญา</p>
+        </div>
+        {selectedYear === currentYear && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+            <p className="text-xs text-gray-400 mb-1">เดือนนี้</p>
+            <p className="text-2xl font-bold text-gray-900">฿{fmt(thisMonth?.total ?? 0)}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{thisMonth?.count ?? 0} สัญญา</p>
+          </div>
+        )}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-          <p className="text-xs text-gray-400 mb-1">รวมทั้งหมด</p>
-          <p className="text-2xl font-bold text-gray-900">฿{fmt(grandTotal)}</p>
+          <p className="text-xs text-gray-400 mb-1">รวมทุกปี</p>
+          <p className="text-2xl font-bold text-gray-700">฿{fmt(grandAllTotal)}</p>
           <p className="text-xs text-gray-400 mt-0.5">{contracts?.length ?? 0} สัญญา</p>
         </div>
-        <div className="bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm p-4">
-          <p className="text-xs text-emerald-600 mb-1">เดือนนี้</p>
-          <p className="text-2xl font-bold text-emerald-700">฿{fmt(thisMonth?.total ?? 0)}</p>
-          <p className="text-xs text-emerald-500 mt-0.5">{thisMonth?.count ?? 0} สัญญา</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-          <p className="text-xs text-gray-400 mb-1">เดือนก่อน</p>
-          <p className="text-2xl font-bold text-gray-700">฿{fmt(lastYm?.total ?? 0)}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{lastYm?.count ?? 0} สัญญา</p>
-        </div>
+        {prevYm && selectedYear === currentYear && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+            <p className="text-xs text-gray-400 mb-1">เดือนก่อน</p>
+            <p className="text-2xl font-bold text-gray-700">฿{fmt(prevYm.total)}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{prevYm.count} สัญญา</p>
+          </div>
+        )}
       </div>
 
       {/* Bar chart */}
@@ -112,19 +183,19 @@ export default async function CommissionPage() {
       ) : (
         <div className="text-center py-16 text-gray-400">
           <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-25" />
-          <p className="text-sm">ยังไม่มีข้อมูลคอมมิชชัน</p>
+          <p className="text-sm">ไม่มีข้อมูลคอมมิชชันในปีนี้</p>
           <p className="text-xs mt-1">ข้อมูลจะแสดงเมื่อสัญญามีสถานะ "ลงนามแล้ว"</p>
         </div>
       )}
 
       {/* Contract list */}
-      {(contracts?.length ?? 0) > 0 && (
+      {filtered.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/70 flex items-center justify-between">
+          <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/70">
             <h2 className="text-sm font-semibold text-gray-700">รายการสัญญา</h2>
           </div>
           <div className="divide-y divide-gray-50">
-            {contracts!.map(c => (
+            {filtered.map(c => (
               <Link
                 key={c.id}
                 href={`/contracts/${c.id}`}

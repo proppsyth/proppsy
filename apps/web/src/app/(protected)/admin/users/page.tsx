@@ -158,10 +158,7 @@ function UserCard({ user, tab }: { user: Profile; tab: Tab }) {
         <InfoRow icon="📅" value={`สมัคร ${createdDate}`} />
       </div>
 
-      {/* Approve / Reject for pending */}
-      {tab === 'pending' && (
-        <UserActions userId={user.id} userName={user.name || user.email || user.id} />
-      )}
+      <UserActions user={user} />
     </div>
   )
 }

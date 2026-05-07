@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Building2, Maximize, Layers, Phone, MessageCircle, MapPin, Wind } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -65,7 +66,7 @@ export default async function PublicPropertyDetailPage({
       <nav className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-blue-600" />
+            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={28} height={28} className="object-contain rounded-lg" />
             <span className="font-bold text-lg text-gray-900">Proppsy</span>
           </Link>
           <div className="flex items-center gap-3">
