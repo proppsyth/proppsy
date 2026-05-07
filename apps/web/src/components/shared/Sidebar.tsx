@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  Users, UserCheck, Building2, ClipboardList,
+  Users, UserCheck, Building2, Calendar,
   TrendingUp, Settings, LogOut,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -23,8 +23,7 @@ const NAV_ITEMS = [
   { href: '/customers', icon: '👥', label: 'ลูกค้า', permission: 'customer' },
   { href: '/projects', icon: '🏢', label: 'โครงการ', permission: 'project' },
   { href: '/contracts', icon: '📄', label: 'สัญญา', permission: 'contract' },
-  { href: '/appointments', icon: '🗓️', label: 'นัดหมาย', permission: null },
-  { href: '/calendar', icon: '📅', label: 'ปฏิทิน', permission: null },
+  { href: '/calendar', icon: '📅', label: 'นัดหมาย & ปฏิทิน', permission: null },
   { href: '/commission', icon: '💰', label: 'คอมมิชชัน', permission: null },
 ]
 
@@ -37,7 +36,7 @@ const MORE_ITEMS = [
   { href: '/owners', icon: UserCheck, label: 'เจ้าของทรัพย์' },
   { href: '/customers', icon: Users, label: 'ลูกค้า' },
   { href: '/projects', icon: Building2, label: 'โครงการ' },
-  { href: '/appointments', icon: ClipboardList, label: 'นัดหมาย' },
+  { href: '/calendar', icon: Calendar, label: 'นัดหมาย & ปฏิทิน' },
   { href: '/commission', icon: TrendingUp, label: 'คอมมิชชัน' },
   { href: '/profile', icon: Settings, label: 'โปรไฟล์' },
 ]
@@ -54,8 +53,11 @@ export default function Sidebar({ profile }: SidebarProps) {
     router.refresh()
   }
 
-  const isActive = (href: string) =>
-    href === '/dashboard' ? pathname === href : pathname.startsWith(href)
+  const isActive = (href: string) => {
+    if (href === '/dashboard') return pathname === href
+    if (href === '/calendar') return pathname.startsWith('/calendar') || pathname.startsWith('/appointments')
+    return pathname.startsWith(href)
+  }
 
   const hasPermission = (permission: string | null) => {
     if (!permission) return true
@@ -68,7 +70,7 @@ export default function Sidebar({ profile }: SidebarProps) {
       {/* ── Desktop Sidebar ── */}
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 flex-col z-30">
         <div className="p-5 border-b border-gray-100">
-          <Image src="/logo/logo.png" alt="Proppsy" width={90} height={30} className="object-contain" />
+          <Image src="/logo/logo.png" alt="Proppsy" width={65} height={22} className="object-contain" />
         </div>
 
         <div className="px-4 py-3 border-b border-gray-100">
@@ -88,13 +90,13 @@ export default function Sidebar({ profile }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
                 isActive(item.href)
                   ? 'bg-blue-600 text-white font-medium'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               }`}
             >
-              <span className="text-base">{item.icon}</span>
+              <span className="w-5 shrink-0 text-center leading-none">{item.icon}</span>
               {item.label}
             </Link>
           ))}
@@ -108,13 +110,13 @@ export default function Sidebar({ profile }: SidebarProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
                     isActive(item.href)
                       ? 'bg-blue-600 text-white font-medium'
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   }`}
                 >
-                  <span className="text-base">{item.icon}</span>
+                  <span className="w-5 shrink-0 text-center leading-none">{item.icon}</span>
                   {item.label}
                 </Link>
               ))}

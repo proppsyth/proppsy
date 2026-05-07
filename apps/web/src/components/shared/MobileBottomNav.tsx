@@ -18,7 +18,7 @@ const TABS = [
   { href: '/stock', icon: Home, label: 'ทรัพย์' },
   null, // center FAB
   { href: '/contracts', icon: FileText, label: 'สัญญา' },
-  { href: '/calendar', icon: Calendar, label: 'ปฏิทิน' },
+  { href: '/calendar', icon: Calendar, label: 'นัดหมาย' },
 ]
 
 const QUICK_ADD = [
