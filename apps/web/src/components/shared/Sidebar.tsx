@@ -1,8 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
+import {
+  Users, UserCheck, Building2, ClipboardList,
+  TrendingUp, Settings, LogOut,
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
 import MobileBottomNav from './MobileBottomNav'
@@ -28,9 +33,19 @@ const ADMIN_ITEMS = [
   { href: '/admin/news', icon: '📰', label: 'จัดการข่าว' },
 ]
 
+const MORE_ITEMS = [
+  { href: '/owners', icon: UserCheck, label: 'เจ้าของทรัพย์' },
+  { href: '/customers', icon: Users, label: 'ลูกค้า' },
+  { href: '/projects', icon: Building2, label: 'โครงการ' },
+  { href: '/appointments', icon: ClipboardList, label: 'นัดหมาย' },
+  { href: '/commission', icon: TrendingUp, label: 'คอมมิชชัน' },
+  { href: '/profile', icon: Settings, label: 'โปรไฟล์' },
+]
+
 export default function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const [moreOpen, setMoreOpen] = useState(false)
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -52,12 +67,10 @@ export default function Sidebar({ profile }: SidebarProps) {
     <>
       {/* ── Desktop Sidebar ── */}
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 flex-col z-30">
-        {/* Logo */}
         <div className="p-5 border-b border-gray-100">
           <Image src="/logo/logo.png" alt="Proppsy" width={120} height={40} className="object-contain" />
         </div>
 
-        {/* Profile mini */}
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-semibold text-sm">
@@ -70,7 +83,6 @@ export default function Sidebar({ profile }: SidebarProps) {
           </div>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {NAV_ITEMS.filter(item => hasPermission(item.permission)).map(item => (
             <Link
@@ -110,7 +122,6 @@ export default function Sidebar({ profile }: SidebarProps) {
           )}
         </nav>
 
-        {/* Bottom actions */}
         <div className="p-3 border-t border-gray-100 space-y-0.5">
           <Link href="/profile"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
@@ -123,16 +134,77 @@ export default function Sidebar({ profile }: SidebarProps) {
         </div>
       </aside>
 
-      {/* ── Mobile: slim top bar ── */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur border-b border-gray-100 flex items-center px-4 z-30">
-        <Image src="/logo/logo.png" alt="Proppsy" width={90} height={30} className="object-contain" />
+      {/* ── Mobile: top bar ── */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur border-b border-gray-100 flex items-center justify-between px-4 z-30">
+        <Image src="/logo/logo.png" alt="Proppsy" width={80} height={26} className="object-contain" />
+        <button
+          onClick={() => setMoreOpen(true)}
+          className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm active:bg-blue-200 transition"
+        >
+          {(profile.nickname || profile.name || 'U').charAt(0).toUpperCase()}
+        </button>
       </div>
-
-      {/* Mobile spacer for top bar */}
-      <div className="lg:hidden h-14" />
 
       {/* ── Mobile Bottom Navigation ── */}
       <MobileBottomNav profile={profile} />
+
+      {/* ── More Backdrop ── */}
+      {moreOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+          onClick={() => setMoreOpen(false)}
+        />
+      )}
+
+      {/* ── More Sheet ── */}
+      <div className={`lg:hidden fixed left-0 right-0 z-50 bg-white rounded-t-3xl shadow-xl transition-all duration-300 ease-out ${
+        moreOpen ? 'bottom-0' : '-bottom-full'
+      }`}>
+        <div className="px-5 pt-5 pb-safe pb-8">
+          <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+
+          <div className="flex items-center gap-3 mb-5 p-4 bg-gray-50 rounded-2xl">
+            <div className="w-11 h-11 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold flex-shrink-0">
+              {(profile.nickname || profile.name || 'U').charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-gray-900 text-sm truncate">{profile.nickname || profile.name}</p>
+              <p className="text-xs text-gray-400 truncate">{profile.position || profile.company_name || profile.email}</p>
+            </div>
+            <Link href="/profile" onClick={() => setMoreOpen(false)}>
+              <Settings className="w-4 h-4 text-gray-400" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2.5 mb-5">
+            {MORE_ITEMS.map(item => {
+              const Icon = item.icon
+              const active = isActive(item.href)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMoreOpen(false)}
+                  className={`flex flex-col items-center gap-2 py-4 rounded-2xl transition active:scale-95 ${
+                    active ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-600'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-[11px] font-medium text-center leading-tight">{item.label}</span>
+                </Link>
+              )
+            })}
+          </div>
+
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center justify-center gap-2 py-3.5 text-red-500 bg-red-50 rounded-2xl text-sm font-semibold active:bg-red-100 transition"
+          >
+            <LogOut className="w-4 h-4" />
+            ออกจากระบบ
+          </button>
+        </div>
+      </div>
     </>
   )
 }

@@ -25,7 +25,7 @@ export default async function ProtectedLayout({
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar profile={profile} />
-      <main className="flex-1 ml-0 lg:ml-64 min-h-screen pb-20 lg:pb-0">
+      <main className="flex-1 ml-0 lg:ml-64 min-h-screen pt-14 lg:pt-0 pb-20 lg:pb-0">
         {children}
       </main>
     </div>
