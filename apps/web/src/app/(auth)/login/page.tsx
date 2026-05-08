@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -88,12 +88,18 @@ function LoginForm() {
         <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <span className="text-2xl">✉️</span>
         </div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">ส่งอีเมลแล้ว</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">ส่งรหัส OTP แล้ว</h2>
         <p className="text-sm text-gray-500 mb-5">
           ตรวจสอบอีเมล <span className="font-medium text-gray-700">{email}</span><br />
-          แล้วคลิกลิงก์เพื่อตั้งรหัสผ่านใหม่
+          แล้วนำรหัส 6 หลักที่ได้รับมากรอกด้านล่าง
         </p>
-        <button onClick={() => switchMode('login')} className="text-sm text-blue-600 hover:underline">
+        <Link
+          href={`/reset-password?email=${encodeURIComponent(email)}`}
+          className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition text-sm mb-3"
+        >
+          กรอกรหัส OTP ตั้งรหัสผ่านใหม่
+        </Link>
+        <button onClick={() => switchMode('login')} className="text-sm text-gray-500 hover:text-gray-700 transition">
           ← กลับหน้าเข้าสู่ระบบ
         </button>
       </div>
@@ -125,7 +131,7 @@ function LoginForm() {
         )}
         <button type="submit" disabled={loading}
           className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium py-3 rounded-xl transition text-sm">
-          {loading ? 'กำลังส่ง...' : 'ส่งลิงก์รีเซ็ตรหัสผ่าน'}
+          {loading ? 'กำลังส่ง...' : 'ส่งรหัส OTP ทางอีเมล'}
         </button>
         <button type="button" onClick={() => switchMode('login')}
           className="w-full text-sm text-gray-500 hover:text-gray-700 transition py-1">
