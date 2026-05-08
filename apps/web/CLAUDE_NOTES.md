@@ -1,5 +1,5 @@
 # Proppsy — Claude Working Notes
-> อัปเดตล่าสุด: 2026-05-08 (session 2) | อ่านไฟล์นี้ก่อนทุก session แทนการ explore codebase ใหม่
+> อัปเดตล่าสุด: 2026-05-08 (session 3) | อ่านไฟล์นี้ก่อนทุก session แทนการ explore codebase ใหม่
 
 ---
 
@@ -12,6 +12,7 @@
 - ✅ Phase 6: UX Polish — full-width lists, mobile zoom fix, ID card upload, AI entity create, address dropdowns
 - ✅ Phase 7: Site Expansion — logo+text, forgot pwd, admin CRUD users, stock mobile fix, commission year, public pages (news/about/contact), admin news CMS
 - ✅ Phase 8: UX & Features — mobile overflow fix, calendar 3rd color (นัดทำสัญญา), logo→home link, admin mobile menu, delete stock, download all photos, online signature pad (ProfileForm + OwnerForm), PDF font fix
+- ✅ Phase 9: Public Site — register rewrite (prefix/name/address/OTP), homepage search bar, /services page (pricing+stats), PublicNav shared component, fix listing/[id] mobile, all navbars consistent
 
 ---
 
@@ -30,8 +31,9 @@
 
 ### Public (no auth)
 ```
-/                   หน้าแรก — listing ทรัพย์ว่าง + hero banner + filter + news section
+/                   หน้าแรก — listing ทรัพย์ว่าง + hero banner + search bar + filter + news section
 /listing/[id]       รายละเอียดทรัพย์สาธารณะ + ContactCard
+/services           หน้าบริการ — features, pricing 3 tier (Starter/Pro/Business), live stats from DB
 /news               ข่าวสารทั้งหมด (admin publish เท่านั้น)
 /news/[id]          อ่านข่าวรายชิ้น
 /about              เกี่ยวกับ Proppsy
@@ -93,6 +95,9 @@
 | `src/components/shared/MobileBottomNav.tsx` | Mobile bottom nav |
 | `src/components/shared/AddressSelector.tsx` | Cascading province/district/subdistrict/zip |
 | `src/components/shared/SignaturePad.tsx` | Canvas signature drawing (touch+mouse, saves PNG blob) |
+| `src/components/shared/PublicNav.tsx` | Shared public navbar (async server component, auth-aware, all public pages) |
+| `src/app/listing/SearchBar.tsx` | Client component: text search input in hero, pushes `?q=` URL param |
+| `src/app/services/page.tsx` | Services page — feature grid, live stats, 3-tier pricing (Starter/Pro/Business) |
 | `src/app/(protected)/stock/[id]/DeleteStockButton.tsx` | Client component: confirm → deleteStock action → redirect |
 | `src/app/(protected)/stock/[id]/PhotoGallery.tsx` | Photo carousel + download-all button |
 | `src/lib/pdf/ContractDocument.tsx` | PDF template (react-pdf, Sarabun font via filesystem path) |

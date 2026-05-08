@@ -5,6 +5,7 @@ import { ArrowLeft, Building2, Maximize, Layers, Phone, MessageCircle, MapPin, W
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import type { Stock } from '@/types'
+import PublicNav from '@/components/shared/PublicNav'
 import PhotoGallery from '@/app/(protected)/stock/[id]/PhotoGallery'
 import ContactCard from './ContactCard'
 
@@ -36,8 +37,6 @@ export default async function PublicPropertyDetailPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-
   const { data: stockRaw } = await supabase
     .from('stock')
     .select(`
@@ -62,32 +61,9 @@ export default async function PublicPropertyDetailPage({
 
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden">
-      {/* Navbar */}
-      <nav className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={28} height={28} className="object-contain rounded-lg" />
-            <span className="font-bold text-lg text-gray-900">Proppsy</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            {user ? (
-              <Link href="/dashboard" className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
-                แดชบอร์ด
-              </Link>
-            ) : (
-              <>
-                <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900 transition">เข้าสู่ระบบ</Link>
-                <Link href="/register" className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
-                  สมัครเป็นเอเจนต์
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
+      <PublicNav />
 
       <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Breadcrumb */}
         <Link href="/" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition mb-5 w-fit">
           <ArrowLeft className="w-4 h-4" />
           กลับรายการทรัพย์สิน
@@ -95,7 +71,7 @@ export default async function PublicPropertyDetailPage({
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Left: Gallery + details */}
-          <div className="lg:col-span-2 space-y-5">
+          <div className="lg:col-span-2 space-y-5 min-w-0">
             {/* Gallery */}
             <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm p-4">
               <PhotoGallery urls={stock.photo_urls ?? []} />
@@ -109,14 +85,14 @@ export default async function PublicPropertyDetailPage({
                 {stock.room_type && <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-600">{stock.room_type}</span>}
               </div>
 
-              <h1 className="text-xl font-bold text-gray-900">
+              <h1 className="text-xl font-bold text-gray-900 break-words">
                 {[projectName, stock.unit_no].filter(Boolean).join(' · ') || 'ทรัพย์ไม่ระบุ'}
               </h1>
 
               {stock.project?.address_road && (
                 <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
                   <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-                  {[stock.project.address_road, stock.project.district, stock.project.province].filter(Boolean).join(', ')}
+                  <span className="break-words">{[stock.project.address_road, stock.project.district, stock.project.province].filter(Boolean).join(', ')}</span>
                 </p>
               )}
 
@@ -142,7 +118,7 @@ export default async function PublicPropertyDetailPage({
               <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/70">
                 <h2 className="text-sm font-semibold text-gray-700">รายละเอียดห้อง</h2>
               </div>
-              <div className="p-5 grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="p-5 grid grid-cols-2 gap-4">
                 {stock.size_sqm && (
                   <DetailItem icon={<Maximize className="w-4 h-4" />} label="ขนาด" value={`${stock.size_sqm} ตร.ม.`} />
                 )}
@@ -214,7 +190,7 @@ export default async function PublicPropertyDetailPage({
           </div>
 
           {/* Right: Contact */}
-          <div className="space-y-4">
+          <div className="space-y-4 min-w-0">
             <ContactCard agent={stock.agent ?? null} stockId={stock.id} />
 
             {/* Project info */}
@@ -224,7 +200,7 @@ export default async function PublicPropertyDetailPage({
                   <h2 className="text-sm font-semibold text-gray-700">ข้อมูลโครงการ</h2>
                 </div>
                 <div className="p-4 space-y-2 text-sm">
-                  <p className="font-medium text-gray-900">{stock.project.name_th}</p>
+                  <p className="font-medium text-gray-900 break-words">{stock.project.name_th}</p>
                   {stock.project.name_en && <p className="text-xs text-gray-400">{stock.project.name_en}</p>}
                   {stock.project.developer && (
                     <p className="text-xs text-gray-500">ผู้พัฒนา: {stock.project.developer}</p>
@@ -260,12 +236,12 @@ function DetailItem({
   value: string
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 min-w-0">
       <span className="text-xs text-gray-400 flex items-center gap-1">
         {icon}
         {label}
       </span>
-      <span className="text-sm font-semibold text-gray-800">{value}</span>
+      <span className="text-sm font-semibold text-gray-800 break-words">{value}</span>
     </div>
   )
 }

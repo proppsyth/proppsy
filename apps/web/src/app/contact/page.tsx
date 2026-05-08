@@ -1,28 +1,14 @@
 import Link from 'next/link'
-import Image from 'next/image'
-import { ArrowLeft, Mail, Phone, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, MessageCircle, MapPin, Clock } from 'lucide-react'
 import type { Metadata } from 'next'
+import PublicNav from '@/components/shared/PublicNav'
 
 export const metadata: Metadata = { title: 'ติดต่อเรา — Proppsy' }
 
 export default function ContactPage() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={28} height={28} className="object-contain rounded-lg" />
-            <span className="font-bold text-lg text-gray-900">Proppsy</span>
-          </Link>
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <Link href="/news" className="hover:text-gray-900 transition hidden sm:block">ข่าวสาร</Link>
-            <Link href="/about" className="hover:text-gray-900 transition hidden sm:block">เกี่ยวกับเรา</Link>
-            <Link href="/login" className="px-4 py-1.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition">
-              เข้าสู่ระบบ
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <PublicNav />
 
       <div className="max-w-2xl mx-auto px-4 py-8">
         <Link href="/" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition mb-6 w-fit">
@@ -30,10 +16,10 @@ export default function ContactPage() {
           กลับหน้าหลัก
         </Link>
 
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">ติดต่อเรา</h1>
-        <p className="text-gray-500 text-sm mb-8">มีคำถาม? เราพร้อมช่วยเสมอ</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">ติดต่อเรา</h1>
+        <p className="text-gray-500 text-sm mb-8">มีคำถามหรือต้องการสาธิต? เราพร้อมช่วยเสมอ</p>
 
-        <div className="space-y-4">
+        <div className="space-y-4 mb-8">
           <a
             href="mailto:proppsyth@gmail.com"
             className="flex items-center gap-4 bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition"
@@ -66,24 +52,40 @@ export default function ContactPage() {
 
           <div className="flex items-center gap-4 bg-white rounded-xl border border-gray-100 shadow-sm p-5">
             <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Phone className="w-6 h-6 text-orange-600" />
+              <Clock className="w-6 h-6 text-orange-600" />
             </div>
             <div>
-              <p className="font-semibold text-gray-900">โทรศัพท์</p>
-              <p className="text-sm text-gray-500">ติดต่อผ่านอีเมลหรือ LINE</p>
-              <p className="text-xs text-gray-400 mt-0.5">จันทร์–ศุกร์ 9:00–18:00 น.</p>
+              <p className="font-semibold text-gray-900">เวลาทำการ</p>
+              <p className="text-sm text-gray-600">จันทร์–ศุกร์ 9:00–18:00 น.</p>
+              <p className="text-xs text-gray-400 mt-0.5">นอกเวลาทำการตอบกลับทาง LINE / อีเมล</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+            <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center flex-shrink-0">
+              <MapPin className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">ที่ตั้ง</p>
+              <p className="text-sm text-gray-600">กรุงเทพมหานคร ประเทศไทย</p>
+              <p className="text-xs text-gray-400 mt-0.5">ให้บริการออนไลน์ทั่วประเทศ</p>
             </div>
           </div>
         </div>
 
-        <div className="mt-8 bg-blue-50 rounded-xl p-5">
-          <h2 className="font-semibold text-gray-900 mb-2">สมัครเป็นเอเจนต์</h2>
+        <div className="bg-blue-50 rounded-xl p-5">
+          <h2 className="font-semibold text-gray-900 mb-2">ลงทะเบียนใช้งาน Proppsy</h2>
           <p className="text-sm text-gray-600 mb-4">
             ต้องการใช้งาน Proppsy? สมัครได้เลย รอการอนุมัติจากแอดมินภายใน 1 วันทำการ
           </p>
-          <Link href="/register" className="inline-block px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition">
-            สมัครเลย
-          </Link>
+          <div className="flex gap-3 flex-wrap">
+            <Link href="/register" className="inline-block px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition">
+              ลงทะเบียน
+            </Link>
+            <Link href="/services" className="inline-block px-6 py-2.5 border border-blue-300 text-blue-700 text-sm font-medium rounded-xl hover:bg-blue-100 transition">
+              ดูแพ็กเกจราคา
+            </Link>
+          </div>
         </div>
       </div>
 

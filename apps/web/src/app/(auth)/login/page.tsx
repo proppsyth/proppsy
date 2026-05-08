@@ -72,10 +72,7 @@ function LoginForm() {
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-1">
-          <label className="block text-sm font-medium text-gray-700">รหัสผ่าน</label>
-          <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline py-1 px-0.5 -mr-0.5">ลืมรหัสผ่าน?</Link>
-        </div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">รหัสผ่าน</label>
         <input
           type="password"
           value={password}
@@ -85,6 +82,9 @@ function LoginForm() {
           placeholder="••••••••"
           className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
         />
+        <Link href="/forgot-password" className="block text-right text-xs text-blue-600 hover:underline py-2.5 -mb-1">
+          ลืมรหัสผ่าน?
+        </Link>
       </div>
 
       {error && (
@@ -131,7 +131,7 @@ export default function LoginPage() {
             <p className="text-sm text-gray-500">
               ยังไม่มีบัญชี?{' '}
               <Link href="/register" className="text-blue-600 hover:underline font-medium">
-                สมัครเป็นเอเจนต์
+                ลงทะเบียน
               </Link>
             </p>
             <Link href="/" className="text-xs text-gray-400 hover:text-gray-600 block">

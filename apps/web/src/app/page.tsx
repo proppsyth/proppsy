@@ -1,10 +1,13 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Building2, Maximize, Layers, MapPin, Newspaper } from 'lucide-react'
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import type { Stock } from '@/types'
+import PublicNav from '@/components/shared/PublicNav'
 import FilterBar from './listing/FilterBar'
+import SearchBar from './listing/SearchBar'
 
 export const metadata: Metadata = { title: 'Proppsy — ค้นหาที่พัก' }
 
@@ -28,14 +31,12 @@ const SALE_RANGES: Record<string, [number, number]> = {
 export default async function PublicListingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ listing_type?: string; room_type?: string; province?: string; district?: string; bts_mrt?: string; price_bucket?: string }>
+  searchParams: Promise<{ listing_type?: string; room_type?: string; province?: string; district?: string; bts_mrt?: string; price_bucket?: string; q?: string }>
 }) {
-  const { listing_type, room_type, province, district, bts_mrt, price_bucket } = await searchParams
+  const { listing_type, room_type, province, district, bts_mrt, price_bucket, q } = await searchParams
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
 
-  // Fetch filter options + latest news in parallel
   const [{ data: projectRows }, { data: latestNews }] = await Promise.all([
     supabase
       .from('projects')
@@ -59,6 +60,9 @@ export default async function PublicListingPage({
     .eq('status', 'available')
     .order('created_at', { ascending: false })
 
+  if (q && q.trim()) {
+    query = query.ilike('project_name', `%${q.trim()}%`)
+  }
   if (listing_type === 'rent') {
     query = query.or('listing_type.eq.rent,listing_type.eq.both')
   } else if (listing_type === 'sale') {
@@ -86,51 +90,25 @@ export default async function PublicListingPage({
   if (bts_mrt && bts_mrt !== 'all') stocks = stocks.filter(s => s.project?.bts_mrt?.includes(bts_mrt))
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={28} height={28} className="object-contain rounded-lg" />
-            <span className="font-bold text-lg text-gray-900">Proppsy</span>
-          </Link>
-          <div className="hidden md:flex items-center gap-5 text-sm text-gray-600">
-            <Link href="/news" className="hover:text-gray-900 transition">ข่าวสาร</Link>
-            <Link href="/about" className="hover:text-gray-900 transition">เกี่ยวกับเรา</Link>
-            <Link href="/contact" className="hover:text-gray-900 transition">ติดต่อเรา</Link>
-          </div>
-          <div className="flex items-center gap-2">
-            {user ? (
-              <Link href="/dashboard" className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
-                แดชบอร์ด
-              </Link>
-            ) : (
-              <>
-                <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900 transition hidden sm:block">
-                  เข้าสู่ระบบ
-                </Link>
-                <Link href="/register" className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
-                  สมัครเป็นเอเจนต์
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+      <PublicNav />
 
       {/* Hero Banner */}
       <div className="relative bg-gradient-to-br from-blue-800 via-blue-700 to-indigo-800 text-white overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")', backgroundRepeat: 'repeat' }} />
         </div>
-        <div className="relative max-w-6xl mx-auto px-4 py-12 sm:py-16 text-center">
-          <div className="flex justify-center mb-4">
-            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={56} height={56} className="object-contain rounded-2xl shadow-lg" />
+        <div className="relative max-w-6xl mx-auto px-4 py-10 sm:py-14 text-center">
+          <div className="flex justify-center mb-3">
+            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={52} height={52} className="object-contain rounded-2xl shadow-lg" />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold mb-3">ค้นหาที่พักในฝัน</h1>
-          <p className="text-blue-200 text-sm sm:text-base max-w-lg mx-auto">
+          <h1 className="text-3xl sm:text-4xl font-bold mb-2">ค้นหาที่พักในฝัน</h1>
+          <p className="text-blue-200 text-sm sm:text-base max-w-lg mx-auto mb-6">
             ทรัพย์สินคุณภาพในประเทศไทย พร้อมเอเจนต์มืออาชีพดูแลคุณตลอด 24 ชั่วโมง
           </p>
+          <Suspense fallback={<div className="h-14 max-w-xl mx-auto" />}>
+            <SearchBar currentQ={q ?? ''} />
+          </Suspense>
         </div>
       </div>
 
@@ -154,6 +132,9 @@ export default async function PublicListingPage({
       {/* Grid */}
       <div className="max-w-6xl mx-auto px-4 py-6">
         <p className="text-sm text-gray-500 mb-4">
+          {q && q.trim() && (
+            <span>ค้นหา &ldquo;<span className="font-semibold text-gray-900">{q}</span>&rdquo; · </span>
+          )}
           พบ <span className="font-semibold text-gray-900">{stocks.length}</span> รายการ
           {province && province !== 'all' && ` ใน${province}`}
           {price_bucket && price_bucket !== 'all' && ' · กรองตามราคา'}
@@ -203,6 +184,7 @@ export default async function PublicListingPage({
             <span>© {new Date().getFullYear()} Proppsy · Real Estate Management Platform</span>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/services" className="hover:text-gray-600 transition">บริการ</Link>
             <Link href="/news" className="hover:text-gray-600 transition">ข่าวสาร</Link>
             <Link href="/about" className="hover:text-gray-600 transition">เกี่ยวกับเรา</Link>
             <Link href="/contact" className="hover:text-gray-600 transition">ติดต่อเรา</Link>
@@ -225,7 +207,6 @@ function PropertyCard({ stock }: { stock: Stock & { project?: { province?: strin
       href={`/listing/${stock.id}`}
       className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow block"
     >
-      {/* Photo */}
       <div className="relative aspect-[4/3] bg-gray-100">
         {photo ? (
           <Image
@@ -250,7 +231,6 @@ function PropertyCard({ stock }: { stock: Stock & { project?: { province?: strin
         </div>
       </div>
 
-      {/* Info */}
       <div className="p-4">
         {price != null && (
           <p className="text-xl font-bold text-gray-900">
