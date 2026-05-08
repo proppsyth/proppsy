@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Users, UserCheck, Building2, Calendar,
-  TrendingUp, Settings, LogOut,
+  TrendingUp, Settings, LogOut, ShieldCheck,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
@@ -32,14 +32,16 @@ const ADMIN_ITEMS = [
   { href: '/admin/news', icon: '📰', label: 'จัดการข่าว' },
 ]
 
-const MORE_ITEMS = [
+const MORE_ITEMS_BASE = [
   { href: '/owners', icon: UserCheck, label: 'เจ้าของทรัพย์' },
   { href: '/customers', icon: Users, label: 'ลูกค้า' },
   { href: '/projects', icon: Building2, label: 'โครงการ' },
   { href: '/calendar', icon: Calendar, label: 'นัดหมาย & ปฏิทิน' },
   { href: '/commission', icon: TrendingUp, label: 'คอมมิชชัน' },
-  { href: '/profile', icon: Settings, label: 'โปรไฟล์' },
 ]
+
+const MORE_ITEM_ADMIN = { href: '/admin/users', icon: ShieldCheck, label: 'จัดการผู้ใช้' }
+const MORE_ITEM_PROFILE = { href: '/profile', icon: Settings, label: 'โปรไฟล์' }
 
 export default function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
@@ -70,10 +72,10 @@ export default function Sidebar({ profile }: SidebarProps) {
       {/* ── Desktop Sidebar ── */}
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 flex-col z-30">
         <div className="p-4 border-b border-gray-100">
-          <div className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
             <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={32} height={32} className="object-contain rounded-lg flex-shrink-0" />
             <span className="font-bold text-lg text-gray-900 tracking-tight leading-none">Proppsy</span>
-          </div>
+          </Link>
         </div>
 
         <div className="px-4 py-3 border-b border-gray-100">
@@ -141,10 +143,10 @@ export default function Sidebar({ profile }: SidebarProps) {
 
       {/* ── Mobile: top bar ── */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur border-b border-gray-100 flex items-center justify-between px-4 z-30">
-        <div className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={26} height={26} className="object-contain rounded-md flex-shrink-0" />
           <span className="font-bold text-base text-gray-900 tracking-tight">Proppsy</span>
-        </div>
+        </Link>
         <button
           onClick={() => setMoreOpen(true)}
           className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm active:bg-blue-200 transition"
@@ -185,7 +187,7 @@ export default function Sidebar({ profile }: SidebarProps) {
           </div>
 
           <div className="grid grid-cols-3 gap-2.5 mb-5">
-            {MORE_ITEMS.map(item => {
+            {[...MORE_ITEMS_BASE, profile.role === 'admin' ? MORE_ITEM_ADMIN : MORE_ITEM_PROFILE].map(item => {
               const Icon = item.icon
               const active = isActive(item.href)
               return (

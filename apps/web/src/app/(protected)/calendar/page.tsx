@@ -41,9 +41,13 @@ export default async function CalendarPage({
   const startIso = monthStart.toISOString()
   const endIso = new Date(year, month, 1).toISOString()
 
+  const monthStartStr = monthStart.toLocaleDateString('en-CA')
+  const monthEndStr = monthEnd.toLocaleDateString('en-CA')
+
   const [
     { data: monthAppointments },
     { data: contracts },
+    { data: signingContracts },
     { data: appointments },
   ] = await Promise.all([
     supabase
@@ -57,8 +61,15 @@ export default async function CalendarPage({
       .from('contracts')
       .select('id, end_date, doc_type, status')
       .eq('agent_uid', user.id)
-      .gte('end_date', monthStart.toLocaleDateString('en-CA'))
-      .lte('end_date', monthEnd.toLocaleDateString('en-CA'))
+      .gte('end_date', monthStartStr)
+      .lte('end_date', monthEndStr)
+      .neq('status', 'cancelled'),
+    supabase
+      .from('contracts')
+      .select('id, move_in_date, doc_type, status')
+      .eq('agent_uid', user.id)
+      .gte('move_in_date', monthStartStr)
+      .lte('move_in_date', monthEndStr)
       .neq('status', 'cancelled'),
     isUpcoming
       ? supabase
@@ -91,6 +102,15 @@ export default async function CalendarPage({
     const list = contractByDay.get(day) ?? []
     list.push(c)
     contractByDay.set(day, list)
+  }
+
+  const signingByDay = new Map<number, typeof signingContracts>()
+  for (const c of signingContracts ?? []) {
+    if (!c.move_in_date) continue
+    const day = new Date(c.move_in_date + 'T00:00:00').getDate()
+    const list = signingByDay.get(day) ?? []
+    list.push(c)
+    signingByDay.set(day, list)
   }
 
   const firstWeekday = (monthStart.getDay() + 6) % 7
@@ -165,9 +185,10 @@ export default async function CalendarPage({
             </div>
 
             {/* Legend */}
-            <div className="flex items-center gap-4 mb-3 text-xs text-gray-500">
+            <div className="flex items-center gap-4 mb-3 text-xs text-gray-500 flex-wrap">
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />นัดหมาย</span>
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block" />สัญญาหมดอายุ</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />นัดทำสัญญา</span>
             </div>
 
             {/* Grid */}
@@ -184,8 +205,9 @@ export default async function CalendarPage({
                   const isToday = day === todayDay
                   const apts = aptByDay.get(day) ?? []
                   const expirations = contractByDay.get(day) ?? []
+                  const signings = signingByDay.get(day) ?? []
                   const weekday = i % 7
-                  const hasEvents = apts.length > 0 || expirations.length > 0
+                  const hasEvents = apts.length > 0 || expirations.length > 0 || signings.length > 0
 
                   return (
                     <div
@@ -210,6 +232,9 @@ export default async function CalendarPage({
                               ))}
                               {expirations.slice(0, 2).map((_, idx) => (
                                 <span key={idx} className="w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
+                              ))}
+                              {signings.slice(0, 2).map((_, idx) => (
+                                <span key={idx} className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
                               ))}
                             </div>
                           )}
@@ -236,6 +261,17 @@ export default async function CalendarPage({
                               </Link>
                             ))}
                             {expirations.length > 2 && <p className="text-[10px] text-orange-400 px-1">+{expirations.length - 2}</p>}
+                            {signings.slice(0, 2).map(c => (
+                              <Link
+                                key={c.id}
+                                href={`/contracts/${c.id}`}
+                                className="block px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[10px] truncate hover:bg-green-200 transition"
+                                title={`${c.id} ทำสัญญา`}
+                              >
+                                ✍️ {c.id}
+                              </Link>
+                            ))}
+                            {signings.length > 2 && <p className="text-[10px] text-green-400 px-1">+{signings.length - 2}</p>}
                           </div>
                         </>
                       )}
@@ -246,7 +282,7 @@ export default async function CalendarPage({
             </div>
 
             {/* Mobile: event list for this month */}
-            {((monthAppointments?.length ?? 0) > 0 || (contracts?.length ?? 0) > 0) && (
+            {((monthAppointments?.length ?? 0) > 0 || (contracts?.length ?? 0) > 0 || (signingContracts?.length ?? 0) > 0) && (
               <div className="mt-4 lg:hidden space-y-3">
                 <h2 className="text-sm font-semibold text-gray-700">รายการเดือนนี้</h2>
                 {monthAppointments?.map(apt => (
@@ -275,17 +311,50 @@ export default async function CalendarPage({
                     </div>
                   </Link>
                 ))}
+                {signingContracts?.filter(c => c.move_in_date).map(c => (
+                  <Link key={`sign-${c.id}`} href={`/contracts/${c.id}`}
+                    className="flex items-center gap-3 bg-white rounded-xl border border-green-100 shadow-sm p-3">
+                    <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-green-800 truncate">✍️ สัญญา {c.id} ทำสัญญา</p>
+                      <p className="text-xs text-green-600">
+                        {new Date(c.move_in_date! + 'T00:00:00').toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Desktop: upcoming appointments sidebar */}
-          <div className="hidden lg:block w-72 shrink-0">
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">นัดหมายที่กำลังจะมาถึง</h2>
-            <AppointmentList
-              appointments={(appointments ?? []) as unknown as Appointment[]}
-              tab="upcoming"
-            />
+          {/* Desktop: upcoming appointments + signing sidebar */}
+          <div className="hidden lg:block w-72 shrink-0 space-y-5">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700 mb-3">นัดหมายที่กำลังจะมาถึง</h2>
+              <AppointmentList
+                appointments={(appointments ?? []) as unknown as Appointment[]}
+                tab="upcoming"
+              />
+            </div>
+            {(signingContracts?.length ?? 0) > 0 && (
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700 mb-3">นัดทำสัญญาเดือนนี้</h2>
+                <div className="space-y-2">
+                  {signingContracts?.filter(c => c.move_in_date).map(c => (
+                    <Link key={c.id} href={`/contracts/${c.id}`}
+                      className="flex items-center gap-3 bg-white rounded-xl border border-green-100 shadow-sm p-3 hover:shadow-md transition">
+                      <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-green-800 truncate">สัญญา {c.id}</p>
+                        <p className="text-xs text-green-600">
+                          {new Date(c.move_in_date! + 'T00:00:00').toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

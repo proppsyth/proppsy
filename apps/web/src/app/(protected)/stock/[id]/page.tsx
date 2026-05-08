@@ -61,7 +61,7 @@ export default async function StockDetailPage({
   })
 
   return (
-    <div className="p-4 lg:p-8 pt-6 max-w-5xl overflow-x-hidden">
+    <div className="w-full p-4 lg:p-8 pt-6 max-w-5xl overflow-x-hidden">
       {/* Back + header */}
       <div className="mb-5">
         <Link href="/stock" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition mb-3 w-fit">
@@ -70,9 +70,9 @@ export default async function StockDetailPage({
         </Link>
 
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm text-gray-400 mb-0.5">{s.id}</p>
-            <h1 className="text-xl font-bold text-gray-900 leading-snug">
+            <h1 className="text-xl font-bold text-gray-900 leading-snug break-words">
               {stockDisplayTitle(s)}
             </h1>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -97,13 +97,13 @@ export default async function StockDetailPage({
 
       <div className="grid lg:grid-cols-3 gap-4">
         {/* Left column: photos + details */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 space-y-4 min-w-0">
           {/* Photo gallery */}
           <PhotoGallery urls={s.photo_urls ?? []} />
 
           {/* ราคา */}
           <Section title="ราคา">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               {s.rent_price != null && (
                 <InfoItem label="ค่าเช่า/เดือน" value={`฿${fmt(s.rent_price)}`} highlight />
               )}
@@ -124,7 +124,7 @@ export default async function StockDetailPage({
 
           {/* รายละเอียด */}
           <Section title="รายละเอียดทรัพย์">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               {s.project_name && <InfoItem label="โครงการ" value={s.project_name} />}
               {s.unit_no && <InfoItem label="ห้อง/ยูนิต" value={s.unit_no} />}
               {s.unit_name && <InfoItem label="ชื่อห้อง" value={s.unit_name} />}
@@ -161,13 +161,13 @@ export default async function StockDetailPage({
           {/* หมายเหตุ */}
           {s.notes && (
             <Section title="หมายเหตุ">
-              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{s.notes}</p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap break-words leading-relaxed">{s.notes}</p>
             </Section>
           )}
         </div>
 
         {/* Right column: owner, project, meta */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           {/* เจ้าของทรัพย์ */}
           <Section title="เจ้าของทรัพย์">
             {owner ? (
@@ -244,8 +244,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function InfoItem({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="min-w-0">
-      <p className="text-xs text-gray-500 mb-0.5">{label}</p>
+    <div className="min-w-0 overflow-hidden">
+      <p className="text-xs text-gray-500 mb-0.5 truncate">{label}</p>
       <p className={`text-sm font-medium break-words ${highlight ? 'text-blue-600' : 'text-gray-900'}`}>{value}</p>
     </div>
   )
