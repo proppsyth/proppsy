@@ -1,5 +1,5 @@
 # Proppsy — Claude Working Notes
-> อัปเดตล่าสุด: 2026-05-08 (session 4) | อ่านไฟล์นี้ก่อนทุก session แทนการ explore codebase ใหม่
+> อัปเดตล่าสุด: 2026-05-08 (session 5) | อ่านไฟล์นี้ก่อนทุก session แทนการ explore codebase ใหม่
 
 ---
 
@@ -14,17 +14,18 @@
 - ✅ Phase 8: UX & Features — mobile overflow fix, calendar 3rd color (นัดทำสัญญา), logo→home link, admin mobile menu, delete stock, download all photos, online signature pad (ProfileForm + OwnerForm), PDF font fix
 - ✅ Phase 9: Public Site — register rewrite (prefix/name/address/OTP), homepage search bar, /services page (pricing+stats), PublicNav shared component, fix listing/[id] mobile, all navbars consistent
 - ✅ Phase 9b: Auth UX — login inline forgot-pwd (no routing loop), register ID card upload (required, deferred upload after OTP verify), terms/privacy popup modal (Thai legal content), PublicNav mobile hamburger menu
+- ✅ Phase 10: Monetisation & Homepage — OTP password reset (verifyOtp token), plan system (Starter/Pro/Business, PLAN_LIMITS enforce), admin plan assignment, homepage HeroBanner+StatsCounter+YouTube+Clients+IT articles, news cover image, **Omise payment gateway** (/checkout page, card tokenization, plan upgrade)
 
 ---
 
 ## Latest Commits (main, May 2026)
 | Commit | Description |
 |--------|-------------|
-| `d074076` | feat: Phase 9b — PublicNav hamburger, inline forgot-pwd, register ID card + terms, services fix |
-| `1016d29` | feat: Phase 9 — register rewrite, homepage search, /services page, PublicNav, listing mobile fix |
-| `7ae4818` | feat: delete stock, download all photos, online signature pad (OwnerForm + ProfileForm) |
-| `81eec1d` | fix(pdf): Sarabun font load via filesystem path แทน HTTP URL |
-| `e55244c` | fix: 8 UX — mobile overflow, forgot-pwd touch, ติดตาม align, logo→home, admin mobile menu, calendar 3rd color, stock overflow |
+| `da3f9eb` | feat(payment): Omise checkout — /checkout page, card payment, plan upgrade |
+| `4ac3369` | feat: homepage enhancements, news cover image, hamburger fix, static services stats |
+| `48dd4b9` | fix(services): use createAdminClient for stats — bypass RLS for public access |
+| `7103d16` | feat: plan system — Starter/Professional/Business limits enforced |
+| `9314814` | feat(auth): OTP-based password reset — token input instead of confirm link |
 
 ---
 
@@ -32,16 +33,17 @@
 
 ### Public (no auth)
 ```
-/                   หน้าแรก — listing ทรัพย์ว่าง + hero banner + search bar + filter + news section
+/                   หน้าแรก — HeroBanner (3-slide auto-carousel) + listing + StatsCounter + YouTube + Clients + IT articles + news
 /listing/[id]       รายละเอียดทรัพย์สาธารณะ + ContactCard
-/services           หน้าบริการ — features, pricing 3 tier (Starter/Pro/Business), live stats from DB
+/services           หน้าบริการ — features, pricing 3 tier (Starter/Pro/Business), hardcoded stats
 /news               ข่าวสารทั้งหมด (admin publish เท่านั้น)
 /news/[id]          อ่านข่าวรายชิ้น
 /about              เกี่ยวกับ Proppsy
 /contact            ติดต่อเรา
-/login              เข้าสู่ระบบ — inline forgot-pwd (mode state, no routing), resetPasswordForEmail
+/login              เข้าสู่ระบบ — inline forgot-pwd (mode state), ส่ง OTP ทางอีเมล
 /register           สมัครเป็นเอเจนต์ — OTP verify, ID card upload (required), terms/privacy modal
-/reset-password     ตั้งรหัสผ่านใหม่ (จาก email link)
+/reset-password     ตั้งรหัสผ่านใหม่ — กรอก email + OTP 6 หลัก + password ใหม่ (verifyOtp recovery)
+/checkout           ชำระเงิน Omise — monthly/yearly toggle, OmiseJS card popup, อัปเกรดแพ็กเกจ
 ```
 
 ### Protected (ต้อง login + approved)
@@ -71,10 +73,10 @@
 
 ### Admin only (role = 'admin')
 ```
-/admin/users        จัดการผู้ใช้ — approve/reject/edit/delete ทุก user
+/admin/users        จัดการผู้ใช้ — approve/reject/edit/delete ทุก user + กำหนด plan (starter/professional/business)
 /admin/news         จัดการข่าวสาร — list + toggle publish
-/admin/news/new     เพิ่มข่าวใหม่
-/admin/news/[id]/edit  แก้ไขข่าว
+/admin/news/new     เพิ่มข่าวใหม่ (พร้อม cover image upload)
+/admin/news/[id]/edit  แก้ไขข่าว (พร้อม cover image upload)
 ```
 
 ### API
@@ -97,8 +99,13 @@
 | `src/components/shared/SignaturePad.tsx` | Canvas signature drawing (touch+mouse, saves PNG blob) |
 | `src/components/shared/PublicNav.tsx` | Shared public navbar (async server component, auth-aware, mobile hamburger via `<details>`, all public pages) |
 | `src/app/listing/SearchBar.tsx` | Client component: text search input in hero, pushes `?q=` URL param |
+| `src/app/listing/HeroBanner.tsx` | 3-slide auto-carousel (5s), pause on hover, prev/next, dots |
+| `src/app/listing/StatsCounter.tsx` | Animated count-up (IntersectionObserver trigger, cubic ease, 1800ms) |
 | `src/app/(auth)/register/actions.ts` | Server action: updateRegisterProfile (name, phone, address, id_card_url) |
-| `src/app/services/page.tsx` | Services page — feature grid, live stats, 3-tier pricing (Starter/Pro/Business) |
+| `src/app/services/page.tsx` | Services page — feature grid, hardcoded stats, 3-tier pricing, Professional links to /checkout |
+| `src/app/(checkout)/checkout/page.tsx` | Checkout page — plan/billing selector, billing toggle |
+| `src/app/(checkout)/checkout/CheckoutForm.tsx` | OmiseJS card popup, success screen |
+| `src/app/(checkout)/checkout/actions.ts` | createOmiseCharge — Omise REST API + update profiles.plan + plan_expires_at |
 | `src/app/(protected)/stock/[id]/DeleteStockButton.tsx` | Client component: confirm → deleteStock action → redirect |
 | `src/app/(protected)/stock/[id]/PhotoGallery.tsx` | Photo carousel + download-all button |
 | `src/lib/pdf/ContractDocument.tsx` | PDF template (react-pdf, Sarabun font via filesystem path) |
@@ -117,7 +124,7 @@
 **Tables:**
 | Table | Key Fields |
 |-------|------------|
-| `profiles` | id, email, name, nickname, phone, line_id, role (admin/manager/user), account_status (pending/approved/rejected), permissions{} |
+| `profiles` | id, email, name, nickname, phone, line_id, role (admin/manager/user), account_status (pending/approved/rejected), plan (starter/professional/business), plan_expires_at, permissions{} |
 | `projects` | id (PRJ-xxxx), name_th, name_en, developer, province, district, address_road, bts_mrt[], facilities[] |
 | `owners` | id (OWN-xxxx), first_name_th, last_name_th, nickname, phone, line_id, id_card_url |
 | `customers` | id (CUS-xxxx), first_name_th, last_name_th, nickname, phone, line_id, id_card_url |
@@ -250,12 +257,55 @@ FilterBar รองรับ: listing_type, room_type, price_bucket, province, *
 
 ---
 
+## Plan / Package System
+
+**Types & helpers** in `src/types/index.ts`:
+- `Plan = 'starter' | 'professional' | 'business'`
+- `PLAN_LIMITS`: starter `{ maxStock: 10, maxContractsPerMonth: 5, ai: false }` | pro/business `{ null, null, true }`
+- `PLAN_META`: label, Tailwind color, badge string per plan
+- `resolvePlan(plan?: string | null): Plan` — defaults to 'starter'
+
+**Enforcement:**
+- `/stock/new` — checks stock count vs `limits.maxStock`, shows upgrade block if exceeded; passes `allowAI` to StockForm
+- `/contracts/new` — checks contracts this month vs `limits.maxContractsPerMonth`
+- `/profile` — shows plan card + usage stats (stock count, contracts/month, AI status)
+- `/admin/users` — admin can set plan dropdown (starter/professional/business)
+
+**DB columns needed (run once in Supabase SQL Editor):**
+```sql
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'starter'
+    CHECK (plan IN ('starter', 'professional', 'business')),
+  ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMPTZ;
+```
+
+---
+
+## Omise Payment Gateway
+
+**Env vars** (`.env.local`):
+```
+NEXT_PUBLIC_OMISE_PUBLIC_KEY=pkey_test_...   (client-side, card tokenization)
+OMISE_SECRET_KEY=skey_test_...               (server-side, create charge)
+```
+Test card: `4242 4242 4242 4242` | any future expiry | any CVV
+
+**Flow:** `/services` → ซื้อแพ็กเกจ → `/checkout?plan=professional&billing=monthly` → OmiseCard popup → token → `createOmiseCharge` action → Omise REST API → update `profiles.plan` + `profiles.plan_expires_at` → success screen
+
+**Prices (satang = THB × 100):**
+- Professional: 990 THB/month | 8,900 THB/year
+- Business: 2,990 THB/month | 26,900 THB/year
+
+---
+
 ## Known Manual Steps (Supabase)
 1. **Site URL** → Dashboard → Authentication → URL Configuration → Site URL = Vercel URL
 2. **Migration 002** → SQL Editor → รัน `002_contracts_expansion.sql` (bank_ref, payment fields, commission fields) ✅ Done
 3. **Storage RLS** → SQL Editor → INSERT/SELECT/UPDATE/DELETE policies บน `documents` bucket ✅ Done
 4. **documents bucket public** → `UPDATE storage.buckets SET public = true WHERE id = 'documents'` (ให้ publicUrl ใช้งานได้)
 5. **Profile phone/LINE** → เอเจนต์กรอกในหน้า /profile เพื่อให้ ContactCard แสดงข้อมูล
+6. **Plan columns** → SQL Editor → `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'starter' ..., ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMPTZ` ✅ Done
+7. **Omise keys** → `.env.local` → `NEXT_PUBLIC_OMISE_PUBLIC_KEY` + `OMISE_SECRET_KEY` ✅ Done (test keys)
 
 ## Signature System
 - **OwnerForm**: tab toggle "วาดออนไลน์" / "อัปโหลดไฟล์" — canvas drawing → PNG → upload `documents/signatures/`
