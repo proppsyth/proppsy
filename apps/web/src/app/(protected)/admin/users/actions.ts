@@ -2,7 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import type { Role, AccountStatus } from '@/types'
+import type { Role, AccountStatus, Plan } from '@/types'
 
 async function assertAdmin(): Promise<void> {
   const supabase = await createClient()
@@ -32,6 +32,8 @@ export async function updateUser(userId: string, data: {
   phone?: string
   role?: Role
   account_status?: AccountStatus
+  plan?: Plan
+  plan_expires_at?: string | null
 }): Promise<{ error?: string }> {
   try {
     await assertAdmin()

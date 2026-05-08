@@ -4,6 +4,7 @@
 
 export type Role = 'admin' | 'manager' | 'user'
 export type AccountStatus = 'pending' | 'approved' | 'rejected'
+export type Plan = 'starter' | 'professional' | 'business'
 export type StockStatus = 'available' | 'rented' | 'sold' | 'unavailable'
 export type ListingType = 'rent' | 'sale' | 'both'
 export type RoomType = 'Studio' | '1BR' | '2BR' | '3BR' | 'Penthouse' | 'อื่นๆ'
@@ -51,6 +52,8 @@ export interface Profile {
   bank_name?: string
   bank_account_no?: string
   bank_account_name?: string
+  plan?: Plan
+  plan_expires_at?: string
   created_at: string
   updated_at: string
 }
@@ -297,4 +300,21 @@ export const ROLE_LABELS: Record<Role, string> = {
   admin: 'แอดมิน',
   manager: 'ผู้จัดการ',
   user: 'เอเจนต์',
+}
+
+export const PLAN_META: Record<Plan, { label: string; color: string; badge: string }> = {
+  starter:      { label: 'Starter',      color: 'gray',   badge: 'bg-gray-100 text-gray-600' },
+  professional: { label: 'Professional', color: 'blue',   badge: 'bg-blue-100 text-blue-700' },
+  business:     { label: 'Business',     color: 'purple', badge: 'bg-purple-100 text-purple-700' },
+}
+
+export const PLAN_LIMITS: Record<Plan, { maxStock: number | null; maxContractsPerMonth: number | null; ai: boolean }> = {
+  starter:      { maxStock: 10, maxContractsPerMonth: 5, ai: false },
+  professional: { maxStock: null, maxContractsPerMonth: null, ai: true },
+  business:     { maxStock: null, maxContractsPerMonth: null, ai: true },
+}
+
+export function resolvePlan(plan?: string | null): Plan {
+  if (plan === 'professional' || plan === 'business') return plan
+  return 'starter'
 }

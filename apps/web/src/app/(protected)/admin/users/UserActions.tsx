@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { approveUser, rejectUser, updateUser, deleteUser } from './actions'
-import type { Profile, Role, AccountStatus } from '@/types'
+import type { Profile, Role, AccountStatus, Plan } from '@/types'
+import { PLAN_META, resolvePlan } from '@/types'
 
 interface Props {
   user: Profile
@@ -20,6 +21,12 @@ const STATUS_OPTS: { value: AccountStatus; label: string }[] = [
   { value: 'rejected', label: 'ปฏิเสธแล้ว' },
 ]
 
+const PLAN_OPTS: { value: Plan; label: string; desc: string }[] = [
+  { value: 'starter', label: 'Starter (ฟรี)', desc: 'ทรัพย์ 10 / สัญญา 5/เดือน / ไม่มี AI' },
+  { value: 'professional', label: 'Professional', desc: 'ไม่จำกัด + AI + Marketplace' },
+  { value: 'business', label: 'Business', desc: 'ทุกอย่าง + ทีมสูงสุด 5 คน' },
+]
+
 export default function UserActions({ user }: Props) {
   const [approvePending, startApprove] = useTransition()
   const [rejectPending, startReject] = useTransition()
@@ -34,6 +41,7 @@ export default function UserActions({ user }: Props) {
     phone: user.phone ?? '',
     role: user.role,
     account_status: user.account_status,
+    plan: resolvePlan(user.plan),
   })
 
   const busy = approvePending || rejectPending || deletePending || editPending
@@ -64,6 +72,7 @@ export default function UserActions({ user }: Props) {
         phone: form.phone || undefined,
         role: form.role,
         account_status: form.account_status,
+        plan: form.plan,
       })
       if (res.error) { setError(res.error); return }
       setEditing(false)
@@ -115,6 +124,18 @@ export default function UserActions({ user }: Props) {
               </select>
             </div>
           </div>
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">แพ็กเกจ</label>
+            <select
+              value={form.plan}
+              onChange={e => setForm(f => ({ ...f, plan: e.target.value as Plan }))}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              {PLAN_OPTS.map(o => (
+                <option key={o.value} value={o.value}>{o.label} — {o.desc}</option>
+              ))}
+            </select>
+          </div>
         </div>
         {error && <p className="text-xs text-red-500">{error}</p>}
         <div className="flex gap-2">
@@ -131,8 +152,18 @@ export default function UserActions({ user }: Props) {
     )
   }
 
+  const planMeta = PLAN_META[resolvePlan(user.plan)]
+
   return (
     <div className="pt-3 border-t border-gray-100 space-y-2">
+      {/* Plan badge */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-gray-400">แพ็กเกจ</span>
+        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${planMeta.badge}`}>
+          {planMeta.label}
+        </span>
+      </div>
+
       {/* Approve / Reject for pending */}
       {user.account_status === 'pending' && (
         <div className="flex gap-2">

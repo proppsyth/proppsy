@@ -135,9 +135,10 @@ interface Props {
   projects: ProjectOption[]
   initialData?: Stock
   stockId?: string
+  allowAI?: boolean
 }
 
-export default function StockForm({ owners, projects, initialData, stockId }: Props) {
+export default function StockForm({ owners, projects, initialData, stockId, allowAI = true }: Props) {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState<FormState>(() =>
@@ -275,6 +276,15 @@ export default function StockForm({ owners, projects, initialData, stockId }: Pr
     <form onSubmit={handleSubmit} className="space-y-4 max-w-4xl">
 
       {/* ── AI Section ────────────────────────────────────── */}
+      {!allowAI ? (
+        <div className="bg-gray-50 border border-gray-200 rounded-xl px-5 py-4 flex items-center gap-3">
+          <Sparkles className="w-4 h-4 text-gray-300 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-gray-400">AI Smart Paste</p>
+            <p className="text-xs text-gray-400">ฟีเจอร์นี้รองรับเฉพาะแพ็กเกจ Professional ขึ้นไป</p>
+          </div>
+        </div>
+      ) : (
       <div className="bg-gradient-to-r from-violet-50 to-blue-50 border border-violet-200 rounded-xl overflow-hidden">
         <button
           type="button"
@@ -327,6 +337,7 @@ export default function StockForm({ owners, projects, initialData, stockId }: Pr
           </div>
         )}
       </div>
+      )}
 
       {/* ── Project & Unit ──────────────────────────────────── */}
       <Section title="โครงการ & ยูนิต">
