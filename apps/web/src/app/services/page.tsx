@@ -13,55 +13,68 @@ const PLANS = [
   {
     name: 'Starter',
     nameEn: 'ทดลองใช้',
-    monthly: 0,
-    yearly: 0,
-    highlight: false,
-    badge: '',
-    color: 'gray',
+    monthly: 0, yearly: 0,
+    highlight: false, badge: '',
     features: [
-      'จัดการทรัพย์ได้สูงสุด 10 รายการ',
-      'ออกสัญญา 5 ฉบับ / เดือน',
+      '10 ทรัพย์',
+      '5 สัญญา / เดือน',
       '1 บัญชีเอเจนต์',
       'Photo Gallery',
       'ปฏิทินนัดหมาย',
     ],
-    missing: ['AI Smart Paste', 'AI OCR บัตรประชาชน', 'Public Marketplace', 'ลายเซ็นอิเล็กทรอนิกส์', 'รายงานคอมมิชชัน'],
+    missing: ['AI Smart Paste', 'AI OCR บัตรประชาชน', 'AI วิเคราะห์ทรัพย์', 'ลายเซ็นอิเล็กทรอนิกส์', 'รายงานคอมมิชชัน'],
     cta: 'ทดลองใช้ฟรี',
     ctaHref: '/register',
+    ctaStyle: 'border border-gray-200 text-gray-700 hover:bg-gray-50',
   },
   {
-    name: 'Professional',
+    name: 'Standard',
     nameEn: 'สำหรับเอเจนต์เดี่ยว',
-    monthly: 990,
-    yearly: 8900,
-    highlight: true,
-    badge: 'แนะนำ',
-    color: 'blue',
+    monthly: 990, yearly: 8900,
+    highlight: true, badge: 'แนะนำ',
     features: [
-      'ทรัพย์ไม่จำกัด',
-      'สัญญาไม่จำกัด',
+      '100 ทรัพย์',
+      '200 สัญญา',
       '1 บัญชีเอเจนต์',
-      'AI Smart Paste',
-      'AI OCR บัตรประชาชน',
+      'PDF สัญญาภาษาไทยครบชุด (9 ประเภท)',
       'Public Marketplace Listing',
       'ลายเซ็นอิเล็กทรอนิกส์',
       'รายงานคอมมิชชัน',
+    ],
+    missing: ['AI Smart Paste', 'AI OCR บัตรประชาชน', 'AI วิเคราะห์ทรัพย์'],
+    cta: 'ซื้อแพ็กเกจ',
+    ctaHref: '/checkout?plan=standard&billing=monthly',
+    ctaStyle: 'bg-blue-600 hover:bg-blue-700 text-white',
+  },
+  {
+    name: 'AI Pro',
+    nameEn: 'ใช้ AI ได้ทั้งหมด',
+    monthly: 1290, yearly: 11900,
+    highlight: false, badge: '✦ AI',
+    features: [
+      '100 ทรัพย์',
+      '200 สัญญา',
+      '1 บัญชีเอเจนต์',
+      'AI Smart Paste',
+      'AI OCR บัตรประชาชน',
+      'AI วิเคราะห์ทรัพย์อัตโนมัติ',
       'PDF สัญญาภาษาไทยครบชุด (9 ประเภท)',
+      'Public Marketplace Listing',
+      'ลายเซ็นอิเล็กทรอนิกส์',
+      'รายงานคอมมิชชัน',
     ],
     missing: [],
-    cta: 'ซื้อแพ็กเกจ',
-    ctaHref: '/checkout?plan=professional&billing=monthly',
+    cta: 'ซื้อ AI Pro',
+    ctaHref: '/checkout?plan=ai_pro&billing=monthly',
+    ctaStyle: 'bg-emerald-600 hover:bg-emerald-700 text-white',
   },
   {
     name: 'Business',
     nameEn: 'สำหรับทีมและบริษัท',
-    monthly: 2990,
-    yearly: 26900,
-    highlight: false,
-    badge: '',
-    color: 'purple',
+    monthly: null, yearly: null,
+    highlight: false, badge: '',
     features: [
-      'ทุกอย่างใน Professional',
+      'ทุกอย่างใน AI Pro',
       'สูงสุด 5 บัญชีเอเจนต์',
       'บัญชีผู้จัดการทีม (Manager)',
       'รายงานภาพรวมทีม',
@@ -71,6 +84,7 @@ const PLANS = [
     missing: [],
     cta: 'ติดต่อเรา',
     ctaHref: '/contact',
+    ctaStyle: 'border border-gray-200 text-gray-700 hover:bg-gray-50',
   },
 ]
 
@@ -102,11 +116,92 @@ export default async function ServicesPage() {
         </Link>
 
         {/* Hero */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">บริการของ Proppsy</h1>
           <p className="text-gray-500 max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
             ระบบจัดการอสังหาริมทรัพย์ครบวงจร ออกแบบเพื่อเอเจนต์ไทย
             ลดงานเอกสาร เพิ่มเวลาปิดดีล
+          </p>
+        </div>
+
+        {/* ─── Pricing (ด้านบนสุด) ─── */}
+        <div className="mb-12">
+          <h2 className="text-xl font-bold text-gray-900 mb-1 text-center">แพ็กเกจราคา</h2>
+          <p className="text-sm text-gray-400 text-center mb-8">* ราคาสามารถเปลี่ยนแปลงได้ตามการพัฒนาระบบ</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {PLANS.map(plan => (
+              <div
+                key={plan.name}
+                className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col ${
+                  plan.highlight ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-gray-100'
+                }`}
+              >
+                {plan.badge && (
+                  <div className={`text-white text-xs font-semibold text-center py-1.5 ${
+                    plan.badge.includes('AI') ? 'bg-emerald-600' : 'bg-blue-600'
+                  }`}>
+                    {plan.badge}
+                  </div>
+                )}
+                <div className="p-5 flex-1 flex flex-col">
+                  <h3 className="font-bold text-gray-900 text-lg">{plan.name}</h3>
+                  <p className="text-xs text-gray-400 mb-3">{plan.nameEn}</p>
+
+                  {plan.monthly === null ? (
+                    <div className="mb-4">
+                      <span className="text-2xl font-bold text-gray-900">ติดต่อเรา</span>
+                      <p className="text-xs text-gray-400 mt-1">ราคาพิเศษสำหรับทีม</p>
+                    </div>
+                  ) : plan.monthly === 0 ? (
+                    <div className="mb-4">
+                      <span className="text-2xl font-bold text-gray-900">ฟรี</span>
+                      <p className="text-xs text-gray-400 mt-1">ทดลองใช้ 30 วัน</p>
+                    </div>
+                  ) : (
+                    <div className="mb-4">
+                      <div>
+                        <span className="text-2xl font-bold text-gray-900">฿{fmt(plan.monthly)}</span>
+                        <span className="text-xs text-gray-400">/เดือน</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-xs text-gray-500">หรือ ฿{fmt(plan.yearly!)}/ปี</span>
+                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">
+                          ประหยัด {Math.round((1 - plan.yearly! / (plan.monthly * 12)) * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <ul className="space-y-1.5 mb-5 flex-1">
+                    {plan.features.map(f => (
+                      <li key={f} className="flex items-start gap-1.5 text-xs text-gray-700">
+                        <Check className="w-3.5 h-3.5 text-green-500 mt-0.5 flex-shrink-0" />
+                        {f}
+                      </li>
+                    ))}
+                    {plan.missing.map(f => (
+                      <li key={f} className="flex items-start gap-1.5 text-xs text-gray-300 line-through">
+                        <span className="w-3.5 flex-shrink-0 text-center mt-0.5">–</span>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    href={plan.ctaHref}
+                    className={`block w-full text-center py-2.5 rounded-xl text-sm font-semibold transition ${plan.ctaStyle}`}
+                  >
+                    {plan.cta}
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-center text-xs text-gray-400 mt-4">
+            ต้องการแพ็กเกจพิเศษสำหรับองค์กร?{' '}
+            <Link href="/contact" className="text-blue-600 hover:underline">ติดต่อเรา</Link>
           </p>
         </div>
 
@@ -139,82 +234,6 @@ export default async function ServicesPage() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Pricing */}
-        <div className="mb-12">
-          <h2 className="text-xl font-bold text-gray-900 mb-2 text-center">แพ็กเกจราคา</h2>
-          <p className="text-sm text-gray-400 text-center mb-8">* ราคาสามารถเปลี่ยนแปลงได้ตามการพัฒนาระบบ</p>
-          <div className="grid sm:grid-cols-3 gap-4">
-            {PLANS.map(plan => (
-              <div
-                key={plan.name}
-                className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col ${
-                  plan.highlight ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-gray-100'
-                }`}
-              >
-                {plan.badge && (
-                  <div className="bg-blue-600 text-white text-xs font-semibold text-center py-1.5">
-                    {plan.badge}
-                  </div>
-                )}
-                <div className="p-6 flex-1">
-                  <h3 className="font-bold text-gray-900 text-lg">{plan.name}</h3>
-                  <p className="text-xs text-gray-400 mb-4">{plan.nameEn}</p>
-
-                  {plan.monthly === 0 ? (
-                    <div className="mb-4">
-                      <span className="text-3xl font-bold text-gray-900">ฟรี</span>
-                      <p className="text-xs text-gray-400 mt-1">ทดลองใช้ 30 วัน</p>
-                    </div>
-                  ) : (
-                    <div className="mb-4">
-                      <div>
-                        <span className="text-3xl font-bold text-gray-900">฿{fmt(plan.monthly)}</span>
-                        <span className="text-sm text-gray-400">/เดือน</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm text-gray-500">หรือ ฿{fmt(plan.yearly)}/ปี</span>
-                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">
-                          ประหยัด {Math.round((1 - plan.yearly / (plan.monthly * 12)) * 100)}%
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  <ul className="space-y-2 mb-6">
-                    {plan.features.map(f => (
-                      <li key={f} className="flex items-start gap-2 text-xs text-gray-700">
-                        <Check className="w-3.5 h-3.5 text-green-500 mt-0.5 flex-shrink-0" />
-                        {f}
-                      </li>
-                    ))}
-                    {plan.missing.map(f => (
-                      <li key={f} className="flex items-start gap-2 text-xs text-gray-300 line-through">
-                        <span className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-center">–</span>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Link
-                    href={plan.ctaHref}
-                    className={`block w-full text-center py-2.5 rounded-xl text-sm font-semibold transition ${
-                      plan.highlight
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                        : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {plan.cta}
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-xs text-gray-400 mt-4">
-            ต้องการแพ็กเกจพิเศษสำหรับองค์กร?{' '}
-            <Link href="/contact" className="text-blue-600 hover:underline">ติดต่อเรา</Link>
-          </p>
         </div>
 
         {/* How it works */}

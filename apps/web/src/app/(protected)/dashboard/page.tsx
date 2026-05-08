@@ -80,11 +80,50 @@ export default async function DashboardPage() {
 
   const commissionSum = (commissionThisMonth ?? []).reduce((s, c) => s + (c.commission_net ?? 0), 0)
 
+  const { data: profile } = await supabase
+    .from('profiles').select('plan, plan_expires_at').eq('id', user.id).single()
+
+  const PLAN_NAMES: Record<string, string> = {
+    professional: 'Standard', standard: 'Standard', ai_pro: 'AI Pro', business: 'Business',
+  }
+  const planName = PLAN_NAMES[profile?.plan ?? ''] ?? 'ทดลองใช้'
+  const expiresAt = profile?.plan_expires_at ? new Date(profile.plan_expires_at) : null
+  const isExpired = expiresAt ? expiresAt < now : false
+  const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - now.getTime()) / 86400000) : null
+  const isPaid = !!profile?.plan && profile.plan !== 'starter'
+
   return (
     <div className="p-4 lg:p-8 pt-6">
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold text-gray-900">แดชบอร์ด</h1>
         <p className="text-gray-500 text-sm mt-0.5">ภาพรวมของคุณ</p>
+      </div>
+
+      {/* Plan info banner */}
+      <div className={`flex items-center justify-between rounded-xl border px-4 py-3 mb-6 ${
+        isExpired ? 'bg-red-50 border-red-200' : isPaid ? 'bg-blue-50 border-blue-100' : 'bg-gray-50 border-gray-200'
+      }`}>
+        <div>
+          <p className="text-xs text-gray-400">แพ็กเกจปัจจุบัน</p>
+          <p className="font-semibold text-gray-900 text-sm">{planName}</p>
+          {expiresAt && (
+            <p className={`text-xs mt-0.5 ${isExpired ? 'text-red-600 font-medium' : daysLeft! <= 30 ? 'text-orange-500' : 'text-gray-400'}`}>
+              {isExpired
+                ? 'หมดอายุแล้ว — กรุณาต่ออายุ'
+                : `หมดอายุ ${expiresAt.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })} (อีก ${daysLeft} วัน)`}
+            </p>
+          )}
+        </div>
+        <Link
+          href="/services"
+          className={`text-xs px-3 py-1.5 rounded-lg font-medium transition whitespace-nowrap ${
+            isExpired || !isPaid
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'border border-gray-200 text-gray-600 hover:bg-white'
+          }`}
+        >
+          {isExpired ? 'ต่ออายุ' : isPaid ? 'ดูแพ็กเกจ' : 'อัปเกรด'}
+        </Link>
       </div>
 
       {/* KPI row 1: main counts */}

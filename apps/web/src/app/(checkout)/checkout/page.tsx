@@ -6,9 +6,12 @@ import CheckoutForm from './CheckoutForm'
 export const metadata: Metadata = { title: 'ชำระเงิน — Proppsy' }
 
 const PLAN_INFO = {
-  professional: { name: 'Professional', monthly: 990, yearly: 8900 },
-  business: { name: 'Business', monthly: 2990, yearly: 26900 },
+  standard: { name: 'Standard', monthly: 990, yearly: 8900 },
+  ai_pro: { name: 'AI Pro', monthly: 1290, yearly: 11900 },
+  professional: { name: 'Standard', monthly: 990, yearly: 8900 }, // backward compat
 } as const
+
+type PlanKey = 'standard' | 'ai_pro'
 
 export default async function CheckoutPage({
   searchParams,
@@ -16,8 +19,7 @@ export default async function CheckoutPage({
   searchParams: Promise<{ plan?: string; billing?: string }>
 }) {
   const params = await searchParams
-  const planKey: 'professional' | 'business' =
-    params.plan === 'business' ? 'business' : 'professional'
+  const planKey: PlanKey = params.plan === 'ai_pro' ? 'ai_pro' : 'standard'
   const billing: 'monthly' | 'yearly' =
     params.billing === 'yearly' ? 'yearly' : 'monthly'
 
@@ -43,6 +45,30 @@ export default async function CheckoutPage({
             {info.name} · {billing === 'yearly' ? 'ชำระรายปี' : 'ชำระรายเดือน'}
           </p>
 
+          {/* Plan toggle */}
+          <div className="flex gap-2 mb-3">
+            <Link
+              href={`/checkout?plan=standard&billing=${billing}`}
+              className={`flex-1 py-2 text-center text-xs rounded-xl border transition font-medium ${
+                planKey === 'standard'
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
+              }`}
+            >
+              Standard
+            </Link>
+            <Link
+              href={`/checkout?plan=ai_pro&billing=${billing}`}
+              className={`flex-1 py-2 text-center text-xs rounded-xl border transition font-medium ${
+                planKey === 'ai_pro'
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-300'
+              }`}
+            >
+              AI Pro
+            </Link>
+          </div>
+
           {/* Billing toggle */}
           <div className="flex gap-2 mb-5">
             <Link
@@ -53,7 +79,7 @@ export default async function CheckoutPage({
                   : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
               }`}
             >
-              รายเดือน ฿{PLAN_INFO[planKey].monthly.toLocaleString('th-TH')}
+              รายเดือน ฿{info.monthly.toLocaleString('th-TH')}
             </Link>
             <Link
               href={`/checkout?plan=${planKey}&billing=yearly`}
@@ -63,7 +89,7 @@ export default async function CheckoutPage({
                   : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
               }`}
             >
-              รายปี ฿{PLAN_INFO[planKey].yearly.toLocaleString('th-TH')}
+              รายปี ฿{info.yearly.toLocaleString('th-TH')}
               <span className={`absolute -top-2 -right-1 text-xs px-1.5 py-0.5 rounded-full font-semibold ${billing === 'yearly' ? 'bg-white text-blue-600' : 'bg-green-500 text-white'}`}>
                 ประหยัด
               </span>

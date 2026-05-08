@@ -196,7 +196,7 @@ export default function RegisterPage() {
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (otp.length !== 6) { setError('กรุณากรอกรหัส OTP 6 หลัก'); return }
+    if (otp.length < 6) { setError('กรุณากรอกรหัส OTP ให้ครบ'); return }
 
     setLoading(true)
     const supabase = createClient()
@@ -456,7 +456,7 @@ export default function RegisterPage() {
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-1">ยืนยันอีเมล</h2>
                 <p className="text-sm text-gray-500">
-                  ระบบส่งรหัส OTP 6 หลักไปที่{' '}
+                  ระบบส่งรหัส OTP ไปที่{' '}
                   <span className="font-medium text-gray-700">{form.email}</span>
                 </p>
               </div>
@@ -464,8 +464,8 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-2">รหัส OTP</label>
                 <input type="text" value={otp}
-                  onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="000000" inputMode="numeric" maxLength={6} autoFocus
+                  onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  placeholder="00000000" inputMode="numeric" maxLength={8} autoFocus
                   className="w-full px-4 py-4 border border-gray-200 rounded-xl text-2xl font-mono text-center tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
 
@@ -473,7 +473,7 @@ export default function RegisterPage() {
                 <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>
               )}
 
-              <button type="submit" disabled={loading || otp.length !== 6}
+              <button type="submit" disabled={loading || otp.length < 6}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium py-3 rounded-xl text-sm transition">
                 {loading ? 'กำลังยืนยัน...' : 'ยืนยัน OTP'}
               </button>
