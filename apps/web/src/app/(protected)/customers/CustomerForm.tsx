@@ -8,6 +8,7 @@ import { ScanLine, Upload, Loader2, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Customer } from '@/types'
 import { createCustomer, updateCustomer, parseIdCard } from './actions'
+import { compressForOcr } from '@/lib/compressForOcr'
 import type { CustomerInput } from './actions'
 import AddressSelector from '@/components/shared/AddressSelector'
 
@@ -156,37 +157,26 @@ export default function CustomerForm({ initialData, customerId }: Props) {
 
   function handleOcr(file: File) {
     setOcrMessage('')
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string
-      const [meta, base64] = dataUrl.split(',')
-      const mimeType = meta?.match(/:(.*?);/)?.[1] ?? 'image/jpeg'
-      if (!base64) return
-
-      startOcr(async () => {
-        const result = await parseIdCard(base64, mimeType)
-        if ('error' in result) {
-          setOcrMessage(result.error)
-          return
-        }
-        const fields: string[] = []
-        const apply = (k: keyof FormState, v: string | null | undefined) => {
-          if (v) { set(k, v); fields.push(k) }
-        }
-        apply('prefix', result.prefix)
-        apply('first_name_th', result.first_name_th)
-        apply('last_name_th', result.last_name_th)
-        apply('national_id', result.national_id)
-        apply('address_no', result.address_no)
-        apply('address_road', result.address_road)
-        apply('province', result.province)
-        apply('district', result.district)
-        apply('subdistrict', result.subdistrict)
-        apply('zip', result.zip)
-        setOcrMessage(`กรอกข้อมูลอัตโนมัติ ${fields.length} ช่อง`)
-      })
-    }
-    reader.readAsDataURL(file)
+    startOcr(async () => {
+      const { base64, mimeType } = await compressForOcr(file)
+      const result = await parseIdCard(base64, mimeType)
+      if ('error' in result) { setOcrMessage(result.error); return }
+      const fields: string[] = []
+      const apply = (k: keyof FormState, v: string | null | undefined) => {
+        if (v) { set(k, v); fields.push(k) }
+      }
+      apply('prefix', result.prefix)
+      apply('first_name_th', result.first_name_th)
+      apply('last_name_th', result.last_name_th)
+      apply('national_id', result.national_id)
+      apply('address_no', result.address_no)
+      apply('address_road', result.address_road)
+      apply('province', result.province)
+      apply('district', result.district)
+      apply('subdistrict', result.subdistrict)
+      apply('zip', result.zip)
+      setOcrMessage(`กรอกข้อมูลอัตโนมัติ ${fields.length} ช่อง`)
+    })
   }
 
   // ─── Uploads ─────────────────────────────────────────────
