@@ -1,5 +1,5 @@
 # Proppsy — Claude Working Notes
-> อัปเดตล่าสุด: 2026-05-08 | อ่านไฟล์นี้ก่อนทุก session แทนการ explore codebase ใหม่
+> อัปเดตล่าสุด: 2026-05-08 (session 2) | อ่านไฟล์นี้ก่อนทุก session แทนการ explore codebase ใหม่
 
 ---
 
@@ -11,18 +11,18 @@
 - ✅ Phase 5: Appointments, Calendar (merged page), Commission, PWA
 - ✅ Phase 6: UX Polish — full-width lists, mobile zoom fix, ID card upload, AI entity create, address dropdowns
 - ✅ Phase 7: Site Expansion — logo+text, forgot pwd, admin CRUD users, stock mobile fix, commission year, public pages (news/about/contact), admin news CMS
+- ✅ Phase 8: UX & Features — mobile overflow fix, calendar 3rd color (นัดทำสัญญา), logo→home link, admin mobile menu, delete stock, download all photos, online signature pad (ProfileForm + OwnerForm), PDF font fix
 
 ---
 
 ## Latest Commits (main, May 2026)
 | Commit | Description |
 |--------|-------------|
+| `7ae4818` | feat: delete stock, download all photos, online signature pad (OwnerForm + ProfileForm) |
+| `81eec1d` | fix(pdf): Sarabun font load via filesystem path แทน HTTP URL |
+| `e55244c` | fix: 8 UX — mobile overflow, forgot-pwd touch, ติดตาม align, logo→home, admin mobile menu, calendar 3rd color, stock overflow |
 | `fec4602` | 7 UX improvements: logo, forgot pwd, admin users CRUD, stock mobile, commission year, news CMS, about/contact |
 | `0a901ab` | CLAUDE_NOTES.md system overview update |
-| `73b3ee1` | ContactCard email fallback เป็น mailto |
-| `0a2b014` | Full-width lists, mobile zoom, ID card upload, AI entity create, address dropdowns |
-| `8009ce6` | Merge calendar+appointments, loading states |
-| `2b76708` | Contract bundle expansion complete |
 
 ---
 
@@ -92,7 +92,10 @@
 | `src/components/shared/Sidebar.tsx` | Desktop sidebar (logo-icon.jpg + "Proppsy" text) |
 | `src/components/shared/MobileBottomNav.tsx` | Mobile bottom nav |
 | `src/components/shared/AddressSelector.tsx` | Cascading province/district/subdistrict/zip |
-| `src/lib/pdf/ContractDocument.tsx` | PDF template (react-pdf, Sarabun font) |
+| `src/components/shared/SignaturePad.tsx` | Canvas signature drawing (touch+mouse, saves PNG blob) |
+| `src/app/(protected)/stock/[id]/DeleteStockButton.tsx` | Client component: confirm → deleteStock action → redirect |
+| `src/app/(protected)/stock/[id]/PhotoGallery.tsx` | Photo carousel + download-all button |
+| `src/lib/pdf/ContractDocument.tsx` | PDF template (react-pdf, Sarabun font via filesystem path) |
 | `public/fonts/Sarabun-*.ttf` | Thai font for PDF |
 | `public/logo/logo-icon.jpg` | Icon-only logo (ใช้ใน sidebar + public nav) |
 | `public/logo/logo.png` | Full logo (ใช้ใน login page) |
@@ -241,7 +244,14 @@ FilterBar รองรับ: listing_type, room_type, price_bucket, province, *
 
 ---
 
-## Known Manual Steps
-1. **Supabase Site URL** → Dashboard → Authentication → URL Configuration → Site URL = Vercel URL (ไม่งั้น email ไป localhost)
-2. **Profile phone/LINE** → เอเจนต์ต้องกรอกในหน้า /profile เพื่อให้ ContactCard แสดงข้อมูล
-3. **Reset password flow** → ต้องตั้ง Site URL ก่อน ถึงจะส่ง reset email ไปถูก URL
+## Known Manual Steps (Supabase)
+1. **Site URL** → Dashboard → Authentication → URL Configuration → Site URL = Vercel URL
+2. **Migration 002** → SQL Editor → รัน `002_contracts_expansion.sql` (bank_ref, payment fields, commission fields) ✅ Done
+3. **Storage RLS** → SQL Editor → INSERT/SELECT/UPDATE/DELETE policies บน `documents` bucket ✅ Done
+4. **documents bucket public** → `UPDATE storage.buckets SET public = true WHERE id = 'documents'` (ให้ publicUrl ใช้งานได้)
+5. **Profile phone/LINE** → เอเจนต์กรอกในหน้า /profile เพื่อให้ ContactCard แสดงข้อมูล
+
+## Signature System
+- **OwnerForm**: tab toggle "วาดออนไลน์" / "อัปโหลดไฟล์" — canvas drawing → PNG → upload `documents/signatures/`
+- **ProfileForm**: signature section แยก (auto-save ไม่ต้องกดบันทึก) — ใช้ใน PDF สัญญา
+- **SignaturePad**: `src/components/shared/SignaturePad.tsx` — pointer events (touch+mouse), onSave(blob), onCancel
