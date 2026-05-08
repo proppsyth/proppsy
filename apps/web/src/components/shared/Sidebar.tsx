@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Users, UserCheck, Building2, Calendar,
-  TrendingUp, Settings, LogOut, ShieldCheck,
+  TrendingUp, Settings, LogOut, ShieldCheck, HelpCircle,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { href: '/contracts', icon: '📄', label: 'สัญญา', permission: 'contract' },
   { href: '/calendar', icon: '📅', label: 'นัดหมาย & ปฏิทิน', permission: null },
   { href: '/commission', icon: '💰', label: 'คอมมิชชัน', permission: null },
+  { href: '/help', icon: '❓', label: 'คู่มือ & FAQ', permission: null },
 ]
 
 const ADMIN_ITEMS = [
@@ -38,6 +39,7 @@ const MORE_ITEMS_BASE = [
   { href: '/projects', icon: Building2, label: 'โครงการ' },
   { href: '/calendar', icon: Calendar, label: 'นัดหมาย & ปฏิทิน' },
   { href: '/commission', icon: TrendingUp, label: 'คอมมิชชัน' },
+  { href: '/help', icon: HelpCircle, label: 'คู่มือ & FAQ' },
 ]
 
 const MORE_ITEM_ADMIN = { href: '/admin/users', icon: ShieldCheck, label: 'จัดการผู้ใช้' }
