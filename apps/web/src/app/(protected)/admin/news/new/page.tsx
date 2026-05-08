@@ -1,24 +1,37 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ImagePlus, X } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { createNews } from '../actions'
 
 export default function NewNewsPage() {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState('')
-  const [form, setForm] = useState({
-    title: '',
-    summary: '',
-    content: '',
-    published: false,
-  })
+  const [form, setForm] = useState({ title: '', summary: '', content: '', published: false })
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = useState('')
+  const coverRef = useRef<HTMLInputElement>(null)
 
   function set(key: keyof typeof form, value: string | boolean) {
     setForm(f => ({ ...f, [key]: value }))
+  }
+
+  function handleCover(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCoverFile(file)
+    setCoverPreview(URL.createObjectURL(file))
+  }
+
+  function removeCover() {
+    setCoverFile(null)
+    setCoverPreview('')
+    if (coverRef.current) coverRef.current.value = ''
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -26,10 +39,22 @@ export default function NewNewsPage() {
     if (!form.title.trim()) { setError('กรุณากรอกหัวข้อข่าว'); return }
     setError('')
     startTransition(async () => {
+      let coverUrl: string | undefined
+      if (coverFile) {
+        const supabase = createClient()
+        const ext = coverFile.name.split('.').pop()
+        const path = `news-covers/${Date.now()}.${ext}`
+        const { data: upData } = await supabase.storage.from('documents').upload(path, coverFile, { upsert: true })
+        if (upData) {
+          const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(upData.path)
+          coverUrl = publicUrl
+        }
+      }
       const res = await createNews({
         title: form.title.trim(),
         summary: form.summary.trim() || undefined,
         content: form.content.trim() || undefined,
+        cover_url: coverUrl,
         published: form.published,
       })
       if (res.error) { setError(res.error); return }
@@ -48,41 +73,49 @@ export default function NewNewsPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
+
+          {/* Cover image */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">รูปหน้าปก</label>
+            {coverPreview ? (
+              <div className="relative rounded-xl overflow-hidden aspect-video bg-gray-100">
+                <Image src={coverPreview} alt="cover" fill className="object-cover" sizes="100vw" />
+                <button type="button" onClick={removeCover}
+                  className="absolute top-2 right-2 w-7 h-7 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => coverRef.current?.click()}
+                className="w-full aspect-video border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-blue-400 hover:bg-blue-50 transition text-gray-400">
+                <ImagePlus className="w-8 h-8" />
+                <span className="text-sm">คลิกเพื่ออัปโหลดรูปหน้าปก</span>
+                <span className="text-xs">JPG, PNG — แนะนำ 16:9</span>
+              </button>
+            )}
+            <input ref={coverRef} type="file" accept="image/*" onChange={handleCover} className="hidden" />
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">หัวข้อข่าว *</label>
-            <input
-              value={form.title}
-              onChange={e => set('title', e.target.value)}
-              placeholder="หัวข้อข่าว"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="หัวข้อข่าว"
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">สรุปย่อ</label>
-            <textarea
-              value={form.summary}
-              onChange={e => set('summary', e.target.value)}
-              placeholder="สรุปย่อ (แสดงในหน้ารายการข่าว)"
-              rows={2}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            />
+            <textarea value={form.summary} onChange={e => set('summary', e.target.value)}
+              placeholder="สรุปย่อ (แสดงในหน้ารายการข่าว)" rows={2}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">เนื้อหาข่าว</label>
-            <textarea
-              value={form.content}
-              onChange={e => set('content', e.target.value)}
-              placeholder="เนื้อหาข่าวทั้งหมด"
-              rows={8}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            />
+            <textarea value={form.content} onChange={e => set('content', e.target.value)}
+              placeholder="เนื้อหาข่าวทั้งหมด" rows={8}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
           <div className="flex items-center gap-3 py-2 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={() => set('published', !form.published)}
-              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${form.published ? 'bg-green-500' : 'bg-gray-200'}`}
-            >
+            <button type="button" onClick={() => set('published', !form.published)}
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${form.published ? 'bg-green-500' : 'bg-gray-200'}`}>
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.published ? 'translate-x-5' : ''}`} />
             </button>
             <div>
@@ -92,21 +125,14 @@ export default function NewNewsPage() {
           </div>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">
-            {error}
-          </div>
-        )}
+        {error && <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>}
 
         <div className="flex gap-3">
           <Link href="/admin/news" className="flex-1 py-3 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition text-center">
             ยกเลิก
           </Link>
-          <button
-            type="submit"
-            disabled={pending}
-            className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-medium rounded-xl transition"
-          >
+          <button type="submit" disabled={pending}
+            className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-medium rounded-xl transition">
             {pending ? 'กำลังบันทึก...' : 'บันทึก'}
           </button>
         </div>

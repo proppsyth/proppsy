@@ -16,6 +16,7 @@ export async function createNews(data: {
   title: string
   summary?: string
   content?: string
+  cover_url?: string
   published: boolean
 }): Promise<{ error?: string }> {
   try {
@@ -24,6 +25,7 @@ export async function createNews(data: {
       title: data.title,
       summary: data.summary || null,
       content: data.content || null,
+      cover_url: data.cover_url || null,
       published: data.published,
       created_by: user.id,
     })
@@ -41,6 +43,7 @@ export async function updateNews(id: string, data: {
   title?: string
   summary?: string
   content?: string
+  cover_url?: string | null
   published?: boolean
 }): Promise<{ error?: string }> {
   try {

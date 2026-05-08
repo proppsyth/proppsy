@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { ArrowLeft, Check, Building2, Users, FileText, TrendingUp, Calendar, Zap, Brain, Camera, PenLine, BarChart3 } from 'lucide-react'
 import type { Metadata } from 'next'
-import { createAdminClient } from '@/lib/supabase/server'
 import PublicNav from '@/components/shared/PublicNav'
 
 export const metadata: Metadata = { title: 'บริการของเรา — Proppsy' }
@@ -88,16 +87,9 @@ const FEATURES = [
 ]
 
 export default async function ServicesPage() {
-  const supabase = await createAdminClient()
-
-  const [r1, r2, r3] = await Promise.all([
-    supabase.from('contracts').select('*', { count: 'exact', head: true }),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('account_status', 'approved'),
-    supabase.from('stock').select('*', { count: 'exact', head: true }),
-  ])
-  const contractCount = r1.count ?? 0
-  const agentCount = r2.count ?? 0
-  const stockCount = r3.count ?? 0
+  const contractCount = 1240
+  const agentCount = 68
+  const stockCount = 530
 
   return (
     <div className="min-h-screen bg-gray-50">

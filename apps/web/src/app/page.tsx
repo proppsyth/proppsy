@@ -1,19 +1,19 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Building2, Maximize, Layers, MapPin, Newspaper } from 'lucide-react'
+import { Building2, Maximize, Layers, MapPin, Newspaper, Play } from 'lucide-react'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import type { Stock } from '@/types'
 import PublicNav from '@/components/shared/PublicNav'
 import FilterBar from './listing/FilterBar'
-import SearchBar from './listing/SearchBar'
+import HeroBanner from './listing/HeroBanner'
+import StatsCounter from './listing/StatsCounter'
 
 export const metadata: Metadata = { title: 'Proppsy — ค้นหาที่พัก' }
 
-function fmt(n: number) {
-  return new Intl.NumberFormat('th-TH').format(n)
-}
+// ── เปลี่ยน YouTube Video ID ที่นี่ ──────────────────────────
+const YOUTUBE_ID = '' // ใส่ ID ของคลิป เช่น 'abc123xyz' จาก youtu.be/abc123xyz
 
 const RENT_RANGES: Record<string, [number, number]> = {
   low:     [0,     15000],
@@ -28,6 +28,55 @@ const SALE_RANGES: Record<string, [number, number]> = {
   premium: [10000000,   999999999],
 }
 
+function fmt(n: number) {
+  return new Intl.NumberFormat('th-TH').format(n)
+}
+
+// ── ลูกค้าที่ใช้บริการ (เปลี่ยนได้) ──────────────────────────
+const CLIENTS = [
+  'บริษัท เอบีซี พร็อพเพอร์ตี้',
+  'Plus Real Estate',
+  'ทีม KPN Realty',
+  'บริษัท ไทยแลนด์ โฮม',
+  'SmartAgent Group',
+  'Prestige Properties',
+]
+
+// ── บทความ IT / PropTech ──────────────────────────────────────
+const IT_ARTICLES = [
+  {
+    tag: 'AI & PropTech',
+    title: 'AI เปลี่ยนวงการอสังหาฯ ไทยอย่างไรในปี 2025',
+    desc: 'เทคโนโลยี AI กำลังปฏิวัติการทำงานของเอเจนต์ ตั้งแต่การวิเคราะห์ข้อมูล ไปจนถึงการออกเอกสารอัตโนมัติ',
+    color: 'blue',
+  },
+  {
+    tag: 'ลายเซ็นดิจิทัล',
+    title: 'ลายเซ็นอิเล็กทรอนิกส์ vs ลายเซ็นมือ: อะไรถูกกฎหมาย?',
+    desc: 'พระราชบัญญัติธุรกรรมทางอิเล็กทรอนิกส์ พ.ศ. 2544 รองรับลายเซ็นดิจิทัล สำหรับสัญญาเช่าและอสังหาริมทรัพย์',
+    color: 'green',
+  },
+  {
+    tag: 'เอกสาร & PDF',
+    title: 'ทำไมเอเจนต์ยุคใหม่ถึงเลิกใช้ Word สร้างสัญญา',
+    desc: 'ระบบ PDF อัตโนมัติช่วยลดข้อผิดพลาด ประหยัดเวลา และให้ภาพลักษณ์ที่เป็นมืออาชีพมากขึ้น',
+    color: 'purple',
+  },
+  {
+    tag: 'Cloud & Mobile',
+    title: 'จัดการทรัพย์อสังหาฯ บนมือถือ: คู่มือฉบับสมบูรณ์',
+    desc: 'เครื่องมือ Cloud-based ช่วยให้เอเจนต์ทำงานได้ทุกที่ เข้าถึงข้อมูลลูกค้าและทรัพย์แบบ real-time',
+    color: 'orange',
+  },
+]
+
+const COLOR_MAP: Record<string, string> = {
+  blue:   'bg-blue-50 text-blue-700',
+  green:  'bg-green-50 text-green-700',
+  purple: 'bg-purple-50 text-purple-700',
+  orange: 'bg-orange-50 text-orange-700',
+}
+
 export default async function PublicListingPage({
   searchParams,
 }: {
@@ -38,16 +87,8 @@ export default async function PublicListingPage({
   const supabase = await createClient()
 
   const [{ data: projectRows }, { data: latestNews }] = await Promise.all([
-    supabase
-      .from('projects')
-      .select('province, district, bts_mrt')
-      .not('province', 'is', null),
-    supabase
-      .from('news')
-      .select('id, title, summary, created_at')
-      .eq('published', true)
-      .order('created_at', { ascending: false })
-      .limit(3),
+    supabase.from('projects').select('province, district, bts_mrt').not('province', 'is', null),
+    supabase.from('news').select('id, title, summary, cover_url, created_at').eq('published', true).order('created_at', { ascending: false }).limit(3),
   ])
 
   const provinces = [...new Set((projectRows ?? []).map((r: { province?: string }) => r.province).filter((p): p is string => !!p))].sort()
@@ -60,17 +101,10 @@ export default async function PublicListingPage({
     .eq('status', 'available')
     .order('created_at', { ascending: false })
 
-  if (q && q.trim()) {
-    query = query.ilike('project_name', `%${q.trim()}%`)
-  }
-  if (listing_type === 'rent') {
-    query = query.or('listing_type.eq.rent,listing_type.eq.both')
-  } else if (listing_type === 'sale') {
-    query = query.or('listing_type.eq.sale,listing_type.eq.both')
-  }
-  if (room_type && room_type !== 'all') {
-    query = query.eq('room_type', room_type)
-  }
+  if (q && q.trim()) query = query.ilike('project_name', `%${q.trim()}%`)
+  if (listing_type === 'rent') query = query.or('listing_type.eq.rent,listing_type.eq.both')
+  else if (listing_type === 'sale') query = query.or('listing_type.eq.sale,listing_type.eq.both')
+  if (room_type && room_type !== 'all') query = query.eq('room_type', room_type)
   if (price_bucket && price_bucket !== 'all') {
     if (listing_type === 'sale') {
       const range = SALE_RANGES[price_bucket]
@@ -93,26 +127,16 @@ export default async function PublicListingPage({
     <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       <PublicNav />
 
-      {/* Hero Banner */}
-      <div className="relative bg-gradient-to-br from-blue-800 via-blue-700 to-indigo-800 text-white overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")', backgroundRepeat: 'repeat' }} />
+      {/* ── Sliding Hero Banner ── */}
+      <Suspense fallback={
+        <div className="bg-blue-800 min-h-[280px] flex items-center justify-center">
+          <div className="animate-pulse text-white/40 text-sm">กำลังโหลด...</div>
         </div>
-        <div className="relative max-w-6xl mx-auto px-4 py-10 sm:py-14 text-center">
-          <div className="flex justify-center mb-3">
-            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={52} height={52} className="object-contain rounded-2xl shadow-lg" />
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold mb-2">ค้นหาที่พักในฝัน</h1>
-          <p className="text-blue-200 text-sm sm:text-base max-w-lg mx-auto mb-6">
-            ทรัพย์สินคุณภาพในประเทศไทย พร้อมเอเจนต์มืออาชีพดูแลคุณตลอด 24 ชั่วโมง
-          </p>
-          <Suspense fallback={<div className="h-14 max-w-xl mx-auto" />}>
-            <SearchBar currentQ={q ?? ''} />
-          </Suspense>
-        </div>
-      </div>
+      }>
+        <HeroBanner currentQ={q ?? ''} />
+      </Suspense>
 
-      {/* Filter bar */}
+      {/* ── Filter bar ── */}
       <div className="bg-white border-b border-gray-100 shadow-sm sticky top-14 z-10">
         <div className="max-w-6xl mx-auto px-4 py-2.5">
           <FilterBar
@@ -129,7 +153,7 @@ export default async function PublicListingPage({
         </div>
       </div>
 
-      {/* Grid */}
+      {/* ── Property Grid ── */}
       <div className="max-w-6xl mx-auto px-4 py-6">
         <p className="text-sm text-gray-500 mb-4">
           {q && q.trim() && (
@@ -154,10 +178,79 @@ export default async function PublicListingPage({
         )}
       </div>
 
-      {/* News Section */}
+      {/* ── Animated Stats ── */}
+      <StatsCounter />
+
+      {/* ── YouTube Section ── */}
+      {YOUTUBE_ID ? (
+        <div className="bg-gray-900 py-12">
+          <div className="max-w-4xl mx-auto px-4">
+            <p className="text-center text-gray-400 text-xs font-medium uppercase tracking-widest mb-3">วิดีโอแนะนำ</p>
+            <h2 className="text-center text-white text-xl font-bold mb-6">ดูการใช้งาน Proppsy</h2>
+            <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl">
+              <iframe
+                src={`https://www.youtube.com/embed/${YOUTUBE_ID}?rel=0`}
+                title="Proppsy Demo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0 w-full h-full"
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-gray-900 py-12">
+          <div className="max-w-4xl mx-auto px-4 text-center">
+            <div className="border-2 border-dashed border-gray-600 rounded-2xl p-16 flex flex-col items-center gap-4">
+              <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
+                <Play className="w-7 h-7 text-white fill-white" />
+              </div>
+              <p className="text-white font-semibold">วิดีโอแนะนำ Proppsy</p>
+              <p className="text-gray-400 text-sm">ตั้งค่า YOUTUBE_ID ใน apps/web/src/app/page.tsx</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Trust / Clients ── */}
+      <div className="bg-white py-10 border-y border-gray-100">
+        <div className="max-w-6xl mx-auto px-4">
+          <p className="text-center text-gray-400 text-xs font-medium uppercase tracking-widest mb-6">
+            เชื่อใจโดยเอเจนต์และบริษัทอสังหาฯ ชั้นนำ
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            {CLIENTS.map(name => (
+              <span key={name} className="px-4 py-2 bg-gray-50 border border-gray-100 rounded-full text-sm text-gray-600 font-medium">
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── IT Knowledge Articles ── */}
+      <div className="max-w-6xl mx-auto px-4 py-10">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-bold text-gray-900">บทความ PropTech & IT</h2>
+          <Link href="/news" className="text-sm text-blue-600 hover:underline">ดูทั้งหมด →</Link>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {IT_ARTICLES.map(a => (
+            <div key={a.title} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col gap-2 hover:shadow-md transition">
+              <span className={`self-start text-xs font-semibold px-2 py-0.5 rounded-full ${COLOR_MAP[a.color]}`}>
+                {a.tag}
+              </span>
+              <p className="text-sm font-semibold text-gray-900 leading-snug">{a.title}</p>
+              <p className="text-xs text-gray-500 leading-relaxed flex-1">{a.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── News Section ── */}
       {(latestNews?.length ?? 0) > 0 && (
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          <div className="flex items-center justify-between mb-4">
+        <div className="max-w-6xl mx-auto px-4 pb-10">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
               <Newspaper className="w-5 h-5 text-blue-600" />
               <h2 className="text-lg font-bold text-gray-900">ข่าวสาร & อัปเดต</h2>
@@ -166,18 +259,30 @@ export default async function PublicListingPage({
           </div>
           <div className="grid sm:grid-cols-3 gap-4">
             {latestNews!.map(n => (
-              <Link key={n.id} href={`/news/${n.id}`} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition block">
-                <p className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1">{n.title}</p>
-                {n.summary && <p className="text-xs text-gray-400 line-clamp-2">{n.summary}</p>}
-                <p className="text-xs text-gray-300 mt-2">{new Date(n.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+              <Link key={n.id} href={`/news/${n.id}`}
+                className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition block group">
+                {n.cover_url ? (
+                  <div className="relative aspect-video overflow-hidden">
+                    <Image src={n.cover_url} alt={n.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 640px) 100vw, 33vw" />
+                  </div>
+                ) : (
+                  <div className="aspect-video bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+                    <Newspaper className="w-8 h-8 text-blue-200" />
+                  </div>
+                )}
+                <div className="p-4">
+                  <p className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1">{n.title}</p>
+                  {n.summary && <p className="text-xs text-gray-400 line-clamp-2">{n.summary}</p>}
+                  <p className="text-xs text-gray-300 mt-2">{new Date(n.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                </div>
               </Link>
             ))}
           </div>
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100 mt-4 py-8">
+      {/* ── Footer ── */}
+      <footer className="border-t border-gray-100 py-8">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
           <div className="flex items-center gap-2">
             <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={20} height={20} className="object-contain rounded" />
@@ -209,28 +314,19 @@ function PropertyCard({ stock }: { stock: Stock & { project?: { province?: strin
     >
       <div className="relative aspect-[4/3] bg-gray-100">
         {photo ? (
-          <Image
-            src={photo}
-            alt={stock.project_name ?? 'ทรัพย์'}
-            fill
+          <Image src={photo} alt={stock.project_name ?? 'ทรัพย์'} fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Building2 className="w-12 h-12 text-gray-200" />
           </div>
         )}
         <div className="absolute top-2 left-2 flex gap-1">
-          {isRent && (
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/90 text-white backdrop-blur-sm">เช่า</span>
-          )}
-          {isSale && stock.listing_type !== 'rent' && (
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-500/90 text-white backdrop-blur-sm">ขาย</span>
-          )}
+          {isRent && <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/90 text-white backdrop-blur-sm">เช่า</span>}
+          {isSale && stock.listing_type !== 'rent' && <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-500/90 text-white backdrop-blur-sm">ขาย</span>}
         </div>
       </div>
-
       <div className="p-4">
         {price != null && (
           <p className="text-xl font-bold text-gray-900">
@@ -238,31 +334,16 @@ function PropertyCard({ stock }: { stock: Stock & { project?: { province?: strin
             {stock.listing_type !== 'sale' && <span className="text-sm font-normal text-gray-400">/เดือน</span>}
           </p>
         )}
-        <p className="text-sm font-medium text-gray-700 mt-0.5 truncate">
-          {stock.project_name ?? 'ไม่ระบุโครงการ'}
-        </p>
+        <p className="text-sm font-medium text-gray-700 mt-0.5 truncate">{stock.project_name ?? 'ไม่ระบุโครงการ'}</p>
         {location && (
           <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-            <MapPin className="w-3 h-3 flex-shrink-0" />
-            {location}
+            <MapPin className="w-3 h-3 flex-shrink-0" />{location}
           </p>
         )}
         <div className="flex items-center gap-2 mt-2 text-xs text-gray-400 flex-wrap">
-          {stock.room_type && (
-            <span className="bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">{stock.room_type}</span>
-          )}
-          {stock.size_sqm && (
-            <span className="flex items-center gap-0.5">
-              <Maximize className="w-3 h-3" />
-              {stock.size_sqm} ตร.ม.
-            </span>
-          )}
-          {stock.floor && (
-            <span className="flex items-center gap-0.5">
-              <Layers className="w-3 h-3" />
-              ชั้น {stock.floor}
-            </span>
-          )}
+          {stock.room_type && <span className="bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">{stock.room_type}</span>}
+          {stock.size_sqm && <span className="flex items-center gap-0.5"><Maximize className="w-3 h-3" />{stock.size_sqm} ตร.ม.</span>}
+          {stock.floor && <span className="flex items-center gap-0.5"><Layers className="w-3 h-3" />ชั้น {stock.floor}</span>}
         </div>
       </div>
     </Link>
