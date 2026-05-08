@@ -1,3 +1,4 @@
+import path from 'path'
 import {
   Document,
   Page,
@@ -11,13 +12,13 @@ import type { ContractDocType } from '@/types'
 
 // ─── Font Registration ────────────────────────────────────────
 
-const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+const fontsDir = path.join(process.cwd(), 'public', 'fonts')
 
 Font.register({
   family: 'Sarabun',
   fonts: [
-    { src: `${BASE}/fonts/Sarabun-Regular.ttf`, fontWeight: 400 },
-    { src: `${BASE}/fonts/Sarabun-Bold.ttf`, fontWeight: 700 },
+    { src: path.join(fontsDir, 'Sarabun-Regular.ttf'), fontWeight: 400 },
+    { src: path.join(fontsDir, 'Sarabun-Bold.ttf'), fontWeight: 700 },
   ],
 })
 
