@@ -1,5 +1,5 @@
 # Proppsy — Claude Working Notes
-> อัปเดตล่าสุด: 2026-05-08 (session 3) | อ่านไฟล์นี้ก่อนทุก session แทนการ explore codebase ใหม่
+> อัปเดตล่าสุด: 2026-05-08 (session 4) | อ่านไฟล์นี้ก่อนทุก session แทนการ explore codebase ใหม่
 
 ---
 
@@ -13,17 +13,18 @@
 - ✅ Phase 7: Site Expansion — logo+text, forgot pwd, admin CRUD users, stock mobile fix, commission year, public pages (news/about/contact), admin news CMS
 - ✅ Phase 8: UX & Features — mobile overflow fix, calendar 3rd color (นัดทำสัญญา), logo→home link, admin mobile menu, delete stock, download all photos, online signature pad (ProfileForm + OwnerForm), PDF font fix
 - ✅ Phase 9: Public Site — register rewrite (prefix/name/address/OTP), homepage search bar, /services page (pricing+stats), PublicNav shared component, fix listing/[id] mobile, all navbars consistent
+- ✅ Phase 9b: Auth UX — login inline forgot-pwd (no routing loop), register ID card upload (required, deferred upload after OTP verify), terms/privacy popup modal (Thai legal content), PublicNav mobile hamburger menu
 
 ---
 
 ## Latest Commits (main, May 2026)
 | Commit | Description |
 |--------|-------------|
+| `d074076` | feat: Phase 9b — PublicNav hamburger, inline forgot-pwd, register ID card + terms, services fix |
+| `1016d29` | feat: Phase 9 — register rewrite, homepage search, /services page, PublicNav, listing mobile fix |
 | `7ae4818` | feat: delete stock, download all photos, online signature pad (OwnerForm + ProfileForm) |
 | `81eec1d` | fix(pdf): Sarabun font load via filesystem path แทน HTTP URL |
 | `e55244c` | fix: 8 UX — mobile overflow, forgot-pwd touch, ติดตาม align, logo→home, admin mobile menu, calendar 3rd color, stock overflow |
-| `fec4602` | 7 UX improvements: logo, forgot pwd, admin users CRUD, stock mobile, commission year, news CMS, about/contact |
-| `0a901ab` | CLAUDE_NOTES.md system overview update |
 
 ---
 
@@ -38,9 +39,8 @@
 /news/[id]          อ่านข่าวรายชิ้น
 /about              เกี่ยวกับ Proppsy
 /contact            ติดต่อเรา
-/login              เข้าสู่ระบบ (มี "ลืมรหัสผ่าน?" link)
-/register           สมัครเป็นเอเจนต์
-/forgot-password    ขอ reset password (ส่งอีเมล)
+/login              เข้าสู่ระบบ — inline forgot-pwd (mode state, no routing), resetPasswordForEmail
+/register           สมัครเป็นเอเจนต์ — OTP verify, ID card upload (required), terms/privacy modal
 /reset-password     ตั้งรหัสผ่านใหม่ (จาก email link)
 ```
 
@@ -95,8 +95,9 @@
 | `src/components/shared/MobileBottomNav.tsx` | Mobile bottom nav |
 | `src/components/shared/AddressSelector.tsx` | Cascading province/district/subdistrict/zip |
 | `src/components/shared/SignaturePad.tsx` | Canvas signature drawing (touch+mouse, saves PNG blob) |
-| `src/components/shared/PublicNav.tsx` | Shared public navbar (async server component, auth-aware, all public pages) |
+| `src/components/shared/PublicNav.tsx` | Shared public navbar (async server component, auth-aware, mobile hamburger via `<details>`, all public pages) |
 | `src/app/listing/SearchBar.tsx` | Client component: text search input in hero, pushes `?q=` URL param |
+| `src/app/(auth)/register/actions.ts` | Server action: updateRegisterProfile (name, phone, address, id_card_url) |
 | `src/app/services/page.tsx` | Services page — feature grid, live stats, 3-tier pricing (Starter/Pro/Business) |
 | `src/app/(protected)/stock/[id]/DeleteStockButton.tsx` | Client component: confirm → deleteStock action → redirect |
 | `src/app/(protected)/stock/[id]/PhotoGallery.tsx` | Photo carousel + download-all button |
