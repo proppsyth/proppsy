@@ -32,6 +32,7 @@ export async function updateProfile(
       bank_name: str('bank_name'),
       bank_account_no: str('bank_account_no'),
       bank_account_name: str('bank_account_name'),
+      signature_url: str('signature_url'),
     })
     .eq('id', user.id)
 
@@ -39,4 +40,21 @@ export async function updateProfile(
 
   revalidatePath('/profile')
   return { success: true }
+}
+
+export async function updateSignatureUrl(
+  url: string | null
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ signature_url: url || null })
+    .eq('id', user.id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/profile')
+  return {}
 }

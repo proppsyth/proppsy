@@ -1,8 +1,12 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { updateProfile } from './actions'
+import { useState, useTransition, useRef } from 'react'
+import Image from 'next/image'
+import { Upload, Loader2, X, PenLine } from 'lucide-react'
+import { updateProfile, updateSignatureUrl } from './actions'
+import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
+import SignaturePad from '@/components/shared/SignaturePad'
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'แอดมิน',
@@ -26,6 +30,38 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
   const [editing, setEditing] = useState(false)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
+
+  // Signature state
+  const [sigUrl, setSigUrl] = useState(profile.signature_url ?? '')
+  const [sigMode, setSigMode] = useState<'upload' | 'draw'>('upload')
+  const [isUploadingSig, setIsUploadingSig] = useState(false)
+  const sigRef = useRef<HTMLInputElement>(null)
+
+  async function uploadAndSaveSig(file: File) {
+    setIsUploadingSig(true)
+    const supabase = createClient()
+    const path = `signatures/${profile.id}-${Date.now()}.png`
+    const { data, error: upErr } = await supabase.storage
+      .from('documents')
+      .upload(path, file, { upsert: true })
+    if (!upErr && data) {
+      const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(data.path)
+      setSigUrl(publicUrl)
+      await updateSignatureUrl(publicUrl)
+    }
+    setIsUploadingSig(false)
+  }
+
+  async function handleSigFromPad(blob: Blob) {
+    const file = new File([blob], `sig-${Date.now()}.png`, { type: 'image/png' })
+    setSigMode('upload')
+    await uploadAndSaveSig(file)
+  }
+
+  async function clearSig() {
+    setSigUrl('')
+    await updateSignatureUrl(null)
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -174,6 +210,77 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
             />
           </div>
         </div>
+      </Section>
+
+      {/* ลายเซ็น */}
+      <Section title="ลายเซ็น (ใช้ในสัญญา PDF)">
+        {sigUrl ? (
+          <div className="space-y-2">
+            <div className="relative w-52 h-24 rounded-lg overflow-hidden border border-gray-200 bg-white">
+              <Image src={sigUrl} alt="ลายเซ็น" fill className="object-contain p-2" sizes="208px" />
+              <button
+                type="button"
+                onClick={clearSig}
+                disabled={isUploadingSig}
+                className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-400">กดลบเพื่อเซ็นใหม่</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+              <button
+                type="button"
+                onClick={() => setSigMode('draw')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition ${sigMode === 'draw' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+              >
+                <PenLine className="w-3.5 h-3.5" />
+                วาดออนไลน์
+              </button>
+              <button
+                type="button"
+                onClick={() => setSigMode('upload')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition ${sigMode === 'upload' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                อัปโหลดไฟล์
+              </button>
+            </div>
+            {sigMode === 'draw' ? (
+              <SignaturePad
+                onSave={handleSigFromPad}
+                onCancel={() => setSigMode('upload')}
+              />
+            ) : (
+              <>
+                <input
+                  ref={sigRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (file) uploadAndSaveSig(file)
+                    e.target.value = ''
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => sigRef.current?.click()}
+                  disabled={isUploadingSig}
+                  className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition disabled:opacity-50"
+                >
+                  {isUploadingSig ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {isUploadingSig ? 'กำลังบันทึก...' : 'อัปโหลดรูปลายเซ็น'}
+                </button>
+                <p className="text-xs text-gray-400">PNG พื้นหลังโปร่งใสแสดงผลดีที่สุดในสัญญา</p>
+              </>
+            )}
+          </div>
+        )}
       </Section>
 
       {/* ข้อมูลบัญชี (read-only) */}

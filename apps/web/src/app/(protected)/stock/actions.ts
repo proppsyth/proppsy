@@ -115,6 +115,25 @@ export async function updateStock(
   return {}
 }
 
+// ─── Delete ──────────────────────────────────────────────────
+
+export async function deleteStock(stockId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { error } = await supabase
+    .from('stock')
+    .delete()
+    .eq('id', stockId)
+    .eq('agent_uid', user.id)
+
+  if (error) return { error: 'ลบไม่สำเร็จ: ' + error.message }
+
+  revalidatePath('/stock')
+  return {}
+}
+
 // ─── AI Parse with Entity Creation ──────────────────────────
 
 export type ParseWithEntitiesResult = {

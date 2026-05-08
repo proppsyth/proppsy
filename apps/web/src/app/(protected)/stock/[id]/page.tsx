@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { ownerDisplayName, stockDisplayTitle, DOC_TYPE_LABELS, STATUS_LABELS } from '@/types'
 import type { Stock, StockStatus, ListingType } from '@/types'
 import PhotoGallery from './PhotoGallery'
+import DeleteStockButton from './DeleteStockButton'
 
 export const metadata: Metadata = { title: 'รายละเอียดทรัพย์' }
 
@@ -85,13 +86,16 @@ export default async function StockDetailPage({
             </div>
           </div>
 
-          <Link
-            href={`/stock/${s.id}/edit`}
-            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition flex-shrink-0"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-            แก้ไข
-          </Link>
+          <div className="flex items-start gap-2 flex-shrink-0">
+            <Link
+              href={`/stock/${s.id}/edit`}
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              แก้ไข
+            </Link>
+            <DeleteStockButton stockId={s.id} />
+          </div>
         </div>
       </div>
 

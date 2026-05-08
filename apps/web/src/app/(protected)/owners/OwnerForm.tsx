@@ -4,12 +4,13 @@ import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ScanLine, Upload, Loader2, X } from 'lucide-react'
+import { ScanLine, Upload, Loader2, X, PenLine } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Owner } from '@/types'
 import { createOwner, updateOwner, parseIdCard } from './actions'
 import type { OwnerInput } from './actions'
 import AddressSelector from '@/components/shared/AddressSelector'
+import SignaturePad from '@/components/shared/SignaturePad'
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -131,6 +132,7 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
   const [isUploadingIdCard, setIsUploadingIdCard] = useState(false)
   const [uploadIdCardError, setUploadIdCardError] = useState('')
   const [isUploadingSig, setIsUploadingSig] = useState(false)
+  const [sigMode, setSigMode] = useState<'upload' | 'draw'>('upload')
 
   const ocrInputRef = useRef<HTMLInputElement>(null)
   const idCardRef = useRef<HTMLInputElement>(null)
@@ -194,6 +196,12 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
       set('id_card_url', publicUrl)
     }
     setIsUploadingIdCard(false)
+  }
+
+  async function handleSigFromPad(blob: Blob) {
+    const file = new File([blob], `sig-${Date.now()}.png`, { type: 'image/png' })
+    setSigMode('upload')
+    await handleSigUpload(file)
   }
 
   async function handleSigUpload(file: File) {
@@ -407,40 +415,71 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
       {/* ลายเซ็น */}
       <Section title="ลายเซ็น">
         {form.signature_url ? (
-          <div className="relative w-52 h-24 rounded-lg overflow-hidden border border-gray-200 bg-white">
-            <Image src={form.signature_url} alt="ลายเซ็น" fill className="object-contain p-2" sizes="208px" />
-            <button
-              type="button"
-              onClick={() => set('signature_url', '')}
-              className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+          <div className="space-y-2">
+            <div className="relative w-52 h-24 rounded-lg overflow-hidden border border-gray-200 bg-white">
+              <Image src={form.signature_url} alt="ลายเซ็น" fill className="object-contain p-2" sizes="208px" />
+              <button
+                type="button"
+                onClick={() => set('signature_url', '')}
+                className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         ) : (
-          <>
-            <input
-              ref={sigRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={e => {
-                const file = e.target.files?.[0]
-                if (file) handleSigUpload(file)
-                e.target.value = ''
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => sigRef.current?.click()}
-              disabled={isUploadingSig}
-              className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition disabled:opacity-50"
-            >
-              {isUploadingSig ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              {isUploadingSig ? 'กำลังอัปโหลด...' : 'อัปโหลดรูปลายเซ็น'}
-            </button>
-            <p className="text-xs text-gray-400 mt-1.5">รูปภาพพื้นหลังโปร่งใส (PNG) จะแสดงผลดีที่สุดในสัญญา</p>
-          </>
+          <div className="space-y-3">
+            {/* Mode toggle */}
+            <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+              <button
+                type="button"
+                onClick={() => setSigMode('draw')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition ${sigMode === 'draw' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+              >
+                <PenLine className="w-3.5 h-3.5" />
+                วาดออนไลน์
+              </button>
+              <button
+                type="button"
+                onClick={() => setSigMode('upload')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition ${sigMode === 'upload' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                อัปโหลดไฟล์
+              </button>
+            </div>
+
+            {sigMode === 'draw' ? (
+              <SignaturePad
+                onSave={handleSigFromPad}
+                onCancel={() => setSigMode('upload')}
+              />
+            ) : (
+              <>
+                <input
+                  ref={sigRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (file) handleSigUpload(file)
+                    e.target.value = ''
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => sigRef.current?.click()}
+                  disabled={isUploadingSig}
+                  className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition disabled:opacity-50"
+                >
+                  {isUploadingSig ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {isUploadingSig ? 'กำลังอัปโหลด...' : 'อัปโหลดรูปลายเซ็น'}
+                </button>
+                <p className="text-xs text-gray-400">PNG พื้นหลังโปร่งใสแสดงผลดีที่สุดในสัญญา</p>
+              </>
+            )}
+          </div>
         )}
       </Section>
 

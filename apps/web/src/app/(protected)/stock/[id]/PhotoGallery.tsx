@@ -2,10 +2,32 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { ChevronLeft, ChevronRight, Home } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Home, Download, Loader2 } from 'lucide-react'
 
 export default function PhotoGallery({ urls }: { urls: string[] }) {
   const [current, setCurrent] = useState(0)
+  const [downloading, setDownloading] = useState(false)
+
+  async function downloadAll() {
+    if (downloading) return
+    setDownloading(true)
+    for (let i = 0; i < urls.length; i++) {
+      try {
+        const res = await fetch(urls[i]!)
+        const blob = await res.blob()
+        const ext = blob.type.includes('png') ? 'png' : 'jpg'
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob)
+        a.download = `photo-${i + 1}.${ext}`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(a.href)
+        await new Promise(r => setTimeout(r, 300))
+      } catch {}
+    }
+    setDownloading(false)
+  }
 
   if (urls.length === 0) {
     return (
@@ -74,6 +96,17 @@ export default function PhotoGallery({ urls }: { urls: string[] }) {
           ))}
         </div>
       )}
+
+      {/* Download all */}
+      <button
+        type="button"
+        onClick={downloadAll}
+        disabled={downloading}
+        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 w-fit"
+      >
+        {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+        {downloading ? 'กำลังดาวน์โหลด...' : `ดาวน์โหลดรูปทั้งหมด (${urls.length})`}
+      </button>
     </div>
   )
 }
