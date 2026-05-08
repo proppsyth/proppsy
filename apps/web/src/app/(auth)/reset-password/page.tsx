@@ -3,13 +3,12 @@
 import { Suspense, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 type Step = 'verify' | 'success'
 
 function ResetPasswordForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const emailParam = searchParams.get('email') ?? ''
 
@@ -21,29 +20,20 @@ function ResetPasswordForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSubmit() {
     setError('')
 
-    if (password !== confirm) {
-      setError('รหัสผ่านไม่ตรงกัน')
-      return
-    }
-    if (password.length < 6) {
-      setError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร')
-      return
-    }
-    if (!token.trim()) {
-      setError('กรุณากรอกรหัส OTP จากอีเมล')
-      return
-    }
+    if (!email.trim()) { setError('กรุณากรอกอีเมล'); return }
+    if (!token.trim()) { setError('กรุณากรอกรหัส OTP จากอีเมล'); return }
+    if (password.length < 6) { setError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'); return }
+    if (password !== confirm) { setError('รหัสผ่านไม่ตรงกัน'); return }
 
     setLoading(true)
     const supabase = createClient()
 
     const { error: verifyErr } = await supabase.auth.verifyOtp({
-      email,
-      token,
+      email: email.trim(),
+      token: token.trim(),
       type: 'recovery',
     })
 
@@ -75,7 +65,7 @@ function ResetPasswordForm() {
         <p className="text-sm text-gray-500 mb-6">กลับไปเข้าสู่ระบบด้วยรหัสผ่านใหม่ของคุณ</p>
         <Link
           href="/login"
-          className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition text-sm"
+          className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition text-sm text-center"
         >
           ไปหน้าเข้าสู่ระบบ
         </Link>
@@ -84,14 +74,14 @@ function ResetPasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">อีเมล</label>
         <input
           type="email"
+          inputMode="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
-          required
           autoComplete="email"
           placeholder="your@email.com"
           className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
@@ -105,7 +95,6 @@ function ResetPasswordForm() {
           inputMode="numeric"
           value={token}
           onChange={e => setToken(e.target.value.trim())}
-          required
           placeholder="12345678"
           className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-center tracking-[0.3em] font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
         />
@@ -118,7 +107,6 @@ function ResetPasswordForm() {
           type="password"
           value={password}
           onChange={e => setPassword(e.target.value)}
-          required
           autoComplete="new-password"
           placeholder="••••••••"
           className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
@@ -131,7 +119,6 @@ function ResetPasswordForm() {
           type="password"
           value={confirm}
           onChange={e => setConfirm(e.target.value)}
-          required
           autoComplete="new-password"
           placeholder="••••••••"
           className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
@@ -145,9 +132,11 @@ function ResetPasswordForm() {
       )}
 
       <button
-        type="submit"
+        type="button"
+        onClick={handleSubmit}
         disabled={loading}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium py-3 rounded-xl transition text-sm"
+        style={{ touchAction: 'manipulation' }}
+        className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-300 text-white font-medium py-3 rounded-xl transition text-sm"
       >
         {loading ? 'กำลังตรวจสอบ...' : 'ตั้งรหัสผ่านใหม่'}
       </button>
@@ -155,7 +144,7 @@ function ResetPasswordForm() {
       <Link href="/login" className="block text-center text-sm text-gray-500 hover:text-gray-700 transition py-1">
         ← กลับหน้าเข้าสู่ระบบ
       </Link>
-    </form>
+    </div>
   )
 }
 
