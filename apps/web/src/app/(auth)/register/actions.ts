@@ -15,6 +15,7 @@ type RegisterProfileData = {
   district?: string | null
   subdistrict?: string | null
   zip?: string | null
+  id_card_url?: string | null
 }
 
 export async function updateRegisterProfile(data: RegisterProfileData): Promise<{ error?: string }> {
@@ -37,6 +38,7 @@ export async function updateRegisterProfile(data: RegisterProfileData): Promise<
       district: data.district || null,
       subdistrict: data.subdistrict || null,
       zip: data.zip || null,
+      id_card_url: data.id_card_url || null,
     })
     .eq('id', user.id)
 

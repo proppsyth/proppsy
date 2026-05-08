@@ -90,15 +90,14 @@ const FEATURES = [
 export default async function ServicesPage() {
   const supabase = await createClient()
 
-  const [
-    { count: contractCount },
-    { count: agentCount },
-    { count: stockCount },
-  ] = await Promise.all([
+  const [r1, r2, r3] = await Promise.all([
     supabase.from('contracts').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('account_status', 'approved'),
     supabase.from('stock').select('*', { count: 'exact', head: true }),
   ])
+  const contractCount = r1.count ?? 0
+  const agentCount = r2.count ?? 0
+  const stockCount = r3.count ?? 0
 
   return (
     <div className="min-h-screen bg-gray-50">
