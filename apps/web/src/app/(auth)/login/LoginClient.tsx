@@ -55,9 +55,7 @@ export default function LoginClient({ redirectTo }: { redirectTo: string }) {
     setLoading(true)
     setError('')
     const supabase = createClient()
-    const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    })
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email)
     setLoading(false)
     if (err) { setError('ไม่สามารถส่งอีเมลได้ กรุณาตรวจสอบอีเมลของคุณ'); return }
     setForgotSent(true)
