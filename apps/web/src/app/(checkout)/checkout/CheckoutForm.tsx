@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import Script from 'next/script'
 import { CreditCard, Check, ShieldCheck } from 'lucide-react'
 import { createOmiseCharge } from './actions'
@@ -39,9 +39,18 @@ export default function CheckoutForm({ plan, billing, amount, planName }: Props)
   const [success, setSuccess] = useState(false)
   const [ready, setReady] = useState(false)
 
+  useEffect(() => {
+    if (window.OmiseCard) { setReady(true); return }
+    const t = setInterval(() => {
+      if (window.OmiseCard) { setReady(true); clearInterval(t) }
+    }, 200)
+    return () => clearInterval(t)
+  }, [])
+
   function handlePay() {
     const pubKey = process.env.NEXT_PUBLIC_OMISE_PUBLIC_KEY
-    if (!pubKey || !window.OmiseCard) return
+    if (!pubKey) { setError('ระบบชำระเงินยังไม่พร้อม กรุณาติดต่อเรา'); return }
+    if (!window.OmiseCard) { setError('กำลังโหลดระบบชำระเงิน กรุณารอสักครู่แล้วลองใหม่'); return }
     setError('')
     window.OmiseCard.configure({ publicKey: pubKey })
     window.OmiseCard.open({
@@ -84,7 +93,7 @@ export default function CheckoutForm({ plan, billing, amount, planName }: Props)
 
   return (
     <>
-      <Script src="https://cdn.omise.co/omise.js" onReady={() => setReady(true)} />
+      <Script src="https://cdn.omise.co/omise.js" strategy="afterInteractive" />
 
       {/* Order summary */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">

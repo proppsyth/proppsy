@@ -33,8 +33,8 @@ function ResetPasswordForm() {
       setError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร')
       return
     }
-    if (token.length < 6) {
-      setError('กรุณากรอกรหัส OTP 6 หลัก')
+    if (!token.trim()) {
+      setError('กรุณากรอกรหัส OTP จากอีเมล')
       return
     }
 
@@ -104,12 +104,12 @@ function ResetPasswordForm() {
           type="text"
           inputMode="numeric"
           value={token}
-          onChange={e => setToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          onChange={e => setToken(e.target.value.trim())}
           required
-          placeholder="123456"
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-center tracking-[0.4em] font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          placeholder="12345678"
+          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-center tracking-[0.3em] font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
         />
-        <p className="text-xs text-gray-400 mt-1">กรอกรหัส 6 หลักจากอีเมลที่ได้รับ</p>
+        <p className="text-xs text-gray-400 mt-1">กรอกรหัส OTP จากอีเมลที่ได้รับ (ไม่ต้องเว้นวรรค)</p>
       </div>
 
       <div>
