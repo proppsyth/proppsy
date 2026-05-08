@@ -49,8 +49,8 @@ const PLANS = [
       'PDF สัญญาภาษาไทยครบชุด (9 ประเภท)',
     ],
     missing: [],
-    cta: 'เริ่มใช้งาน',
-    ctaHref: '/register',
+    cta: 'ซื้อแพ็กเกจ',
+    ctaHref: '/checkout?plan=professional&billing=monthly',
   },
   {
     name: 'Business',
