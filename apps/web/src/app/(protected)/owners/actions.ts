@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { checkAiQuota } from '@/lib/aiQuota'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -113,6 +114,11 @@ export async function parseIdCard(
 ): Promise<OcrResult | { error: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'ไม่พบ Gemini API key' }
+
+  {
+    const { allowed, error: quotaErr } = await checkAiQuota()
+    if (!allowed) return { error: quotaErr ?? 'เกินโควต้า AI' }
+  }
 
   const prompt = `วิเคราะห์ภาพบัตรประชาชนไทยนี้และส่งคืน JSON เท่านั้น ไม่ต้องมีคำอธิบาย:
 

@@ -187,7 +187,7 @@ export default async function CalendarPage({
             {/* Legend */}
             <div className="flex items-center gap-4 mb-3 text-xs text-gray-500 flex-wrap">
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />นัดหมาย</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block" />สัญญาหมดอายุ</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />สัญญาหมดอายุ</span>
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />นัดทำสัญญา</span>
             </div>
 
@@ -231,7 +231,7 @@ export default async function CalendarPage({
                                 <span key={idx} className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
                               ))}
                               {expirations.slice(0, 2).map((_, idx) => (
-                                <span key={idx} className="w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
+                                <span key={idx} className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
                               ))}
                               {signings.slice(0, 2).map((_, idx) => (
                                 <span key={idx} className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
@@ -254,13 +254,13 @@ export default async function CalendarPage({
                               <Link
                                 key={c.id}
                                 href={`/contracts/${c.id}`}
-                                className="block px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded text-[10px] truncate hover:bg-orange-200 transition"
+                                className="block px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px] truncate hover:bg-red-200 transition"
                                 title={`${c.id} หมดอายุ`}
                               >
                                 📄 {c.id}
                               </Link>
                             ))}
-                            {expirations.length > 2 && <p className="text-[10px] text-orange-400 px-1">+{expirations.length - 2}</p>}
+                            {expirations.length > 2 && <p className="text-[10px] text-red-400 px-1">+{expirations.length - 2}</p>}
                             {signings.slice(0, 2).map(c => (
                               <Link
                                 key={c.id}
@@ -301,11 +301,11 @@ export default async function CalendarPage({
                 ))}
                 {contracts?.filter(c => c.end_date).map(c => (
                   <Link key={c.id} href={`/contracts/${c.id}`}
-                    className="flex items-center gap-3 bg-white rounded-xl border border-orange-100 shadow-sm p-3">
-                    <span className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0 mt-0.5" />
+                    className="flex items-center gap-3 bg-white rounded-xl border border-red-100 shadow-sm p-3">
+                    <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-0.5" />
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-orange-800 truncate">สัญญา {c.id} หมดอายุ</p>
-                      <p className="text-xs text-orange-500">
+                      <p className="text-sm font-medium text-red-800 truncate">สัญญา {c.id} หมดอายุ</p>
+                      <p className="text-xs text-red-500">
                         {new Date(c.end_date! + 'T00:00:00').toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
                       </p>
                     </div>

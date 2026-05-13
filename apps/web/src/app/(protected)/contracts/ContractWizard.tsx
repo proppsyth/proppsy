@@ -2,10 +2,11 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, ChevronRight, ChevronLeft, Check, FileText } from 'lucide-react'
+import { Loader2, ChevronRight, ChevronLeft, Check, FileText, X } from 'lucide-react'
 import { DOC_TYPE_LABELS } from '@/types'
 import type { ContractDocType, Owner, Customer, PaymentMethod } from '@/types'
 import { createContract } from './actions'
+import SearchSelect from '@/components/shared/SearchSelect'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -287,18 +288,16 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
           ))}
 
           <Section title="เลือกทรัพย์ (ไม่บังคับ)">
-            <select
+            <SearchSelect
               value={state.stock_id}
-              onChange={e => handleStockSelect(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">— เลือกทรัพย์ —</option>
-              {stocks.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.id} · {[s.project_name, s.unit_no, s.room_type].filter(Boolean).join(' · ')}
-                </option>
-              ))}
-            </select>
+              onChange={handleStockSelect}
+              placeholder="— เลือกทรัพย์ —"
+              options={stocks.map(s => ({
+                id: s.id,
+                label: [s.project_name, s.unit_no, s.room_type].filter(Boolean).join(' · ') || s.id,
+                sub: s.id,
+              }))}
+            />
             {selectedStock && (
               <p className={`text-xs mt-1.5 ${STATUS_COLORS[selectedStock.status] ?? 'text-gray-500'}`}>
                 สถานะ: {selectedStock.status === 'available' ? 'ว่าง' : selectedStock.status === 'rented' ? 'เช่าแล้ว' : selectedStock.status === 'sold' ? 'ขายแล้ว' : 'ไม่ว่าง'}
@@ -313,33 +312,29 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
       {step === 2 && (
         <div className="space-y-4">
           <Section title="เจ้าของทรัพย์ / ผู้ให้เช่า">
-            <select
+            <SearchSelect
               value={state.owner_id}
-              onChange={e => set('owner_id', e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">— เลือกเจ้าของทรัพย์ —</option>
-              {owners.map(o => (
-                <option key={o.id} value={o.id}>
-                  {displayName(o)}{o.phone ? ` · ${o.phone}` : ''}
-                </option>
-              ))}
-            </select>
+              onChange={v => set('owner_id', v)}
+              placeholder="— เลือกเจ้าของทรัพย์ —"
+              options={owners.map(o => ({
+                id: o.id,
+                label: displayName(o),
+                sub: o.phone ?? undefined,
+              }))}
+            />
           </Section>
 
           <Section title="ผู้เช่า / ลูกค้า">
-            <select
+            <SearchSelect
               value={state.customer_id}
-              onChange={e => set('customer_id', e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">— เลือกลูกค้า —</option>
-              {customers.map(c => (
-                <option key={c.id} value={c.id}>
-                  {displayName(c)}{c.phone ? ` · ${c.phone}` : ''}
-                </option>
-              ))}
-            </select>
+              onChange={v => set('customer_id', v)}
+              placeholder="— เลือกลูกค้า —"
+              options={customers.map(c => ({
+                id: c.id,
+                label: displayName(c),
+                sub: c.phone ?? undefined,
+              }))}
+            />
           </Section>
         </div>
       )}
@@ -607,15 +602,27 @@ interface FieldProps {
 
 function Field({ label, value, onChange, placeholder, type = 'text' }: FieldProps) {
   return (
-    <div>
+    <div className={type === 'date' ? 'col-span-full sm:col-span-1' : ''}>
       <Label>{label}</Label>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-      />
+      <div className="relative flex items-center">
+        <input
+          type={type}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition pr-8"
+        />
+        {type === 'date' && value && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="absolute right-2.5 text-gray-400 hover:text-gray-600"
+            title="ล้างวันที่"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
     </div>
   )
 }

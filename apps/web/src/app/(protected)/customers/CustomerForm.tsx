@@ -175,7 +175,23 @@ export default function CustomerForm({ initialData, customerId }: Props) {
       apply('district', result.district)
       apply('subdistrict', result.subdistrict)
       apply('zip', result.zip)
-      setOcrMessage(`กรอกข้อมูลอัตโนมัติ ${fields.length} ช่อง`)
+
+      // Auto-attach OCR image as id_card_url (eliminates double upload)
+      try {
+        const supabase = createClient()
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+        const path = `id-cards/${Date.now()}-${safeName}`
+        const { data: upData } = await supabase.storage.from('documents').upload(path, file, { upsert: true })
+        if (upData) {
+          const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(upData.path)
+          set('id_card_url', publicUrl)
+          setOcrMessage(`กรอกข้อมูลอัตโนมัติ ${fields.length} ช่อง · แนบรูปบัตรแล้ว`)
+        } else {
+          setOcrMessage(`กรอกข้อมูลอัตโนมัติ ${fields.length} ช่อง`)
+        }
+      } catch {
+        setOcrMessage(`กรอกข้อมูลอัตโนมัติ ${fields.length} ช่อง`)
+      }
     })
   }
 

@@ -133,8 +133,9 @@ export default function Sidebar({ profile }: SidebarProps) {
 
         <div className="p-3 border-t border-gray-100 space-y-0.5">
           <Link href="/profile"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
-            <span>⚙️</span> โปรไฟล์ของฉัน
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${isActive('/profile') ? 'bg-blue-600 text-white font-medium' : 'text-gray-600 hover:bg-gray-100'}`}>
+            <Settings className="w-4 h-4 flex-shrink-0" />
+            ตั้งค่า
           </Link>
           <button onClick={handleSignOut}
             className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-50 transition">

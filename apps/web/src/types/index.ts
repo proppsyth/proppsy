@@ -318,3 +318,17 @@ export function resolvePlan(plan?: string | null): Plan {
   if (plan === 'professional' || plan === 'business') return plan
   return 'starter'
 }
+
+export const ROOM_TYPE_LABELS: Record<string, string> = {
+  'Studio':   'Studio',
+  '1BR':      '1 Bedroom',
+  '2BR':      '2 Bedrooms',
+  '3BR':      '3 Bedrooms',
+  'Penthouse':'Penthouse',
+  'อื่นๆ':    'อื่นๆ',
+}
+
+export function formatRoomType(rt: string | null | undefined): string {
+  if (!rt) return ''
+  return ROOM_TYPE_LABELS[rt] ?? rt
+}

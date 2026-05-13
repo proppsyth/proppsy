@@ -168,7 +168,7 @@ export default function RegisterPage() {
     setLoading(true)
     const supabase = createClient()
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
@@ -183,8 +183,15 @@ export default function RegisterPage() {
 
     if (signUpError) {
       setError(signUpError.message.toLowerCase().includes('already registered')
-        ? 'อีเมลนี้ถูกใช้งานแล้ว'
+        ? 'อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่น หรือเข้าสู่ระบบ'
         : signUpError.message)
+      setLoading(false)
+      return
+    }
+
+    // Supabase returns success but empty identities when email is already registered
+    if (signUpData.user?.identities?.length === 0) {
+      setError('อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่น หรือเข้าสู่ระบบ')
       setLoading(false)
       return
     }
@@ -201,58 +208,63 @@ export default function RegisterPage() {
     setLoading(true)
     const supabase = createClient()
 
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email: form.email,
-      token: otp,
-      type: 'signup',
-    })
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: form.email,
+        token: otp,
+        type: 'signup',
+      })
 
-    if (verifyError) {
-      setError('รหัส OTP ไม่ถูกต้องหรือหมดอายุ กรุณาลองใหม่')
-      setLoading(false)
-      return
-    }
+      if (verifyError) {
+        setError('รหัส OTP ไม่ถูกต้องหรือหมดอายุ กรุณาลองใหม่')
+        setLoading(false)
+        return
+      }
 
-    // Upload ID card
-    let idCardUrl: string | null = null
-    if (idCardFile) {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const ext = idCardFile.name.split('.').pop() ?? 'jpg'
-        const path = `id-cards/${user.id}-${Date.now()}.${ext}`
-        const { data: upData } = await supabase.storage.from('documents').upload(path, idCardFile, { upsert: true })
-        if (upData) {
-          const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(upData.path)
-          idCardUrl = publicUrl
+      // Upload ID card
+      let idCardUrl: string | null = null
+      if (idCardFile) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const ext = idCardFile.name.split('.').pop() ?? 'jpg'
+          const path = `id-cards/${user.id}-${Date.now()}.${ext}`
+          const { data: upData } = await supabase.storage.from('documents').upload(path, idCardFile, { upsert: true })
+          if (upData) {
+            const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(upData.path)
+            idCardUrl = publicUrl
+          }
         }
       }
-    }
 
-    const result = await updateRegisterProfile({
-      name: getFullName(),
-      nickname: form.nickname || null,
-      phone: form.phone,
-      line_id: form.line_id || null,
-      position: form.position || null,
-      company_name: form.company_name || null,
-      address_no: form.address_no || null,
-      address_road: form.address_road || null,
-      province: form.province || null,
-      district: form.district || null,
-      subdistrict: form.subdistrict || null,
-      zip: form.zip || null,
-      id_card_url: idCardUrl,
-    })
+      const result = await updateRegisterProfile({
+        name: getFullName(),
+        nickname: form.nickname || null,
+        phone: form.phone,
+        line_id: form.line_id || null,
+        position: form.position || null,
+        company_name: form.company_name || null,
+        address_no: form.address_no || null,
+        address_road: form.address_road || null,
+        province: form.province || null,
+        district: form.district || null,
+        subdistrict: form.subdistrict || null,
+        zip: form.zip || null,
+        id_card_url: idCardUrl,
+      })
 
-    if (result.error) {
-      setError(result.error)
+      if (result.error) {
+        setError(result.error)
+        setLoading(false)
+        return
+      }
+
+      await supabase.auth.signOut()
+      setStep(3)
+    } catch {
+      setError('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง')
+    } finally {
       setLoading(false)
-      return
     }
-
-    await supabase.auth.signOut()
-    setStep(3)
-    setLoading(false)
   }
 
   async function handleResend() {
@@ -501,9 +513,10 @@ export default function RegisterPage() {
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-1">ลงทะเบียนสำเร็จ!</h2>
                 <p className="text-sm text-gray-500 leading-relaxed">
-                  บัญชีของคุณอยู่ในสถานะ <strong className="text-yellow-600">รอการอนุมัติ</strong><br />
-                  แอดมินจะตรวจสอบข้อมูลและแจ้งผลทางอีเมล<br />
-                  <span className="font-medium text-gray-700">{form.email}</span>
+                  บัญชีของคุณพร้อมใช้งานแล้ว<br />
+                  เข้าสู่ระบบด้วยอีเมล{' '}
+                  <span className="font-medium text-gray-700">{form.email}</span>{' '}
+                  ได้เลย
                 </p>
               </div>
               <Link href="/login"

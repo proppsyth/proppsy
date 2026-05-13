@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft, Pencil, Calendar, Phone } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
-import { ownerDisplayName, stockDisplayTitle, DOC_TYPE_LABELS, STATUS_LABELS } from '@/types'
+import { ownerDisplayName, stockDisplayTitle, DOC_TYPE_LABELS, STATUS_LABELS, formatRoomType } from '@/types'
 import type { Stock, StockStatus, ListingType } from '@/types'
 import PhotoGallery from './PhotoGallery'
 import DeleteStockButton from './DeleteStockButton'
@@ -134,7 +134,7 @@ export default async function StockDetailPage({
               {s.unit_name && <InfoItem label="ชื่อห้อง" value={s.unit_name} />}
               {s.building && <InfoItem label="อาคาร" value={s.building} />}
               {s.floor != null && <InfoItem label="ชั้น" value={`${s.floor}`} />}
-              {s.room_type && <InfoItem label="ประเภทห้อง" value={s.room_type} />}
+              {s.room_type && <InfoItem label="ประเภทห้อง" value={formatRoomType(s.room_type)} />}
               {s.size_sqm != null && <InfoItem label="ขนาด" value={`${s.size_sqm} ตร.ม.`} />}
               {s.view_direction && <InfoItem label="ทิศ" value={s.view_direction} />}
             </div>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Sparkles, X, Plus, Upload, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { ownerDisplayName } from '@/types'
+import { ownerDisplayName, formatRoomType } from '@/types'
 import type { Stock, Owner, Project } from '@/types'
 import { createStock, updateStock, parseStockTextWithEntities } from './actions'
 import type { StockInput } from './actions'
@@ -379,7 +379,7 @@ export default function StockForm({ owners, projects, initialData, stockId, allo
             <Label text="ประเภทห้อง" />
             <select value={form.room_type} onChange={setField('room_type')} className={INPUT_CLS}>
               <option value="">-- เลือก --</option>
-              {ROOM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              {ROOM_TYPES.map(t => <option key={t} value={t}>{formatRoomType(t)}</option>)}
             </select>
           </div>
           <div>

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { checkEmailExists } from './actions'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -15,6 +16,14 @@ export default function ForgotPasswordPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    const { exists } = await checkEmailExists(email)
+    if (!exists) {
+      setError('ไม่พบอีเมลนี้ในระบบ กรุณาตรวจสอบอีเมลของคุณ')
+      setLoading(false)
+      return
+    }
+
     const supabase = createClient()
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,

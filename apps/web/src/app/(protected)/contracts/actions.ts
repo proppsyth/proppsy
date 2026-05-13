@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import type { ContractDocType } from '@/types'
+import { resolvePlan, PLAN_LIMITS, type ContractDocType } from '@/types'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -67,6 +67,17 @@ export async function createContract(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const [{ data: profile }, { count: contractsThisMonth }] = await Promise.all([
+    supabase.from('profiles').select('plan').eq('id', user.id).single(),
+    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).gte('created_at', startOfMonth),
+  ])
+  const limits = PLAN_LIMITS[resolvePlan(profile?.plan)]
+  if (limits.maxContractsPerMonth !== null && (contractsThisMonth ?? 0) >= limits.maxContractsPerMonth) {
+    return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
+  }
 
   const id = await nextContractId()
 

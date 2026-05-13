@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { href: '/services', label: 'บริการ' },
   { href: '/news', label: 'ข่าวสาร' },
   { href: '/about', label: 'เกี่ยวกับเรา' },
+  { href: '/help', label: 'คู่มือ & FAQ' },
   { href: '/contact', label: 'ติดต่อเรา' },
 ]
 

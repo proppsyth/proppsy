@@ -39,6 +39,7 @@ export async function updateRegisterProfile(data: RegisterProfileData): Promise<
       subdistrict: data.subdistrict || null,
       zip: data.zip || null,
       id_card_url: data.id_card_url || null,
+      account_status: 'approved',
     })
     .eq('id', user.id)
 

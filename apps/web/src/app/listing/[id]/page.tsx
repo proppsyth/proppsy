@@ -5,6 +5,7 @@ import { ArrowLeft, Building2, Maximize, Layers, Phone, MessageCircle, MapPin, W
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import type { Stock } from '@/types'
+import { formatRoomType } from '@/types'
 import PublicNav from '@/components/shared/PublicNav'
 import PhotoGallery from '@/app/(protected)/stock/[id]/PhotoGallery'
 import ContactCard from './ContactCard'
@@ -42,7 +43,7 @@ export default async function PublicPropertyDetailPage({
     .select(`
       *,
       project:projects(name_th, name_en, developer, built_year, total_floors, facilities, bts_mrt, address_road, province, district),
-      agent:profiles(name, email, phone, line_id, logo_url)
+      agent:profiles(name, nickname, email, phone, line_id, logo_url)
     `)
     .eq('id', id)
     .eq('status', 'available')
@@ -52,7 +53,7 @@ export default async function PublicPropertyDetailPage({
 
   const stock = stockRaw as unknown as Stock & {
     project?: { name_th: string; name_en?: string; developer?: string; built_year?: number; total_floors?: number; facilities: string[]; bts_mrt: string[]; address_road?: string; province?: string; district?: string }
-    agent?: { name?: string; email?: string; phone?: string; line_id?: string; logo_url?: string }
+    agent?: { name?: string; nickname?: string; email?: string; phone?: string; line_id?: string; logo_url?: string }
   }
 
   const isRent = stock.listing_type !== 'sale'
@@ -82,7 +83,7 @@ export default async function PublicPropertyDetailPage({
               <div className="flex items-start gap-2 flex-wrap mb-3">
                 {isRent && <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-blue-100 text-blue-700">เช่า</span>}
                 {isSale && stock.listing_type !== 'rent' && <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-700">ขาย</span>}
-                {stock.room_type && <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-600">{stock.room_type}</span>}
+                {stock.room_type && <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-600">{formatRoomType(stock.room_type)}</span>}
               </div>
 
               <h1 className="text-xl font-bold text-gray-900 break-words">

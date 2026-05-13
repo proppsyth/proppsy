@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { resolvePlan, PLAN_LIMITS } from '@/types'
+import { checkAiQuota } from '@/lib/aiQuota'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -71,6 +73,15 @@ export async function createStock(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const [{ data: profile }, { count: stockCount }] = await Promise.all([
+    supabase.from('profiles').select('plan').eq('id', user.id).single(),
+    supabase.from('stock').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
+  ])
+  const limits = PLAN_LIMITS[resolvePlan(profile?.plan)]
+  if (limits.maxStock !== null && (stockCount ?? 0) >= limits.maxStock) {
+    return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxStock} ทรัพย์)` }
+  }
 
   const id = await nextStockId()
 
@@ -151,6 +162,19 @@ export async function parseStockTextWithEntities(
 ): Promise<ParseWithEntitiesResult | { error: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'ไม่พบ Gemini API key' }
+
+  {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+    const { data: profile } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
+    if (!PLAN_LIMITS[resolvePlan(profile?.plan)].ai) return { error: 'ฟีเจอร์ AI ต้องใช้แพ็กเกจ AI Pro ขึ้นไป' }
+  }
+
+  {
+    const { allowed, error: quotaErr } = await checkAiQuota()
+    if (!allowed) return { error: quotaErr ?? 'เกินโควต้า AI' }
+  }
 
   const prompt = `คุณเป็นผู้ช่วย AI ด้านอสังหาริมทรัพย์ไทย
 วิเคราะห์ข้อความลิสติ้งนี้และส่งคืน JSON ตามโครงสร้างต่อไปนี้เท่านั้น ไม่ต้องมีคำอธิบาย:
@@ -344,6 +368,19 @@ export async function parseStockText(
 ): Promise<AiParseResult | { error: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'ไม่พบ Gemini API key' }
+
+  {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+    const { data: profile } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
+    if (!PLAN_LIMITS[resolvePlan(profile?.plan)].ai) return { error: 'ฟีเจอร์ AI ต้องใช้แพ็กเกจ AI Pro ขึ้นไป' }
+  }
+
+  {
+    const { allowed, error: quotaErr } = await checkAiQuota()
+    if (!allowed) return { error: quotaErr ?? 'เกินโควต้า AI' }
+  }
 
   const prompt = `คุณเป็นผู้ช่วย AI ด้านอสังหาริมทรัพย์ไทย
 วิเคราะห์ข้อความลิสติ้งนี้และส่งคืน JSON ตามโครงสร้างต่อไปนี้เท่านั้น ไม่ต้องมีคำอธิบาย:

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 type Mode = 'login' | 'forgot'
@@ -13,6 +14,8 @@ export default function LoginClient({ redirectTo }: { redirectTo: string }) {
   const [mode, setMode] = useState<Mode>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [forgotSent, setForgotSent] = useState(false)
@@ -34,7 +37,7 @@ export default function LoginClient({ redirectTo }: { redirectTo: string }) {
         .from('profiles').select('account_status').eq('id', data.user.id).single()
 
       if (profile?.account_status === 'pending') {
-        setError('บัญชีของคุณยังรอการอนุมัติจากแอดมิน')
+        setError('บัญชีของคุณอยู่ระหว่างรอการอนุมัติแพ็กเกจ Business กรุณารอการติดต่อจากทีมงาน')
         await supabase.auth.signOut()
         setLoading(false)
         return
@@ -60,6 +63,8 @@ export default function LoginClient({ redirectTo }: { redirectTo: string }) {
     if (err) { setError('ไม่สามารถส่งอีเมลได้ กรุณาตรวจสอบอีเมลของคุณ'); return }
     setForgotSent(true)
   }
+
+  useEffect(() => { setMounted(true) }, [])
 
   function switchMode(m: Mode) {
     setMode(m)
@@ -147,14 +152,35 @@ export default function LoginClient({ redirectTo }: { redirectTo: string }) {
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">รหัสผ่าน</label>
-        <input
-          type="password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          autoComplete="current-password"
-          placeholder="••••••••"
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
+        {mounted ? (
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              className="w-full px-4 py-3 pr-11 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        ) : (
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            autoComplete="current-password"
+            placeholder="••••••••"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        )}
         <button
           type="button"
           onClick={() => switchMode('forgot')}
