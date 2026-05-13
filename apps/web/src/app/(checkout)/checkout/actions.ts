@@ -46,7 +46,8 @@ export async function createOmiseCharge(params: {
   if (!user) return { error: 'กรุณาเข้าสู่ระบบก่อน' }
 
   const { plan, billing, token } = params
-  const amount = PRICES[plan][billing]
+  const amount = PRICES[plan]?.[billing]
+  if (!amount) return { error: 'แพ็กเกจไม่ถูกต้อง' }
   const description = `${PLAN_LABELS[plan]} (${billing === 'yearly' ? 'รายปี' : 'รายเดือน'})`
 
   const resp = await fetch('https://api.omise.co/charges', {
@@ -98,7 +99,8 @@ export async function createPromptPayCharge(params: {
   if (!user) return { error: 'กรุณาเข้าสู่ระบบก่อน' }
 
   const { plan, billing } = params
-  const amount = PRICES[plan][billing]
+  const amount = PRICES[plan]?.[billing]
+  if (!amount) return { error: 'แพ็กเกจไม่ถูกต้อง' }
   const auth = authHeader(secretKey)
 
   // 1. Create PromptPay source

@@ -8,7 +8,9 @@ const nextConfig = {
   transpilePackages: ["@workspace/ui"],
   serverExternalPackages: ['@react-pdf/renderer'],
   experimental: {
-    serverActionsBodySizeLimit: '10mb',
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
   },
   turbopack: {
     root: path.resolve(__dirname, '../..'),
