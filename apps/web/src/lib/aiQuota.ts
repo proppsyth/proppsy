@@ -2,39 +2,54 @@
 import { createClient } from '@/lib/supabase/server'
 import { resolvePlan, PLAN_LIMITS } from '@/types'
 
-// Starter plan = 0 (blocked by PLAN_LIMITS.ai), paid plans get daily quota
-const DAILY_QUOTA: Record<string, number> = {
-  professional: 30,
-  business: 100,
+export type AiQuotaInfo = { used: number; limit: number }
+
+function resolveLimit(plan?: string | null, planExpiresAt?: string | null): number {
+  const resolved = resolvePlan(plan)
+  const base = PLAN_LIMITS[resolved].aiCallsPerMonth
+  if (planExpiresAt && new Date(planExpiresAt) < new Date() && resolved !== 'starter') return 0
+  return base
 }
 
-export async function checkAiQuota(): Promise<{ allowed: boolean; error?: string }> {
+export async function getAiQuota(): Promise<AiQuotaInfo> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { allowed: false, error: 'ไม่ได้รับอนุญาต' }
+  if (!user) return { used: 0, limit: 0 }
 
-  const { data: profile } = await supabase
+  const { data: p } = await supabase
     .from('profiles')
-    .select('plan, ai_calls_today, ai_calls_date')
+    .select('plan, plan_expires_at, ai_calls_this_month, ai_calls_month')
     .eq('id', user.id)
     .single()
 
-  const plan = resolvePlan(profile?.plan)
-  if (!PLAN_LIMITS[plan].ai) return { allowed: false, error: 'ฟีเจอร์ AI ต้องใช้แพ็กเกจ AI Pro ขึ้นไป' }
+  const limit = resolveLimit(p?.plan, p?.plan_expires_at)
+  const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
+  const used = (p?.ai_calls_month ?? '').slice(0, 7) === currentMonth
+    ? (p?.ai_calls_this_month ?? 0)
+    : 0
 
-  const quota = DAILY_QUOTA[plan] ?? 30
-  const todayStr = new Date().toLocaleDateString('en-CA')
-  const callsToday = profile?.ai_calls_date === todayStr ? (profile.ai_calls_today ?? 0) : 0
+  return { used, limit }
+}
 
-  if (callsToday >= quota) {
-    return { allowed: false, error: `เกินโควต้า AI วันนี้แล้ว (${quota} ครั้ง/วัน) กรุณาลองใหม่พรุ่งนี้` }
+export async function checkAiQuota(): Promise<{ allowed: boolean; used: number; limit: number; error?: string }> {
+  const quota = await getAiQuota()
+  if (quota.limit === 0) {
+    return { ...quota, allowed: false, error: 'ไม่มีโควต้า AI กรุณาอัปเกรดแพ็กเกจ' }
   }
+  if (quota.used >= quota.limit) {
+    return { ...quota, allowed: false, error: `เกินโควต้า AI เดือนนี้แล้ว (${quota.limit} ครั้ง/เดือน)` }
+  }
+  return { ...quota, allowed: true }
+}
 
-  // Increment counter
-  await supabase.from('profiles').update({
-    ai_calls_today: callsToday + 1,
-    ai_calls_date: todayStr,
-  }).eq('id', user.id)
+export async function incrementAiUsage(): Promise<{ ok: boolean; used?: number; limit?: number; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'ไม่ได้รับอนุญาต' }
 
-  return { allowed: true }
+  const { data, error } = await supabase.rpc('increment_ai_usage', { p_user_id: user.id })
+  if (error) return { ok: false, error: error.message }
+  if (data?.error) return { ok: false, error: data.error as string }
+
+  return { ok: true, used: data?.used as number, limit: data?.limit as number }
 }

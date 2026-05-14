@@ -9,6 +9,9 @@ import { createStock, updateStock, parseStockTextWithEntities } from './actions'
 import type { StockInput } from './actions'
 import { usePropertyImages } from '@/hooks/useUpload'
 import ImageUploader from '@/components/shared/ImageUploader'
+import { useAiQuota } from '@/hooks/useAiQuota'
+import { AiQuotaBadge } from '@/components/shared/AiQuotaBadge'
+import { AiLimitModal } from '@/components/shared/AiLimitModal'
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -150,6 +153,8 @@ export default function StockForm({ owners, projects, initialData, stockId, allo
   const [aiMsg, setAiMsg] = useState('')
   const [isSaving, startSave] = useTransition()
   const [isAIParsing, startAIParse] = useTransition()
+  const [showLimitModal, setShowLimitModal] = useState(false)
+  const { quota, refresh: refreshQuota, isExhausted } = useAiQuota()
 
   const photoState = usePropertyImages({
     stockId,
@@ -231,6 +236,7 @@ export default function StockForm({ owners, projects, initialData, stockId, allo
       setAiEntities({ ownerDisplay: owner_display, ownerCreated: owner_created, projectDisplay: project_display, projectCreated: project_created })
       setAiMsg(`✓ เติมข้อมูล ${filled} ฟิลด์แล้ว`)
       setAiOpen(false)
+      refreshQuota()
     })
   }
 
@@ -260,15 +266,6 @@ export default function StockForm({ owners, projects, initialData, stockId, allo
     <form onSubmit={handleSubmit} className="space-y-4 max-w-4xl">
 
       {/* ── AI Section ────────────────────────────────────── */}
-      {!allowAI ? (
-        <div className="bg-gray-50 border border-gray-200 rounded-xl px-5 py-4 flex items-center gap-3">
-          <Sparkles className="w-4 h-4 text-gray-300 flex-shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-gray-400">AI Smart Paste</p>
-            <p className="text-xs text-gray-400">ฟีเจอร์นี้รองรับเฉพาะแพ็กเกจ Professional ขึ้นไป</p>
-          </div>
-        </div>
-      ) : (
       <div className="bg-gradient-to-r from-violet-50 to-blue-50 border border-violet-200 rounded-xl overflow-hidden">
         <button
           type="button"
@@ -280,7 +277,10 @@ export default function StockForm({ owners, projects, initialData, stockId, allo
             วิเคราะห์ข้อความด้วย AI
             <span className="text-xs font-normal text-violet-500">วาง/พิมพ์ประกาศแล้วให้ AI เติมฟอร์มให้อัตโนมัติ</span>
           </span>
-          {aiOpen ? <ChevronUp className="w-4 h-4 text-violet-500" /> : <ChevronDown className="w-4 h-4 text-violet-500" />}
+          <div className="flex items-center gap-2">
+            {quota && !aiOpen && <AiQuotaBadge used={quota.used} limit={quota.limit} />}
+            {aiOpen ? <ChevronUp className="w-4 h-4 text-violet-500" /> : <ChevronDown className="w-4 h-4 text-violet-500" />}
+          </div>
         </button>
 
         {aiOpen && (
@@ -292,16 +292,20 @@ export default function StockForm({ owners, projects, initialData, stockId, allo
               placeholder="วางข้อความประกาศที่นี่... เช่น ให้เช่าคอนโด Lumpini Suite ชั้น 15 ห้อง 502 ขนาด 35 ตร.ม. ราคา 15,000 บาท/เดือน..."
               className="w-full px-3 py-2.5 border border-violet-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white resize-none"
             />
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <button
                 type="button"
-                onClick={handleAIParse}
+                onClick={() => {
+                  if (isExhausted) { setShowLimitModal(true); return }
+                  handleAIParse()
+                }}
                 disabled={isAIParsing || !aiText.trim()}
-                className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white text-sm font-medium rounded-lg transition"
+                className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-lg transition disabled:opacity-50 ${isExhausted ? 'bg-gray-400 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-700'}`}
               >
                 {isAIParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 {isAIParsing ? 'กำลังวิเคราะห์...' : 'วิเคราะห์'}
               </button>
+              {quota && <AiQuotaBadge used={quota.used} limit={quota.limit} />}
               {aiMsg && (
                 <span className={`text-sm font-medium ${aiMsg.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>
                   {aiMsg}
@@ -321,6 +325,8 @@ export default function StockForm({ owners, projects, initialData, stockId, allo
           </div>
         )}
       </div>
+      {showLimitModal && quota && (
+        <AiLimitModal quota={quota} onClose={() => setShowLimitModal(false)} />
       )}
 
       {/* ── Project & Unit ──────────────────────────────────── */}

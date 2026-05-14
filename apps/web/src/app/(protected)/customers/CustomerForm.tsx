@@ -11,6 +11,9 @@ import type { CustomerInput } from './actions'
 import AddressSelector from '@/components/shared/AddressSelector'
 import { useDocumentUpload } from '@/hooks/useUpload'
 import DocumentUploader from '@/components/shared/DocumentUploader'
+import { useAiQuota } from '@/hooks/useAiQuota'
+import { AiQuotaBadge } from '@/components/shared/AiQuotaBadge'
+import { AiLimitModal } from '@/components/shared/AiLimitModal'
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -137,6 +140,8 @@ export default function CustomerForm({ initialData, customerId }: Props) {
   const [isOcrPending, startOcr] = useTransition()
   const [ocrMessage, setOcrMessage] = useState('')
 
+  const [showLimitModal, setShowLimitModal] = useState(false)
+  const { quota, refresh: refreshQuota, isExhausted } = useAiQuota()
   const ocrInputRef = useRef<HTMLInputElement>(null)
 
   const idCardState = useDocumentUpload({
@@ -180,6 +185,7 @@ export default function CustomerForm({ initialData, customerId }: Props) {
 
       // Upload the scanned image as the id card
       await idCardState.upload(file)
+      refreshQuota()
       setOcrMessage(`กรอกข้อมูลอัตโนมัติ ${fields.length} ช่อง · แนบรูปบัตรแล้ว`)
     })
   }
@@ -212,9 +218,12 @@ export default function CustomerForm({ initialData, customerId }: Props) {
     <div className="space-y-5">
       {/* OCR */}
       <div className="bg-emerald-50 border border-emerald-200 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 bg-emerald-100/60 border-b border-emerald-200 flex items-center gap-2">
-          <ScanLine className="w-4 h-4 text-emerald-700" />
-          <span className="text-sm font-semibold text-emerald-800">OCR บัตรประชาชน</span>
+        <div className="px-4 py-3 bg-emerald-100/60 border-b border-emerald-200 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <ScanLine className="w-4 h-4 text-emerald-700" />
+            <span className="text-sm font-semibold text-emerald-800">OCR บัตรประชาชน</span>
+          </div>
+          {quota && <AiQuotaBadge used={quota.used} limit={quota.limit} />}
         </div>
         <div className="p-4 space-y-3">
           <p className="text-xs text-emerald-700">ถ่ายภาพหรืออัปโหลดบัตรประชาชน ระบบจะกรอกข้อมูลให้อัตโนมัติ</p>
@@ -231,9 +240,12 @@ export default function CustomerForm({ initialData, customerId }: Props) {
           />
           <button
             type="button"
-            onClick={() => ocrInputRef.current?.click()}
+            onClick={() => {
+              if (isExhausted) { setShowLimitModal(true); return }
+              ocrInputRef.current?.click()
+            }}
             disabled={isOcrPending}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50"
+            className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-lg transition disabled:opacity-50 ${isExhausted ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
           >
             {isOcrPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanLine className="w-4 h-4" />}
             {isOcrPending ? 'กำลังอ่านข้อมูล...' : 'สแกนบัตรประชาชน'}
@@ -245,6 +257,9 @@ export default function CustomerForm({ initialData, customerId }: Props) {
           )}
         </div>
       </div>
+      {showLimitModal && quota && (
+        <AiLimitModal quota={quota} onClose={() => setShowLimitModal(false)} />
+      )}
 
       {/* ข้อมูลส่วนตัว */}
       <Section title="ข้อมูลส่วนตัว">

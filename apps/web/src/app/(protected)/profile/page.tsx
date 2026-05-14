@@ -27,10 +27,18 @@ export default async function ProfilePage() {
 
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
   const [{ count: stockCount }, { count: contractsThisMonth }] = await Promise.all([
     supabase.from('stock').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
     supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).gte('created_at', startOfMonth),
   ])
+
+  const planExpired = profile.plan_expires_at && new Date(profile.plan_expires_at) < now
+  const aiLimit = (planExpired && plan !== 'starter') ? 0 : limits.aiCallsPerMonth
+  const aiUsed = (profile.ai_calls_month ?? '').startsWith(currentMonthStr)
+    ? (profile.ai_calls_this_month ?? 0)
+    : 0
 
   return (
     <div className="p-4 lg:p-8 pt-6 max-w-4xl">
@@ -70,8 +78,16 @@ export default async function ProfilePage() {
             </p>
           </div>
           <div className="bg-gray-50 rounded-xl p-3 text-center">
-            <p className="text-lg font-bold text-gray-900">{limits.ai ? '✓' : '✗'}</p>
-            <p className="text-xs text-gray-500">AI Smart Paste</p>
+            <p className={`text-lg font-bold ${aiUsed >= aiLimit ? 'text-red-500' : 'text-gray-900'}`}>
+              {aiUsed}/{aiLimit}
+            </p>
+            <p className="text-xs text-gray-500">AI เดือนนี้</p>
+            <div className="mt-1.5 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${aiUsed >= aiLimit ? 'bg-red-400' : aiUsed / aiLimit >= 0.7 ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                style={{ width: `${aiLimit > 0 ? Math.min((aiUsed / aiLimit) * 100, 100) : 100}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { resolvePlan, PLAN_LIMITS } from '@/types'
-import { checkAiQuota } from '@/lib/aiQuota'
+import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -165,14 +165,6 @@ export async function parseStockTextWithEntities(
   if (!apiKey) return { error: 'ไม่พบ Gemini API key' }
 
   {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { error: 'ไม่ได้รับอนุญาต' }
-    const { data: profile } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
-    if (!PLAN_LIMITS[resolvePlan(profile?.plan)].ai) return { error: 'ฟีเจอร์ AI ต้องใช้แพ็กเกจ AI Pro ขึ้นไป' }
-  }
-
-  {
     const { allowed, error: quotaErr } = await checkAiQuota()
     if (!allowed) return { error: quotaErr ?? 'เกินโควต้า AI' }
   }
@@ -229,6 +221,7 @@ ${rawText.slice(0, 4000)}`
   }
 
   if (!raw) return { error: 'วิเคราะห์ข้อความไม่สำเร็จ' }
+  await incrementAiUsage()
 
   const { owner_name, owner_phone, owner_line_id, ...stockData } = raw
   const result: ParseWithEntitiesResult = {
@@ -371,14 +364,6 @@ export async function parseStockText(
   if (!apiKey) return { error: 'ไม่พบ Gemini API key' }
 
   {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { error: 'ไม่ได้รับอนุญาต' }
-    const { data: profile } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
-    if (!PLAN_LIMITS[resolvePlan(profile?.plan)].ai) return { error: 'ฟีเจอร์ AI ต้องใช้แพ็กเกจ AI Pro ขึ้นไป' }
-  }
-
-  {
     const { allowed, error: quotaErr } = await checkAiQuota()
     if (!allowed) return { error: quotaErr ?? 'เกินโควต้า AI' }
   }
@@ -428,7 +413,9 @@ ${rawText.slice(0, 4000)}`
     const data = await res.json()
     const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    return JSON.parse(cleaned || '{}') as AiParseResult
+    const result = JSON.parse(cleaned || '{}') as AiParseResult
+    await incrementAiUsage()
+    return result
   } catch (err) {
     console.error('Gemini parse error:', err)
     return { error: 'วิเคราะห์ข้อความไม่สำเร็จ กรุณาลองใหม่' }

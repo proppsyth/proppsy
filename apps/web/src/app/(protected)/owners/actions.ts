@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { checkAiQuota } from '@/lib/aiQuota'
+import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -161,7 +161,9 @@ export async function parseIdCard(
     const data = await res.json()
     const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    return JSON.parse(cleaned || '{}') as OcrResult
+    const result = JSON.parse(cleaned || '{}') as OcrResult
+    await incrementAiUsage()
+    return result
   } catch (err) {
     console.error('OCR error:', err)
     return { error: 'อ่านบัตรประชาชนไม่สำเร็จ กรุณาลองใหม่' }

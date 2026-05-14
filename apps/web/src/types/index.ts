@@ -67,6 +67,8 @@ export interface Profile {
   bank_account_name?: string
   plan?: Plan
   plan_expires_at?: string
+  ai_calls_this_month?: number
+  ai_calls_month?: string
   created_at: string
   updated_at: string
 }
@@ -326,10 +328,10 @@ export const PLAN_META: Record<Plan, { label: string; color: string; badge: stri
   business:     { label: 'Business',     color: 'purple', badge: 'bg-purple-100 text-purple-700' },
 }
 
-export const PLAN_LIMITS: Record<Plan, { maxStock: number | null; maxContractsPerMonth: number | null; ai: boolean }> = {
-  starter:      { maxStock: 10, maxContractsPerMonth: 5, ai: false },
-  professional: { maxStock: null, maxContractsPerMonth: null, ai: true },
-  business:     { maxStock: null, maxContractsPerMonth: null, ai: true },
+export const PLAN_LIMITS: Record<Plan, { maxStock: number | null; maxContractsPerMonth: number | null; aiCallsPerMonth: number }> = {
+  starter:      { maxStock: 10, maxContractsPerMonth: 5,    aiCallsPerMonth: 10 },
+  professional: { maxStock: null, maxContractsPerMonth: null, aiCallsPerMonth: 300 },
+  business:     { maxStock: null, maxContractsPerMonth: null, aiCallsPerMonth: 300 },
 }
 
 export function resolvePlan(plan?: string | null): Plan {

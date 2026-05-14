@@ -50,7 +50,7 @@ export default async function NewStockPage() {
       <StockForm
         owners={owners ?? []}
         projects={projects ?? []}
-        allowAI={limits.ai}
+        allowAI={limits.aiCallsPerMonth > 0}
       />
     </div>
   )
