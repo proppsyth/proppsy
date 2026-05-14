@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Search, LayoutGrid, List, Home } from 'lucide-react'
+import { Search, LayoutGrid, List, Home, Globe } from 'lucide-react'
 import { ownerDisplayName, stockDisplayTitle } from '@/types'
 import type { Stock, StockStatus, ListingType } from '@/types'
 
@@ -139,6 +139,18 @@ function StockGridCard({ stock: s }: { stock: Stock }) {
         <span className={`absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[s.status]}`}>
           {STATUS_LABELS[s.status]}
         </span>
+        {s.is_premium && (
+          <span className="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full font-bold text-white animate-hot-glow"
+            style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}>
+            HOT
+          </span>
+        )}
+        {s.is_published && !s.is_premium && (
+          <span className="absolute top-2 left-2 flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full font-medium bg-green-600/90 text-white">
+            <Globe className="w-2.5 h-2.5" />
+            เผยแพร่
+          </span>
+        )}
       </div>
 
       {/* Content */}
@@ -205,9 +217,23 @@ function StockListRow({ stock: s }: { stock: Stock }) {
             <p className="text-xs text-gray-400">{s.id}</p>
             <p className="font-medium text-gray-900 text-sm truncate">{stockDisplayTitle(s)}</p>
           </div>
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${STATUS_COLORS[s.status]}`}>
-            {STATUS_LABELS[s.status]}
-          </span>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {s.is_premium && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold text-white animate-hot-glow"
+                style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}>
+                HOT
+              </span>
+            )}
+            {s.is_published && !s.is_premium && (
+              <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-green-100 text-green-700">
+                <Globe className="w-2.5 h-2.5" />
+                เผยแพร่
+              </span>
+            )}
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[s.status]}`}>
+              {STATUS_LABELS[s.status]}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 mt-1 flex-wrap">

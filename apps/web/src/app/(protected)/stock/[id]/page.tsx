@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, Pencil, Calendar, Phone } from 'lucide-react'
+import { ArrowLeft, Pencil, Calendar, Phone, Globe } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { ownerDisplayName, stockDisplayTitle, DOC_TYPE_LABELS, STATUS_LABELS, formatRoomType } from '@/types'
 import type { Stock, StockStatus, ListingType } from '@/types'
 import PhotoGallery from './PhotoGallery'
 import DeleteStockButton from './DeleteStockButton'
+import PublishActions from './PublishActions'
 
 export const metadata: Metadata = { title: 'รายละเอียดทรัพย์' }
 
@@ -38,18 +39,26 @@ export default async function StockDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: stock } = await supabase
-    .from('stock')
-    .select('*, owner:owners(*), project:projects(*)')
-    .eq('id', id)
-    .eq('agent_uid', user.id)
-    .single()
+  const [{ data: stock }, { data: credit }] = await Promise.all([
+    supabase
+      .from('stock')
+      .select('*, owner:owners(*), project:projects(*)')
+      .eq('id', id)
+      .eq('agent_uid', user.id)
+      .single(),
+    supabase
+      .from('credits')
+      .select('balance')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+  ])
 
   if (!stock) notFound()
 
   const s = stock as unknown as Stock
   const owner = s.owner
   const project = s.project
+  const creditBalance = credit?.balance ?? 0
 
   const contractEndDate = s.contract_end_date
     ? new Date(s.contract_end_date).toLocaleDateString('th-TH', {
@@ -83,10 +92,22 @@ export default async function StockDetailPage({
               <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-600">
                 {LISTING_LABELS[s.listing_type]}
               </span>
+              {s.is_published && (
+                <span className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-700">
+                  <Globe className="w-3 h-3" />
+                  เผยแพร่แล้ว
+                </span>
+              )}
             </div>
           </div>
 
-          <div className="flex items-start gap-2 flex-shrink-0">
+          <div className="flex items-start gap-2 flex-shrink-0 flex-wrap justify-end">
+            <PublishActions
+              stockId={s.id}
+              isPublished={s.is_published ?? false}
+              isPremium={s.is_premium ?? false}
+              currentBalance={creditBalance}
+            />
             <Link
               href={`/stock/${s.id}/edit`}
               className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition"
