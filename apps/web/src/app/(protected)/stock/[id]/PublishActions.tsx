@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Globe, GlobeLock } from 'lucide-react'
+import { Globe, GlobeLock, AlertCircle } from 'lucide-react'
 import PublishModal from '@/components/credits/PublishModal'
 import UpsellModal from '@/components/credits/UpsellModal'
 import HotBadge from '@/components/credits/HotBadge'
@@ -12,10 +12,11 @@ interface Props {
   stockId: string
   isPublished: boolean
   isPremium: boolean
+  status: string
   currentBalance: number
 }
 
-export default function PublishActions({ stockId, isPublished, isPremium, currentBalance }: Props) {
+export default function PublishActions({ stockId, isPublished, isPremium, status, currentBalance }: Props) {
   const router = useRouter()
   const [showPublish, setShowPublish] = useState(false)
   const [showUpsell, setShowUpsell] = useState(false)
@@ -42,6 +43,16 @@ export default function PublishActions({ stockId, isPublished, isPremium, curren
           <GlobeLock className="w-3.5 h-3.5" />
           {unpublishing ? '...' : 'ถอดออก'}
         </button>
+      </div>
+    )
+  }
+
+  if (status !== 'available') {
+    return (
+      <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-400 text-sm font-medium rounded-lg cursor-not-allowed"
+        title="เผยแพร่ได้เฉพาะทรัพย์สถานะ 'ว่าง' เท่านั้น">
+        <AlertCircle className="w-3.5 h-3.5" />
+        เผยแพร่ไม่ได้
       </div>
     )
   }

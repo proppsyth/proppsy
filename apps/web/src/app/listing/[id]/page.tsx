@@ -46,6 +46,7 @@ export default async function PublicPropertyDetailPage({
       agent:profiles(name, nickname, email, phone, line_id, logo_url)
     `)
     .eq('id', id)
+    .eq('is_published', true)
     .eq('status', 'available')
     .single()
 
@@ -84,6 +85,14 @@ export default async function PublicPropertyDetailPage({
                 {isRent && <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-blue-100 text-blue-700">เช่า</span>}
                 {isSale && stock.listing_type !== 'rent' && <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-700">ขาย</span>}
                 {stock.room_type && <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-600">{formatRoomType(stock.room_type)}</span>}
+                {stock.is_premium && (
+                  <span
+                    className="text-xs px-2.5 py-1 rounded-full font-bold text-white animate-hot-glow"
+                    style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}
+                  >
+                    HOT
+                  </span>
+                )}
               </div>
 
               <h1 className="text-xl font-bold text-gray-900 break-words">

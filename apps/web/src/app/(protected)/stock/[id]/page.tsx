@@ -106,6 +106,7 @@ export default async function StockDetailPage({
               stockId={s.id}
               isPublished={s.is_published ?? false}
               isPremium={s.is_premium ?? false}
+              status={s.status}
               currentBalance={creditBalance}
             />
             <Link

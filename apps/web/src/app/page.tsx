@@ -97,9 +97,11 @@ export default async function PublicListingPage({
 
   let query = supabase
     .from('stock')
-    .select('id, unit_no, room_type, size_sqm, floor, rent_price, sale_price, listing_type, photo_urls, project_name, project_id, project:projects(province, district, bts_mrt)')
+    .select('id, unit_no, room_type, size_sqm, floor, rent_price, sale_price, listing_type, photo_urls, photo_thumb_urls, project_name, project_id, is_premium, project:projects(province, district, bts_mrt)')
     .eq('status', 'available')
-    .order('created_at', { ascending: false })
+    .eq('is_published', true)
+    .order('is_premium', { ascending: false })
+    .order('published_at', { ascending: false })
 
   if (q && q.trim()) query = query.ilike('project_name', `%${q.trim()}%`)
   if (listing_type === 'rent') query = query.or('listing_type.eq.rent,listing_type.eq.both')
@@ -301,7 +303,7 @@ export default async function PublicListingPage({
 }
 
 function PropertyCard({ stock }: { stock: Stock & { project?: { province?: string; district?: string } | null } }) {
-  const photo = stock.photo_urls?.[0]
+  const photo = stock.photo_thumb_urls?.[0] ?? stock.photo_urls?.[0]
   const isRent = stock.listing_type !== 'sale'
   const isSale = stock.listing_type !== 'rent'
   const price = stock.listing_type === 'sale' ? stock.sale_price : stock.rent_price
@@ -310,7 +312,9 @@ function PropertyCard({ stock }: { stock: Stock & { project?: { province?: strin
   return (
     <Link
       href={`/listing/${stock.id}`}
-      className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow block"
+      className={`group bg-white rounded-2xl overflow-hidden border shadow-sm hover:shadow-md transition-shadow block ${
+        stock.is_premium ? 'border-orange-200 ring-1 ring-orange-200' : 'border-gray-100'
+      }`}
     >
       <div className="relative aspect-[4/3] bg-gray-100">
         {photo ? (
@@ -326,6 +330,14 @@ function PropertyCard({ stock }: { stock: Stock & { project?: { province?: strin
           {isRent && <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/90 text-white backdrop-blur-sm">เช่า</span>}
           {isSale && stock.listing_type !== 'rent' && <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-500/90 text-white backdrop-blur-sm">ขาย</span>}
         </div>
+        {stock.is_premium && (
+          <span
+            className="absolute top-2 right-2 text-[11px] px-2.5 py-0.5 rounded-full font-bold text-white animate-hot-glow"
+            style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}
+          >
+            HOT
+          </span>
+        )}
       </div>
       <div className="p-4">
         {price != null && (

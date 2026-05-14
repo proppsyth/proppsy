@@ -77,13 +77,14 @@ export async function publishStock(
 
   const { data: stock } = await supabase
     .from('stock')
-    .select('id, is_published')
+    .select('id, is_published, status')
     .eq('id', stockId)
     .eq('agent_uid', user.id)
     .single()
 
   if (!stock) return { error: 'ไม่พบทรัพย์หรือไม่มีสิทธิ์' }
   if (stock.is_published) return { error: 'ทรัพย์นี้เผยแพร่แล้ว' }
+  if (stock.status !== 'available') return { error: 'สามารถเผยแพร่ได้เฉพาะทรัพย์ที่มีสถานะ "ว่าง" เท่านั้น' }
 
   const cost = CREDIT_COST[tier]
   const desc = tier === 'premium'
