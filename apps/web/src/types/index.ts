@@ -17,6 +17,19 @@ export type ContractDocType =
 export type PaymentMethod = 'cash' | 'transfer' | 'cheque'
 export type ContractStatus = 'draft' | 'sent' | 'signed' | 'cancelled'
 export type CustomerSource = 'line_oa' | 'referral' | 'walk_in' | 'online'
+export type CreditTransactionType = 'grant' | 'topup' | 'spend' | 'reset' | 'assign' | 'expire'
+
+export interface CreditTransaction {
+  id: string
+  user_id: string
+  amount: number
+  balance_after: number
+  type: CreditTransactionType
+  description: string | null
+  reference_id: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
 
 export interface Permissions {
   stock: boolean
@@ -163,6 +176,11 @@ export interface Stock {
   facilities: string[]
   status: StockStatus
   photo_urls: string[]
+  photo_thumb_urls?: string[]
+  is_published?: boolean
+  is_premium?: boolean
+  published_at?: string
+  premium_expires_at?: string
   notes?: string
   raw_text?: string
   contract_end_date?: string

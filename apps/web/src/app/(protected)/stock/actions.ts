@@ -27,6 +27,7 @@ export type StockInput = {
   facilities: string[]
   status: string
   photo_urls: string[]
+  photo_thumb_urls?: string[]
   notes?: string
   contract_end_date?: string
 }

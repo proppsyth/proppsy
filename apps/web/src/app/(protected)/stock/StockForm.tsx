@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useTransition, useRef } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import { Sparkles, X, Plus, Upload, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { Sparkles, X, Plus, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { ownerDisplayName, formatRoomType } from '@/types'
 import type { Stock, Owner, Project } from '@/types'
 import { createStock, updateStock, parseStockTextWithEntities } from './actions'
 import type { StockInput } from './actions'
+import { usePropertyImages } from '@/hooks/useUpload'
+import ImageUploader from '@/components/shared/ImageUploader'
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -59,7 +59,6 @@ interface FormState {
   furniture: string[]
   facilities: string[]
   status: string
-  photo_urls: string[]
   notes: string
   contract_end_date: string
 }
@@ -71,7 +70,7 @@ const DEFAULT: FormState = {
   listing_type: 'rent', rent_price: '', sale_price: '',
   deposit: '2', contract_term: '12',
   furniture: [], facilities: [], status: 'available',
-  photo_urls: [], notes: '', contract_end_date: '',
+  notes: '', contract_end_date: '',
 }
 
 function stockToForm(s: Stock): FormState {
@@ -94,7 +93,6 @@ function stockToForm(s: Stock): FormState {
     furniture: s.furniture ?? [],
     facilities: s.facilities ?? [],
     status: s.status ?? 'available',
-    photo_urls: s.photo_urls ?? [],
     notes: s.notes ?? '',
     contract_end_date: s.contract_end_date ?? '',
   }
@@ -122,7 +120,7 @@ function toInput(f: FormState): StockInput {
     furniture: f.furniture,
     facilities: f.facilities,
     status: f.status || 'available',
-    photo_urls: f.photo_urls,
+    photo_urls: [],
     notes: f.notes || undefined,
     contract_end_date: f.contract_end_date || undefined,
   }
@@ -140,7 +138,6 @@ interface Props {
 
 export default function StockForm({ owners, projects, initialData, stockId, allowAI = true }: Props) {
   const router = useRouter()
-  const fileRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState<FormState>(() =>
     initialData ? stockToForm(initialData) : DEFAULT
   )
@@ -148,15 +145,21 @@ export default function StockForm({ owners, projects, initialData, stockId, allo
   const [localProjects, setLocalProjects] = useState<ProjectOption[]>(projects)
   const [aiEntities, setAiEntities] = useState<{ ownerDisplay?: string; ownerCreated?: boolean; projectDisplay?: string; projectCreated?: boolean } | null>(null)
   const [error, setError] = useState('')
-  const [uploading, setUploading] = useState(false)
   const [aiOpen, setAiOpen] = useState(!stockId)
   const [aiText, setAiText] = useState('')
   const [aiMsg, setAiMsg] = useState('')
   const [isSaving, startSave] = useTransition()
   const [isAIParsing, startAIParse] = useTransition()
 
+  const photoState = usePropertyImages({
+    stockId,
+    initialMainUrls: initialData?.photo_urls,
+    initialThumbUrls: initialData?.photo_thumb_urls,
+  })
+
   const isEdit = !!stockId
-  const busy = isSaving || uploading
+  const uploadBusy = photoState.progress.phase === 'processing' || photoState.progress.phase === 'uploading'
+  const busy = isSaving || uploadBusy
 
   // ── helpers
   function set<K extends keyof FormState>(key: K, val: FormState[K]) {
@@ -231,34 +234,15 @@ export default function StockForm({ owners, projects, initialData, stockId, allo
     })
   }
 
-  // ── photo upload
-  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files
-    if (!files?.length) return
-    setUploading(true)
-    const supabase = createClient()
-    const newUrls: string[] = []
-    for (const file of Array.from(files)) {
-      const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const { error: upErr } = await supabase.storage
-        .from('stock-photos')
-        .upload(path, file, { contentType: file.type })
-      if (!upErr) {
-        const { data } = supabase.storage.from('stock-photos').getPublicUrl(path)
-        newUrls.push(data.publicUrl)
-      }
-    }
-    setForm(f => ({ ...f, photo_urls: [...f.photo_urls, ...newUrls] }))
-    setUploading(false)
-    e.target.value = ''
-  }
-
   // ── submit
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    const input = toInput(form)
+    const input: StockInput = {
+      ...toInput(form),
+      photo_urls: photoState.mainUrls,
+      photo_thumb_urls: photoState.thumbUrls,
+    }
     startSave(async () => {
       if (isEdit) {
         const res = await updateStock(stockId!, input)
@@ -472,38 +456,7 @@ export default function StockForm({ owners, projects, initialData, stockId, allo
 
       {/* ── Photos ───────────────────────────────────────────── */}
       <Section title="รูปภาพ">
-        <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
-        <div className="space-y-3">
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-500 hover:text-blue-600 text-sm rounded-xl transition disabled:opacity-50"
-          >
-            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            {uploading ? 'กำลังอัปโหลด...' : 'เลือกรูปภาพ (หลายไฟล์ได้)'}
-          </button>
-
-          {form.photo_urls.length > 0 && (
-            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-              {form.photo_urls.map((url, i) => (
-                <div key={url} className="relative aspect-square rounded-lg overflow-hidden group">
-                  <Image src={url} alt={`photo ${i + 1}`} fill className="object-cover" sizes="120px" />
-                  <button
-                    type="button"
-                    onClick={() => set('photo_urls', form.photo_urls.filter(u => u !== url))}
-                    className="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition sm:opacity-0 sm:group-hover:opacity-100"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                  {i === 0 && (
-                    <span className="absolute bottom-1 left-1 text-xs bg-black/60 text-white px-1.5 py-0.5 rounded">หลัก</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <ImageUploader {...photoState} />
       </Section>
 
       {/* ── Status & Notes ───────────────────────────────────── */}

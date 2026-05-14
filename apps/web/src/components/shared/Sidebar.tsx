@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { href: '/contracts', icon: '📄', label: 'สัญญา', permission: 'contract' },
   { href: '/calendar', icon: '📅', label: 'นัดหมาย & ปฏิทิน', permission: null },
   { href: '/commission', icon: '💰', label: 'คอมมิชชัน', permission: null },
+  { href: '/credits', icon: '⚡', label: 'เครดิต', permission: null },
   { href: '/help', icon: '❓', label: 'คู่มือ & FAQ', permission: null },
 ]
 
