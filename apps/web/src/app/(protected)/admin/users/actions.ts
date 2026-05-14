@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { grantStarterCredits } from '@/lib/credits/actions'
 import type { Role, AccountStatus, Plan } from '@/types'
 
 async function assertAdmin(): Promise<void> {
@@ -15,7 +16,11 @@ async function assertAdmin(): Promise<void> {
 export async function approveUser(userId: string): Promise<void> {
   await assertAdmin()
   const admin = await createAdminClient()
+  const { data: profile } = await admin.from('profiles').select('account_status').eq('id', userId).single()
   await admin.from('profiles').update({ account_status: 'approved' }).eq('id', userId)
+  if (profile?.account_status !== 'approved') {
+    await grantStarterCredits(userId)
+  }
   revalidatePath('/admin/users')
 }
 

@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useTransition, useRef } from 'react'
-import Image from 'next/image'
-import { Upload, Loader2, X, PenLine } from 'lucide-react'
+import { useState, useTransition, useEffect, useRef } from 'react'
+import { Upload, Loader2, PenLine } from 'lucide-react'
 import { updateProfile, updateSignatureUrl } from './actions'
-import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
 import SignaturePad from '@/components/shared/SignaturePad'
+import { useDocumentUpload } from '@/hooks/useUpload'
+import DocumentUploader from '@/components/shared/DocumentUploader'
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'แอดมิน',
@@ -30,37 +30,25 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
   const [editing, setEditing] = useState(false)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
-
-  // Signature state
-  const [sigUrl, setSigUrl] = useState(profile.signature_url ?? '')
   const [sigMode, setSigMode] = useState<'upload' | 'draw'>('upload')
-  const [isUploadingSig, setIsUploadingSig] = useState(false)
-  const sigRef = useRef<HTMLInputElement>(null)
 
-  async function uploadAndSaveSig(file: File) {
-    setIsUploadingSig(true)
-    const supabase = createClient()
-    const path = `signatures/${profile.id}-${Date.now()}.png`
-    const { data, error: upErr } = await supabase.storage
-      .from('documents')
-      .upload(path, file, { upsert: true })
-    if (!upErr && data) {
-      const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(data.path)
-      setSigUrl(publicUrl)
-      await updateSignatureUrl(publicUrl)
+  const sigState = useDocumentUpload({
+    category: 'signatures',
+    entityId: profile.id,
+    initialUrl: profile.signature_url ?? '',
+  })
+
+  // Persist signature URL to DB whenever it changes (upload or clear)
+  const prevSigUrl = useRef(profile.signature_url ?? '')
+  useEffect(() => {
+    if (sigState.url !== prevSigUrl.current) {
+      prevSigUrl.current = sigState.url
+      updateSignatureUrl(sigState.url || null)
     }
-    setIsUploadingSig(false)
-  }
+  }, [sigState.url])
 
-  async function handleSigFromPad(blob: Blob) {
-    const file = new File([blob], `sig-${Date.now()}.png`, { type: 'image/png' })
-    setSigMode('upload')
-    await uploadAndSaveSig(file)
-  }
-
-  async function clearSig() {
-    setSigUrl('')
-    await updateSignatureUrl(null)
+  async function handleClearSig() {
+    sigState.clear()
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -154,20 +142,8 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
       {/* ข้อมูลทางการ */}
       <Section title="ข้อมูลทางการ">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field
-            label="เลขประจำตัวผู้เสียภาษี"
-            name="tax_id"
-            value={profile.tax_id}
-            editing={editing}
-          />
-          <Field
-            label="เลขบัตรประชาชน (13 หลัก)"
-            name="national_id"
-            value={profile.national_id}
-            editing={editing}
-            inputMode="numeric"
-            maxLength={13}
-          />
+          <Field label="เลขประจำตัวผู้เสียภาษี" name="tax_id" value={profile.tax_id} editing={editing} />
+          <Field label="เลขบัตรประชาชน (13 หลัก)" name="national_id" value={profile.national_id} editing={editing} inputMode="numeric" maxLength={13} />
         </div>
       </Section>
 
@@ -179,14 +155,7 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
           <Field label="แขวง / ตำบล" name="subdistrict" value={profile.subdistrict} editing={editing} />
           <Field label="เขต / อำเภอ" name="district" value={profile.district} editing={editing} />
           <Field label="จังหวัด" name="province" value={profile.province} editing={editing} />
-          <Field
-            label="รหัสไปรษณีย์"
-            name="zip"
-            value={profile.zip}
-            editing={editing}
-            inputMode="numeric"
-            maxLength={5}
-          />
+          <Field label="รหัสไปรษณีย์" name="zip" value={profile.zip} editing={editing} inputMode="numeric" maxLength={5} />
         </div>
       </Section>
 
@@ -194,40 +163,22 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
       <Section title="ข้อมูลธนาคาร">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="ธนาคาร" name="bank_name" value={profile.bank_name} editing={editing} />
-          <Field
-            label="เลขบัญชี"
-            name="bank_account_no"
-            value={profile.bank_account_no}
-            editing={editing}
-            inputMode="numeric"
-          />
+          <Field label="เลขบัญชี" name="bank_account_no" value={profile.bank_account_no} editing={editing} inputMode="numeric" />
           <div className="sm:col-span-2">
-            <Field
-              label="ชื่อบัญชี"
-              name="bank_account_name"
-              value={profile.bank_account_name}
-              editing={editing}
-            />
+            <Field label="ชื่อบัญชี" name="bank_account_name" value={profile.bank_account_name} editing={editing} />
           </div>
         </div>
       </Section>
 
       {/* ลายเซ็น */}
       <Section title="ลายเซ็น (ใช้ในสัญญา PDF)">
-        {sigUrl ? (
+        {sigState.url ? (
           <div className="space-y-2">
-            <div className="relative w-52 h-24 rounded-lg overflow-hidden border border-gray-200 bg-white">
-              <Image src={sigUrl} alt="ลายเซ็น" fill className="object-contain p-2" sizes="208px" />
-              <button
-                type="button"
-                onClick={clearSig}
-                disabled={isUploadingSig}
-                className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <p className="text-xs text-gray-400">กดลบเพื่อเซ็นใหม่</p>
+            <DocumentUploader
+              {...sigState}
+              clear={handleClearSig}
+            />
+            <p className="text-xs text-gray-400">กดลบและอัปโหลดใหม่เพื่อเซ็นใหม่</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -251,34 +202,25 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
             </div>
             {sigMode === 'draw' ? (
               <SignaturePad
-                onSave={handleSigFromPad}
+                onSave={async (blob) => {
+                  const file = new File([blob], `sig-${Date.now()}.png`, { type: 'image/png' })
+                  setSigMode('upload')
+                  await sigState.upload(file)
+                }}
                 onCancel={() => setSigMode('upload')}
               />
             ) : (
               <>
-                <input
-                  ref={sigRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={e => {
-                    const file = e.target.files?.[0]
-                    if (file) uploadAndSaveSig(file)
-                    e.target.value = ''
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => sigRef.current?.click()}
-                  disabled={isUploadingSig}
-                  className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition disabled:opacity-50"
-                >
-                  {isUploadingSig ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  {isUploadingSig ? 'กำลังบันทึก...' : 'อัปโหลดรูปลายเซ็น'}
-                </button>
+                <DocumentUploader {...sigState} label="รูปลายเซ็น" />
                 <p className="text-xs text-gray-400">PNG พื้นหลังโปร่งใสแสดงผลดีที่สุดในสัญญา</p>
               </>
             )}
+            {sigState.progress.phase === 'uploading' || sigState.progress.phase === 'processing' ? (
+              <p className="text-xs text-blue-600 flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                กำลังบันทึกลายเซ็น...
+              </p>
+            ) : null}
           </div>
         )}
       </Section>

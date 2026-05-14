@@ -3,14 +3,14 @@
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
-import { ScanLine, Upload, Loader2, X } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { ScanLine, Loader2 } from 'lucide-react'
 import type { Customer } from '@/types'
 import { createCustomer, updateCustomer, parseIdCard } from './actions'
 import { compressForOcr } from '@/lib/compressForOcr'
 import type { CustomerInput } from './actions'
 import AddressSelector from '@/components/shared/AddressSelector'
+import { useDocumentUpload } from '@/hooks/useUpload'
+import DocumentUploader from '@/components/shared/DocumentUploader'
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -40,7 +40,6 @@ interface FormState {
   phone: string
   line_id: string
   national_id: string
-  id_card_url: string
   source: string
   follow_up: boolean
   address_no: string
@@ -52,7 +51,6 @@ interface FormState {
   bank_name: string
   bank_account_no: string
   bank_account_name: string
-  signature_url: string
   notes: string
 }
 
@@ -60,11 +58,11 @@ const DEFAULT: FormState = {
   prefix: '', prefix_en: '', first_name_th: '', last_name_th: '',
   first_name_en: '', last_name_en: '', nickname: '',
   phone: '', line_id: '', national_id: '',
-  id_card_url: '', source: '', follow_up: false,
+  source: '', follow_up: false,
   address_no: '', address_road: '',
   province: '', district: '', subdistrict: '', zip: '',
   bank_name: '', bank_account_no: '', bank_account_name: '',
-  signature_url: '', notes: '',
+  notes: '',
 }
 
 function customerToForm(c: Customer): FormState {
@@ -79,7 +77,6 @@ function customerToForm(c: Customer): FormState {
     phone: c.phone ?? '',
     line_id: c.line_id ?? '',
     national_id: c.national_id ?? '',
-    id_card_url: c.id_card_url ?? '',
     source: c.source ?? '',
     follow_up: c.follow_up ?? false,
     address_no: c.address_no ?? '',
@@ -91,7 +88,6 @@ function customerToForm(c: Customer): FormState {
     bank_name: c.bank_name ?? '',
     bank_account_no: c.bank_account_no ?? '',
     bank_account_name: c.bank_account_name ?? '',
-    signature_url: c.signature_url ?? '',
     notes: c.notes ?? '',
   }
 }
@@ -109,7 +105,6 @@ function toInput(f: FormState): CustomerInput {
     phone: str(f.phone),
     line_id: str(f.line_id),
     national_id: str(f.national_id),
-    id_card_url: str(f.id_card_url),
     source: str(f.source),
     follow_up: f.follow_up,
     address_no: str(f.address_no),
@@ -121,7 +116,6 @@ function toInput(f: FormState): CustomerInput {
     bank_name: str(f.bank_name),
     bank_account_no: str(f.bank_account_no),
     bank_account_name: str(f.bank_account_name),
-    signature_url: str(f.signature_url),
     notes: str(f.notes),
   }
 }
@@ -142,13 +136,21 @@ export default function CustomerForm({ initialData, customerId }: Props) {
   const [isPending, startTransition] = useTransition()
   const [isOcrPending, startOcr] = useTransition()
   const [ocrMessage, setOcrMessage] = useState('')
-  const [isUploadingIdCard, setIsUploadingIdCard] = useState(false)
-  const [uploadIdCardError, setUploadIdCardError] = useState('')
-  const [isUploadingSig, setIsUploadingSig] = useState(false)
 
   const ocrInputRef = useRef<HTMLInputElement>(null)
-  const idCardRef = useRef<HTMLInputElement>(null)
-  const sigRef = useRef<HTMLInputElement>(null)
+
+  const idCardState = useDocumentUpload({
+    category: 'id-cards',
+    entityId: customerId,
+    isPrivate: true,
+    enableWatermark: true,
+    initialUrl: initialData?.id_card_url ?? '',
+  })
+  const sigState = useDocumentUpload({
+    category: 'signatures',
+    entityId: customerId,
+    initialUrl: initialData?.signature_url ?? '',
+  })
 
   const set = (k: keyof FormState, v: string | boolean) =>
     setForm(f => ({ ...f, [k]: v }))
@@ -176,58 +178,10 @@ export default function CustomerForm({ initialData, customerId }: Props) {
       apply('subdistrict', result.subdistrict)
       apply('zip', result.zip)
 
-      // Auto-attach OCR image as id_card_url (eliminates double upload)
-      try {
-        const supabase = createClient()
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-        const path = `id-cards/${Date.now()}-${safeName}`
-        const { data: upData } = await supabase.storage.from('documents').upload(path, file, { upsert: true })
-        if (upData) {
-          const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(upData.path)
-          set('id_card_url', publicUrl)
-          setOcrMessage(`กรอกข้อมูลอัตโนมัติ ${fields.length} ช่อง · แนบรูปบัตรแล้ว`)
-        } else {
-          setOcrMessage(`กรอกข้อมูลอัตโนมัติ ${fields.length} ช่อง`)
-        }
-      } catch {
-        setOcrMessage(`กรอกข้อมูลอัตโนมัติ ${fields.length} ช่อง`)
-      }
+      // Upload the scanned image as the id card
+      await idCardState.upload(file)
+      setOcrMessage(`กรอกข้อมูลอัตโนมัติ ${fields.length} ช่อง · แนบรูปบัตรแล้ว`)
     })
-  }
-
-  // ─── Uploads ─────────────────────────────────────────────
-
-  async function handleIdCardUpload(file: File) {
-    setIsUploadingIdCard(true)
-    setUploadIdCardError('')
-    const supabase = createClient()
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const path = `id-cards/${Date.now()}-${safeName}`
-    const { data, error } = await supabase.storage
-      .from('documents')
-      .upload(path, file, { upsert: true })
-    if (error || !data) {
-      setUploadIdCardError('อัปโหลดไม่สำเร็จ: ' + (error?.message ?? 'กรุณาตรวจสอบ storage'))
-    } else {
-      const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(data.path)
-      set('id_card_url', publicUrl)
-    }
-    setIsUploadingIdCard(false)
-  }
-
-  async function handleSigUpload(file: File) {
-    setIsUploadingSig(true)
-    const supabase = createClient()
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const path = `signatures/${Date.now()}-${safeName}`
-    const { data, error } = await supabase.storage
-      .from('documents')
-      .upload(path, file, { upsert: true })
-    if (!error && data) {
-      const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(data.path)
-      set('signature_url', publicUrl)
-    }
-    setIsUploadingSig(false)
   }
 
   // ─── Submit ──────────────────────────────────────────────
@@ -235,7 +189,11 @@ export default function CustomerForm({ initialData, customerId }: Props) {
   function handleSubmit() {
     setError('')
     startTransition(async () => {
-      const input = toInput(form)
+      const input: CustomerInput = {
+        ...toInput(form),
+        id_card_url: idCardState.url || undefined,
+        signature_url: sigState.url || undefined,
+      }
       if (customerId) {
         const res = await updateCustomer(customerId, input)
         if (res.error) { setError(res.error); return }
@@ -364,47 +322,12 @@ export default function CustomerForm({ initialData, customerId }: Props) {
             placeholder="x xxxx xxxxx xx x"
             maxLength={13}
           />
-          <div>
-            <Label>รูปบัตรประชาชน</Label>
-            {form.id_card_url ? (
-              <div className="relative w-64 h-40 rounded-lg overflow-hidden border border-gray-200">
-                <Image src={form.id_card_url} alt="บัตรประชาชน" fill className="object-cover" sizes="256px" />
-                <button
-                  type="button"
-                  onClick={() => set('id_card_url', '')}
-                  className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
-              <>
-                <input
-                  ref={idCardRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={e => {
-                    const file = e.target.files?.[0]
-                    if (file) handleIdCardUpload(file)
-                    e.target.value = ''
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => idCardRef.current?.click()}
-                  disabled={isUploadingIdCard}
-                  className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition disabled:opacity-50"
-                >
-                  {isUploadingIdCard ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  {isUploadingIdCard ? 'กำลังอัปโหลด...' : 'อัปโหลดรูปบัตร'}
-                </button>
-                {uploadIdCardError && (
-                  <p className="text-xs text-red-600 mt-1">{uploadIdCardError}</p>
-                )}
-              </>
-            )}
-          </div>
+          <DocumentUploader
+            {...idCardState}
+            label="รูปบัตรประชาชน"
+            isPrivate
+            enableWatermark
+          />
         </div>
       </Section>
 
@@ -448,41 +371,10 @@ export default function CustomerForm({ initialData, customerId }: Props) {
 
       {/* ลายเซ็น */}
       <Section title="ลายเซ็น">
-        {form.signature_url ? (
-          <div className="relative w-52 h-24 rounded-lg overflow-hidden border border-gray-200 bg-white">
-            <Image src={form.signature_url} alt="ลายเซ็น" fill className="object-contain p-2" sizes="208px" />
-            <button
-              type="button"
-              onClick={() => set('signature_url', '')}
-              className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ) : (
-          <>
-            <input
-              ref={sigRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={e => {
-                const file = e.target.files?.[0]
-                if (file) handleSigUpload(file)
-                e.target.value = ''
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => sigRef.current?.click()}
-              disabled={isUploadingSig}
-              className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition disabled:opacity-50"
-            >
-              {isUploadingSig ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              {isUploadingSig ? 'กำลังอัปโหลด...' : 'อัปโหลดรูปลายเซ็น'}
-            </button>
-          </>
-        )}
+        <DocumentUploader
+          {...sigState}
+          label="รูปลายเซ็น"
+        />
       </Section>
 
       {/* หมายเหตุ */}

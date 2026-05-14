@@ -4,9 +4,9 @@ import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, ImagePlus, X } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { ArrowLeft, ImagePlus, X, Loader2 } from 'lucide-react'
 import { updateNews } from '../../actions'
+import { useDocumentUpload } from '@/hooks/useUpload'
 
 interface News {
   id: string
@@ -27,25 +27,15 @@ export default function EditNewsForm({ news }: { news: News }) {
     content: news.content ?? '',
     published: news.published,
   })
-  const [coverFile, setCoverFile] = useState<File | null>(null)
-  const [coverPreview, setCoverPreview] = useState(news.cover_url ?? '')
   const coverRef = useRef<HTMLInputElement>(null)
+
+  const coverState = useDocumentUpload({
+    category: 'news-covers',
+    initialUrl: news.cover_url ?? '',
+  })
 
   function set(key: keyof typeof form, value: string | boolean) {
     setForm(f => ({ ...f, [key]: value }))
-  }
-
-  function handleCover(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setCoverFile(file)
-    setCoverPreview(URL.createObjectURL(file))
-  }
-
-  function removeCover() {
-    setCoverFile(null)
-    setCoverPreview('')
-    if (coverRef.current) coverRef.current.value = ''
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -53,30 +43,19 @@ export default function EditNewsForm({ news }: { news: News }) {
     if (!form.title.trim()) { setError('กรุณากรอกหัวข้อข่าว'); return }
     setError('')
     startTransition(async () => {
-      let coverUrl: string | null = coverPreview || null
-
-      if (coverFile) {
-        const supabase = createClient()
-        const ext = coverFile.name.split('.').pop()
-        const path = `news-covers/${Date.now()}.${ext}`
-        const { data: upData } = await supabase.storage.from('documents').upload(path, coverFile, { upsert: true })
-        if (upData) {
-          const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(upData.path)
-          coverUrl = publicUrl
-        }
-      }
-
       const res = await updateNews(news.id, {
         title: form.title.trim(),
         summary: form.summary.trim() || undefined,
         content: form.content.trim() || undefined,
-        cover_url: coverUrl,
+        cover_url: coverState.url || null,
         published: form.published,
       })
       if (res.error) { setError(res.error); return }
       router.push('/admin/news')
     })
   }
+
+  const busy = coverState.progress.phase === 'processing' || coverState.progress.phase === 'uploading'
 
   return (
     <div className="p-4 lg:p-8 pt-6 max-w-2xl">
@@ -93,23 +72,35 @@ export default function EditNewsForm({ news }: { news: News }) {
           {/* Cover image */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">รูปหน้าปก</label>
-            {coverPreview ? (
+            {coverState.url ? (
               <div className="relative rounded-xl overflow-hidden aspect-video bg-gray-100">
-                <Image src={coverPreview} alt="cover" fill className="object-cover" sizes="100vw" unoptimized={coverPreview.startsWith('blob:')} />
-                <button type="button" onClick={removeCover}
+                <Image src={coverState.url} alt="cover" fill className="object-cover" sizes="100vw" />
+                <button type="button" onClick={coverState.clear}
                   className="absolute top-2 right-2 w-7 h-7 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition">
                   <X className="w-4 h-4" />
                 </button>
               </div>
             ) : (
-              <button type="button" onClick={() => coverRef.current?.click()}
-                className="w-full aspect-video border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-blue-400 hover:bg-blue-50 transition text-gray-400">
-                <ImagePlus className="w-8 h-8" />
-                <span className="text-sm">คลิกเพื่ออัปโหลดรูปหน้าปก</span>
-                <span className="text-xs">JPG, PNG — แนะนำ 16:9</span>
+              <button type="button" onClick={() => coverRef.current?.click()} disabled={busy}
+                className="w-full aspect-video border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-blue-400 hover:bg-blue-50 transition text-gray-400 disabled:opacity-50">
+                {busy ? (
+                  <><Loader2 className="w-8 h-8 animate-spin" /><span className="text-sm">กำลังอัปโหลด...</span></>
+                ) : (
+                  <><ImagePlus className="w-8 h-8" /><span className="text-sm">คลิกเพื่ออัปโหลดรูปหน้าปก</span><span className="text-xs">JPG, PNG — แนะนำ 16:9</span></>
+                )}
               </button>
             )}
-            <input ref={coverRef} type="file" accept="image/*" onChange={handleCover} className="hidden" />
+            <input
+              ref={coverRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0]
+                if (file) coverState.upload(file)
+                e.target.value = ''
+              }}
+            />
           </div>
 
           <div>
@@ -145,7 +136,7 @@ export default function EditNewsForm({ news }: { news: News }) {
           <Link href="/admin/news" className="flex-1 py-3 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition text-center">
             ยกเลิก
           </Link>
-          <button type="submit" disabled={pending}
+          <button type="submit" disabled={pending || busy}
             className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-medium rounded-xl transition">
             {pending ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
           </button>
