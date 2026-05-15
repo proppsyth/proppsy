@@ -3,12 +3,13 @@
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ScanLine, Loader2 } from 'lucide-react'
+import { ScanLine, Loader2, PenLine, Upload } from 'lucide-react'
 import type { Customer } from '@/types'
 import { createCustomer, updateCustomer, parseDocument } from './actions'
 import { compressForOcr } from '@/lib/compressForOcr'
 import type { CustomerInput } from './actions'
 import AddressSelector from '@/components/shared/AddressSelector'
+import SignaturePad from '@/components/shared/SignaturePad'
 import { useDocumentUpload } from '@/hooks/useUpload'
 import DocumentUploader from '@/components/shared/DocumentUploader'
 import { useAiQuota } from '@/hooks/useAiQuota'
@@ -18,11 +19,18 @@ import { AiLimitModal } from '@/components/shared/AiLimitModal'
 // ─── Constants ───────────────────────────────────────────────
 
 const PREFIXES_TH = ['นาย', 'นาง', 'นางสาว']
+const PREFIXES_EN = ['Mr.', 'Mrs.', 'Miss', 'Ms.']
+const KNOWN_SOURCES = ['line_oa', 'facebook', 'instagram', 'tiktok', 'website', 'referral', 'walk_in', 'online', 'other']
 const SOURCE_OPTIONS = [
   { value: 'line_oa', label: 'LINE OA' },
+  { value: 'facebook', label: 'Facebook' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'website', label: 'Website' },
   { value: 'referral', label: 'แนะนำ' },
   { value: 'walk_in', label: 'Walk-in' },
   { value: 'online', label: 'ออนไลน์' },
+  { value: 'other', label: 'อื่นๆ' },
 ]
 
 // ─── Types ───────────────────────────────────────────────────
@@ -39,6 +47,7 @@ interface FormState {
   line_id: string
   national_id: string
   source: string
+  source_other: string
   follow_up: boolean
   address_no: string
   address_road: string
@@ -53,13 +62,15 @@ const DEFAULT: FormState = {
   prefix: '', prefix_en: '', first_name_th: '', last_name_th: '',
   first_name_en: '', last_name_en: '', nickname: '',
   phone: '', line_id: '', national_id: '',
-  source: '', follow_up: false,
+  source: '', source_other: '', follow_up: false,
   address_no: '', address_road: '',
   province: '', district: '', subdistrict: '', zip: '',
   notes: '',
 }
 
 function customerToForm(c: Customer): FormState {
+  const rawSource = c.source ?? ''
+  const isKnown = KNOWN_SOURCES.includes(rawSource)
   return {
     prefix: c.prefix ?? '',
     prefix_en: c.prefix_en ?? '',
@@ -71,7 +82,8 @@ function customerToForm(c: Customer): FormState {
     phone: c.phone ?? '',
     line_id: c.line_id ?? '',
     national_id: c.national_id ?? '',
-    source: c.source ?? '',
+    source: isKnown ? rawSource : (rawSource ? 'other' : ''),
+    source_other: !isKnown ? rawSource : '',
     follow_up: c.follow_up ?? false,
     address_no: c.address_no ?? '',
     address_road: c.address_road ?? '',
@@ -85,6 +97,9 @@ function customerToForm(c: Customer): FormState {
 
 function toInput(f: FormState): CustomerInput {
   const str = (v: string) => v.trim() || undefined
+  const resolvedSource = f.source === 'other'
+    ? (f.source_other.trim() || undefined)
+    : str(f.source)
   return {
     prefix: str(f.prefix),
     prefix_en: str(f.prefix_en),
@@ -96,7 +111,7 @@ function toInput(f: FormState): CustomerInput {
     phone: str(f.phone),
     line_id: str(f.line_id),
     national_id: str(f.national_id),
-    source: str(f.source),
+    source: resolvedSource,
     follow_up: f.follow_up,
     address_no: str(f.address_no),
     address_road: str(f.address_road),
@@ -125,6 +140,7 @@ export default function CustomerForm({ initialData, customerId }: Props) {
   const [isOcrPending, startOcr] = useTransition()
   const [ocrMessage, setOcrMessage] = useState('')
 
+  const [sigMode, setSigMode] = useState<'upload' | 'draw'>('upload')
   const [showLimitModal, setShowLimitModal] = useState(false)
   const { quota, refresh: refreshQuota, isExhausted } = useAiQuota()
   const ocrInputRef = useRef<HTMLInputElement>(null)
@@ -267,30 +283,51 @@ export default function CustomerForm({ initialData, customerId }: Props) {
       {/* ข้อมูลส่วนตัว */}
       <Section title="ข้อมูลส่วนตัว">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="sm:col-span-2">
-            <Label>คำนำหน้า</Label>
-            <div className="flex gap-2 flex-wrap">
-              {PREFIXES_TH.map(p => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => set('prefix', form.prefix === p ? '' : p)}
-                  className={`px-3 py-1.5 text-sm rounded-lg border transition ${
-                    form.prefix === p
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-              <input
-                type="text"
-                value={PREFIXES_TH.includes(form.prefix) ? '' : form.prefix}
-                onChange={e => set('prefix', e.target.value)}
-                placeholder="อื่นๆ"
-                className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+          <div className="sm:col-span-2 space-y-2">
+            <div>
+              <Label>คำนำหน้า (ไทย)</Label>
+              <div className="flex gap-2 flex-wrap">
+                {PREFIXES_TH.map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => set('prefix', form.prefix === p ? '' : p)}
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition ${
+                      form.prefix === p
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <input
+                  type="text"
+                  value={PREFIXES_TH.includes(form.prefix) ? '' : form.prefix}
+                  onChange={e => set('prefix', e.target.value)}
+                  placeholder="อื่นๆ"
+                  className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>คำนำหน้า (English)</Label>
+              <div className="flex gap-2 flex-wrap">
+                {PREFIXES_EN.map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => set('prefix_en', form.prefix_en === p ? '' : p)}
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition ${
+                      form.prefix_en === p
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -313,6 +350,15 @@ export default function CustomerForm({ initialData, customerId }: Props) {
               <option value="">— เลือกแหล่งที่มา —</option>
               {SOURCE_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
+            {form.source === 'other' && (
+              <input
+                type="text"
+                value={form.source_other}
+                onChange={e => set('source_other', e.target.value)}
+                placeholder="ระบุแหล่งที่มา..."
+                className="mt-2 w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            )}
           </div>
 
           {/* Follow-up */}
@@ -367,10 +413,45 @@ export default function CustomerForm({ initialData, customerId }: Props) {
 
       {/* ลายเซ็น */}
       <Section title="ลายเซ็น">
-        <DocumentUploader
-          {...sigState}
-          label="รูปลายเซ็น"
-        />
+        {sigState.url ? (
+          <DocumentUploader {...sigState} label="ลายเซ็น" />
+        ) : (
+          <div className="space-y-3">
+            <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+              <button
+                type="button"
+                onClick={() => setSigMode('draw')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition ${sigMode === 'draw' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+              >
+                <PenLine className="w-3.5 h-3.5" />
+                วาดออนไลน์
+              </button>
+              <button
+                type="button"
+                onClick={() => setSigMode('upload')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition ${sigMode === 'upload' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                อัปโหลดไฟล์
+              </button>
+            </div>
+            {sigMode === 'draw' ? (
+              <SignaturePad
+                onSave={async (blob) => {
+                  const file = new File([blob], `sig-${Date.now()}.png`, { type: 'image/png' })
+                  setSigMode('upload')
+                  await sigState.upload(file)
+                }}
+                onCancel={() => setSigMode('upload')}
+              />
+            ) : (
+              <>
+                <DocumentUploader {...sigState} label="รูปลายเซ็น" />
+                <p className="text-xs text-gray-400">PNG พื้นหลังโปร่งใสแสดงผลดีที่สุดในสัญญา</p>
+              </>
+            )}
+          </div>
+        )}
       </Section>
 
       {/* หมายเหตุ */}

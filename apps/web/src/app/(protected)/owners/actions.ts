@@ -8,8 +8,6 @@ import type { OcrDocumentResult, BankBookOcrResult } from '@/lib/ocr'
 
 // ─── Types ───────────────────────────────────────────────────
 
-export type { OcrDocumentResult as OcrResult, BankBookOcrResult }
-
 export type OwnerInput = {
   prefix?: string
   prefix_en?: string

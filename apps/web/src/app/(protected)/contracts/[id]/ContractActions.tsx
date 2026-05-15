@@ -2,12 +2,11 @@
 
 import { useTransition, useState } from 'react'
 import {
-  Loader2, Send, PenLine, X, FileDown, ExternalLink, Eye, Link2, Check,
+  Loader2, Send, X, FileDown, ExternalLink, Eye, Lock, CheckCircle2,
 } from 'lucide-react'
 import type { ContractStatus } from '@/types'
 import {
   updateContractStatus, generateContractDocx, generateContractPdf,
-  generateSignToken,
 } from '../actions'
 import Link from 'next/link'
 
@@ -16,30 +15,97 @@ interface Props {
   status: ContractStatus
   pdfUrl?: string | null
   docxUrl?: string | null
+  finalizedDocxUrl?: string | null
+  finalizedPdfUrl?: string | null
   templateSlug?: string | null
-  signToken?: string | null
+  isFinalized?: boolean
+  finalizedAt?: string | null
 }
 
 export default function ContractActions({
-  contractId, status, pdfUrl, docxUrl, templateSlug, signToken,
+  contractId, status, pdfUrl, docxUrl, finalizedDocxUrl, finalizedPdfUrl,
+  templateSlug, isFinalized, finalizedAt,
 }: Props) {
   const [isStatusPending, startStatus] = useTransition()
   const [isDocxPending, startDocx] = useTransition()
   const [isPdfPending, startPdf] = useTransition()
-  const [isSignPending, startSign] = useTransition()
 
   const [statusError, setStatusError] = useState('')
   const [docxError, setDocxError] = useState('')
   const [pdfError, setPdfError] = useState('')
-  const [signError, setSignError] = useState('')
 
   const [currentDocxUrl, setCurrentDocxUrl] = useState(docxUrl ?? '')
   const [currentPdfUrl, setCurrentPdfUrl] = useState(pdfUrl ?? '')
   const [missingVars, setMissingVars] = useState<string[]>([])
-  const [signLink, setSignLink] = useState(signToken ? `${window?.location?.origin ?? ''}/sign/${signToken}` : '')
-  const [linkCopied, setLinkCopied] = useState(false)
 
   const hasTemplate = !!templateSlug
+
+  // Finalized contracts show permanent download links — no regeneration allowed
+  if (isFinalized) {
+    const fmtDate = finalizedAt
+      ? new Date(finalizedAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : null
+    return (
+      <div className="space-y-3">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+          <div className="flex items-start gap-2.5 mb-3">
+            <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-emerald-800">สัญญาสมบูรณ์ — ล็อกแล้ว</p>
+              {fmtDate && <p className="text-xs text-emerald-600 mt-0.5">ลงนามครบเมื่อ {fmtDate}</p>}
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-100/70 rounded-lg px-3 py-2">
+            <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+            ข้อมูล ลายเซ็น และเอกสารถูกล็อกเป็นเวอร์ชันสุดท้าย
+          </div>
+        </div>
+
+        {(finalizedDocxUrl || finalizedPdfUrl || docxUrl || pdfUrl) && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
+              <h2 className="text-sm font-semibold text-gray-700">เอกสารสุดท้าย</h2>
+            </div>
+            <div className="p-4 space-y-2">
+              {(finalizedDocxUrl || docxUrl) && (
+                <a
+                  href={(finalizedDocxUrl || docxUrl)!}
+                  download
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition"
+                >
+                  <FileDown className="w-4 h-4" />
+                  ดาวน์โหลด .docx
+                </a>
+              )}
+              {(finalizedPdfUrl || pdfUrl) && (
+                <a
+                  href={(finalizedPdfUrl || pdfUrl)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-medium rounded-xl transition"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  เปิด PDF
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {hasTemplate && (
+          <Link
+            href={`/contracts/${contractId}/preview`}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 text-sm font-medium rounded-xl transition"
+          >
+            <Eye className="w-4 h-4" />
+            Preview เอกสาร
+          </Link>
+        )}
+      </div>
+    )
+  }
 
   function changeStatus(newStatus: ContractStatus) {
     setStatusError('')
@@ -78,25 +144,8 @@ export default function ContractActions({
     })
   }
 
-  function handleGenerateSignLink() {
-    setSignError('')
-    startSign(async () => {
-      const res = await generateSignToken(contractId)
-      if (res.error) { setSignError(res.error); return }
-      if (res.link) setSignLink(res.link)
-    })
-  }
-
-  function copySignLink() {
-    if (!signLink) return
-    navigator.clipboard.writeText(signLink)
-    setLinkCopied(true)
-    setTimeout(() => setLinkCopied(false), 2000)
-  }
-
   const canSend   = status === 'draft'
-  const canSign   = status === 'sent'
-  const canCancel = status === 'draft' || status === 'sent'
+  const canCancel = ['draft', 'sent', 'viewed', 'partially_signed'].includes(status)
 
   return (
     <div className="space-y-3">
@@ -118,7 +167,7 @@ export default function ContractActions({
         </div>
       )}
 
-      {/* .docx Download (template-based) */}
+      {/* .docx Download */}
       {hasTemplate && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
@@ -158,7 +207,7 @@ export default function ContractActions({
         </div>
       )}
 
-      {/* PDF (legacy React-PDF) */}
+      {/* PDF (legacy) */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
           <h2 className="text-sm font-semibold text-gray-700">PDF (legacy)</h2>
@@ -188,60 +237,8 @@ export default function ContractActions({
         </div>
       </div>
 
-      {/* E-sign link */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
-          <h2 className="text-sm font-semibold text-gray-700">ลิงก์ลงนาม (E-Sign)</h2>
-        </div>
-        <div className="p-4 space-y-2">
-          {signLink ? (
-            <div className="space-y-2 min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <input
-                  type="text"
-                  value={signLink}
-                  readOnly
-                  className="flex-1 min-w-0 px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-600 bg-gray-50 truncate"
-                />
-                <button
-                  type="button"
-                  onClick={copySignLink}
-                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition ${
-                    linkCopied
-                      ? 'bg-green-100 text-green-700'
-                      : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  {linkCopied ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
-                  {linkCopied ? 'คัดลอกแล้ว' : 'คัดลอก'}
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={copySignLink}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition"
-              >
-                {linkCopied ? <Check className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
-                {linkCopied ? 'คัดลอกลิงก์แล้ว!' : 'คัดลอกลิงก์ลงนาม'}
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={handleGenerateSignLink}
-              disabled={isSignPending}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-medium rounded-xl transition disabled:opacity-50"
-            >
-              {isSignPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
-              {isSignPending ? 'กำลังสร้างลิงก์...' : 'สร้างลิงก์ลงนาม'}
-            </button>
-          )}
-          {signError && <p className="text-xs text-red-600">{signError}</p>}
-        </div>
-      </div>
-
       {/* Status Actions */}
-      {(canSend || canSign || canCancel) && (
+      {(canSend || canCancel) && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
             <h2 className="text-sm font-semibold text-gray-700">เปลี่ยนสถานะ</h2>
@@ -256,17 +253,6 @@ export default function ContractActions({
               >
                 {isStatusPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 ส่งให้ลูกค้าแล้ว
-              </button>
-            )}
-            {canSign && (
-              <button
-                type="button"
-                onClick={() => changeStatus('signed')}
-                disabled={isStatusPending}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
-              >
-                {isStatusPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenLine className="w-4 h-4" />}
-                ลงนามแล้ว
               </button>
             )}
             {canCancel && (

@@ -8,6 +8,7 @@ import type { Stock, StockStatus, ListingType } from '@/types'
 import PhotoGallery from './PhotoGallery'
 import DeleteStockButton from './DeleteStockButton'
 import PublishActions from './PublishActions'
+import StockShareButtons from './StockShareButtons'
 
 export const metadata: Metadata = { title: 'รายละเอียดทรัพย์' }
 
@@ -232,6 +233,14 @@ export default async function StockDetailPage({
                 </Link>
               </div>
             </Section>
+          )}
+
+          {/* แชร์ (แสดงเฉพาะเมื่อเผยแพร่แล้ว) */}
+          {s.is_published && (
+            <StockShareButtons
+              stockId={s.id}
+              title={stockDisplayTitle(s)}
+            />
           )}
 
           {/* วันที่สำคัญ */}

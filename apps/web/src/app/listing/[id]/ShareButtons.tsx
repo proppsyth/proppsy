@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link2, Check, Share2 } from 'lucide-react'
 
 interface Props {
@@ -10,23 +10,23 @@ interface Props {
 
 export default function ShareButtons({ path, title }: Props) {
   const [copied, setCopied] = useState(false)
+  const [url, setUrl] = useState(path)                 // relative path is safe for SSR
+  const [hasNativeShare, setHasNativeShare] = useState(false)
 
-  const getUrl = () =>
-    typeof window !== 'undefined' ? `${window.location.origin}${path}` : path
+  useEffect(() => {
+    setUrl(`${window.location.origin}${path}`)
+    setHasNativeShare('share' in navigator)
+  }, [path])
 
-  const encoded = () => encodeURIComponent(getUrl())
+  const encodedUrl   = encodeURIComponent(url)
   const encodedTitle = encodeURIComponent(title)
 
-  const hasNativeShare = typeof navigator !== 'undefined' && !!navigator.share
-
   function handleNativeShare() {
-    if (navigator.share) {
-      navigator.share({ title, url: getUrl() }).catch(() => {})
-    }
+    navigator.share({ title, url }).catch(() => {})
   }
 
   function handleCopy() {
-    navigator.clipboard.writeText(getUrl()).then(() => {
+    navigator.clipboard.writeText(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
@@ -36,7 +36,7 @@ export default function ShareButtons({ path, title }: Props) {
     <div className="flex items-center gap-2 flex-wrap">
       {/* LINE */}
       <a
-        href={`https://social-plugins.line.me/lineit/share?url=${encoded()}&text=${encodedTitle}`}
+        href={`https://social-plugins.line.me/lineit/share?url=${encodedUrl}&text=${encodedTitle}`}
         target="_blank"
         rel="noopener noreferrer"
         className="flex items-center gap-1.5 px-3 py-1.5 bg-[#06C755] hover:bg-[#05a347] text-white text-xs font-semibold rounded-xl transition"
@@ -49,7 +49,7 @@ export default function ShareButtons({ path, title }: Props) {
 
       {/* Facebook */}
       <a
-        href={`https://www.facebook.com/sharer/sharer.php?u=${encoded()}`}
+        href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
         target="_blank"
         rel="noopener noreferrer"
         className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1877F2] hover:bg-[#166fe5] text-white text-xs font-semibold rounded-xl transition"
@@ -60,7 +60,7 @@ export default function ShareButtons({ path, title }: Props) {
         Facebook
       </a>
 
-      {/* Native share — shown only on devices that support it */}
+      {/* Native share — rendered only after mount on supported devices */}
       {hasNativeShare && (
         <button
           type="button"

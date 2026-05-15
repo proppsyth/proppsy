@@ -19,6 +19,7 @@ import { AiLimitModal } from '@/components/shared/AiLimitModal'
 // ─── Constants ───────────────────────────────────────────────
 
 const PREFIXES_TH = ['นาย', 'นาง', 'นางสาว']
+const PREFIXES_EN = ['Mr.', 'Mrs.', 'Miss', 'Ms.']
 const BANK_OPTIONS = [
   'ธนาคารกรุงเทพ', 'ธนาคารกสิกรไทย', 'ธนาคารไทยพาณิชย์',
   'ธนาคารกรุงไทย', 'ธนาคารกรุงศรีอยุธยา', 'ธนาคารทหารไทยธนชาต',
@@ -297,30 +298,51 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
       {/* ข้อมูลส่วนตัว */}
       <Section title="ข้อมูลส่วนตัว">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="sm:col-span-2">
-            <Label>คำนำหน้า</Label>
-            <div className="flex gap-2 flex-wrap">
-              {PREFIXES_TH.map(p => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => set('prefix', form.prefix === p ? '' : p)}
-                  className={`px-3 py-1.5 text-sm rounded-lg border transition ${
-                    form.prefix === p
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-              <input
-                type="text"
-                value={PREFIXES_TH.includes(form.prefix) ? '' : form.prefix}
-                onChange={e => set('prefix', e.target.value)}
-                placeholder="อื่นๆ"
-                className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+          <div className="sm:col-span-2 space-y-2">
+            <div>
+              <Label>คำนำหน้า (ไทย)</Label>
+              <div className="flex gap-2 flex-wrap">
+                {PREFIXES_TH.map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => set('prefix', form.prefix === p ? '' : p)}
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition ${
+                      form.prefix === p
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <input
+                  type="text"
+                  value={PREFIXES_TH.includes(form.prefix) ? '' : form.prefix}
+                  onChange={e => set('prefix', e.target.value)}
+                  placeholder="อื่นๆ"
+                  className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>คำนำหน้า (English)</Label>
+              <div className="flex gap-2 flex-wrap">
+                {PREFIXES_EN.map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => set('prefix_en', form.prefix_en === p ? '' : p)}
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition ${
+                      form.prefix_en === p
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

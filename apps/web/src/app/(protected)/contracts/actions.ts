@@ -84,6 +84,37 @@ export async function createContract(
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }
 
+  // ── Overlap check: prevent duplicate active contracts for same property ──
+  const rentingDocTypes = ['rental', 'renewal', 'reservation']
+  if (input.stock_id && rentingDocTypes.includes(input.doc_type) && input.move_in_date) {
+    const { data: conflicts } = await supabase
+      .from('contracts')
+      .select('id, move_in_date, end_date, doc_type')
+      .eq('agent_uid', user.id)
+      .eq('stock_id', input.stock_id)
+      .in('doc_type', rentingDocTypes)
+      .not('status', 'in', '("cancelled","completed")')
+
+    const newStart = new Date(input.move_in_date).getTime()
+    const newEnd   = input.end_date ? new Date(input.end_date).getTime() : null
+
+    for (const c of conflicts ?? []) {
+      if (!c.move_in_date) continue
+      const existStart = new Date(c.move_in_date).getTime()
+      const existEnd   = c.end_date ? new Date(c.end_date).getTime() : null
+
+      const overlaps =
+        (newEnd   === null || newEnd   >= existStart) &&
+        (existEnd === null || existEnd >= newStart)
+
+      if (overlaps) {
+        return {
+          error: `ทรัพย์นี้มีสัญญาที่ทับซ้อนกันอยู่แล้ว (${c.id}) ช่วง ${c.move_in_date}${c.end_date ? ' – ' + c.end_date : ''}`,
+        }
+      }
+    }
+  }
+
   const id = await nextContractId()
 
   const { error } = await supabase.from('contracts').insert({
@@ -107,11 +138,23 @@ export async function createContract(
 
 export async function updateContractStatus(
   contractId: string,
-  status: 'draft' | 'sent' | 'signed' | 'cancelled'
+  status: 'draft' | 'sent' | 'viewed' | 'partially_signed' | 'signed' | 'completed' | 'cancelled'
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  // Block any status change on finalized contracts
+  const { data: existing } = await supabase
+    .from('contracts')
+    .select('is_finalized, stock_id, doc_type')
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+    .single()
+
+  if (existing?.is_finalized) {
+    return { error: 'สัญญานี้ถูกล็อกแล้ว ไม่สามารถเปลี่ยนสถานะได้' }
+  }
 
   const { error } = await supabase
     .from('contracts')
@@ -120,6 +163,17 @@ export async function updateContractStatus(
     .eq('agent_uid', user.id)
 
   if (error) return { error: 'อัปเดตไม่สำเร็จ: ' + error.message }
+
+  // Restore property to available when contract is cancelled
+  if (status === 'cancelled' && existing?.stock_id) {
+    const rentingDocTypes = ['rental', 'renewal', 'reservation']
+    if (rentingDocTypes.includes(existing.doc_type)) {
+      await supabase
+        .from('stock')
+        .update({ status: 'available' })
+        .eq('id', existing.stock_id)
+    }
+  }
 
   revalidatePath('/contracts')
   revalidatePath(`/contracts/${contractId}`)
@@ -147,6 +201,10 @@ export async function generateContractDocx(
   ])
 
   if (!contract) return { error: 'ไม่พบสัญญา' }
+
+  if (contract.is_finalized) {
+    return { error: 'สัญญานี้ถูกล็อกแล้ว (ลงนามครบ) ไม่สามารถสร้างเอกสารใหม่ได้' }
+  }
 
   const templateSlug = contract.template_slug
   if (!templateSlug) {
@@ -287,6 +345,10 @@ export async function generateContractPdf(
   ])
 
   if (!contract) return { error: 'ไม่พบสัญญา' }
+
+  if (contract.is_finalized) {
+    return { error: 'สัญญานี้ถูกล็อกแล้ว (ลงนามครบ) ไม่สามารถสร้างเอกสารใหม่ได้' }
+  }
 
   try {
     const { renderToBuffer } = await import('@react-pdf/renderer')

@@ -30,7 +30,7 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   // Public routes — ไม่ต้อง auth
-  const publicPaths = ['/', '/login', '/register', '/about', '/contact', '/how-to', '/news', '/listing', '/services', '/reset-password', '/forgot-password', '/auth', '/help']
+  const publicPaths = ['/', '/login', '/register', '/about', '/contact', '/how-to', '/news', '/listing', '/services', '/reset-password', '/forgot-password', '/auth', '/help', '/sign']
   const isPublicPath = publicPaths.some(p => pathname === p || pathname.startsWith(p + '/'))
 
   // ถ้าไม่มี user และเข้า protected route → redirect to login

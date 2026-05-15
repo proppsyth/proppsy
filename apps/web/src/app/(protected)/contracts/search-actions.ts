@@ -45,6 +45,7 @@ export async function searchStocks(query: string): Promise<StockSearchResult[]> 
     .from('stock')
     .select('id, project_name, unit_no, room_type, building, floor, status, rent_price, owner_id')
     .eq('agent_uid', user.id)
+    .eq('status', 'available')
     .order('created_at', { ascending: false })
     .limit(20)
 

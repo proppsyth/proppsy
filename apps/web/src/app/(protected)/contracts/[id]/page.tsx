@@ -4,25 +4,32 @@ import { ArrowLeft, FileText, Eye } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { DOC_TYPE_LABELS, ownerDisplayName, customerDisplayName, stockDisplayTitle } from '@/types'
-import type { ContractDocType, ContractStatus, Stock, Owner, Customer } from '@/types'
+import type { ContractDocType, ContractStatus, Stock, Owner, Customer, ContractSigner } from '@/types'
 import ContractActions from './ContractActions'
 import FurnitureChecklist from './FurnitureChecklist'
+import SignersPanel from './SignersPanel'
 import { TEMPLATE_SUPPORTED_TYPES } from '@/lib/contracts/templateRegistry'
 
 export const metadata: Metadata = { title: 'รายละเอียดสัญญา' }
 
 const STATUS_COLORS: Record<ContractStatus, string> = {
-  draft: 'bg-gray-100 text-gray-600',
-  sent: 'bg-yellow-100 text-yellow-700',
-  signed: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-600',
+  draft:            'bg-gray-100 text-gray-600',
+  sent:             'bg-yellow-100 text-yellow-700',
+  viewed:           'bg-blue-100 text-blue-700',
+  partially_signed: 'bg-orange-100 text-orange-700',
+  signed:           'bg-green-100 text-green-700',
+  completed:        'bg-emerald-100 text-emerald-700',
+  cancelled:        'bg-red-100 text-red-600',
 }
 
 const STATUS_LABELS_TH: Record<ContractStatus, string> = {
-  draft: 'ร่าง',
-  sent: 'ส่งแล้ว',
-  signed: 'ลงนามแล้ว',
-  cancelled: 'ยกเลิก',
+  draft:            'ร่าง',
+  sent:             'ส่งแล้ว',
+  viewed:           'เปิดดูแล้ว',
+  partially_signed: 'ลงนามบางส่วน',
+  signed:           'ลงนามครบแล้ว',
+  completed:        'เสร็จสมบูรณ์',
+  cancelled:        'ยกเลิก',
 }
 
 function fmt(n: number): string {
@@ -44,7 +51,7 @@ export default async function ContractDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: contract }, { data: furnitureItems }] = await Promise.all([
+  const [{ data: contract }, { data: furnitureItems }, { data: signers }] = await Promise.all([
     supabase
       .from('contracts')
       .select('*, stock:stock(*), owner:owners(*), customer:customers(*)')
@@ -53,6 +60,11 @@ export default async function ContractDetailPage({
       .single(),
     supabase
       .from('contract_furniture_items')
+      .select('*')
+      .eq('contract_id', id)
+      .order('sort_order'),
+    supabase
+      .from('contract_signers')
       .select('*')
       .eq('contract_id', id)
       .order('sort_order'),
@@ -70,6 +82,7 @@ export default async function ContractDetailPage({
   const isCommission    = contract.doc_type === 'commission'
   const isReservation   = contract.doc_type === 'reservation'
   const hasTemplate     = TEMPLATE_SUPPORTED_TYPES.has(contract.doc_type)
+  const isFinalized     = !!(contract as { is_finalized?: boolean }).is_finalized
 
   return (
     <div className="w-full p-4 lg:p-8 pt-6 max-w-4xl overflow-x-hidden">
@@ -93,6 +106,12 @@ export default async function ContractDetailPage({
                 <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_COLORS[contract.status as ContractStatus] ?? 'bg-gray-100 text-gray-600'}`}>
                   {STATUS_LABELS_TH[contract.status as ContractStatus] ?? contract.status}
                 </span>
+                {isFinalized && (
+                  <span className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-100 text-emerald-700">
+                    <Eye className="w-3 h-3" />
+                    ล็อกแล้ว
+                  </span>
+                )}
                 <span className="text-xs text-gray-400">{docDate}</span>
                 {contract.language_version && (
                   <span className="text-xs px-2 py-0.5 bg-purple-50 text-purple-600 rounded-full">
@@ -103,7 +122,6 @@ export default async function ContractDetailPage({
             </div>
           </div>
 
-          {/* Preview link — full width on mobile */}
           {hasTemplate && (
             <Link
               href={`/contracts/${id}/preview`}
@@ -119,7 +137,6 @@ export default async function ContractDetailPage({
       <div className="grid lg:grid-cols-3 gap-4">
         {/* Left: main info */}
         <div className="lg:col-span-2 space-y-4 min-w-0">
-          {/* ทรัพย์ */}
           {stock && (
             <Section title="ทรัพย์สิน">
               <div className="flex items-start gap-2 justify-between min-w-0">
@@ -138,7 +155,6 @@ export default async function ContractDetailPage({
             </Section>
           )}
 
-          {/* รายละเอียดการเงิน */}
           {(isRental || isReservation || isReceipt || isCommission) && (
             <Section title="รายละเอียดทางการเงิน">
               <div className="space-y-2">
@@ -185,7 +201,6 @@ export default async function ContractDetailPage({
             </Section>
           )}
 
-          {/* Furniture checklist — rental only */}
           {isRental && (
             <Section title="รายการเฟอร์นิเจอร์และอุปกรณ์">
               <FurnitureChecklist
@@ -203,9 +218,8 @@ export default async function ContractDetailPage({
           )}
         </div>
 
-        {/* Right: parties + actions */}
+        {/* Right: parties + signers + actions */}
         <div className="space-y-4 min-w-0">
-          {/* เจ้าของ */}
           {owner && (
             <Section title="เจ้าของทรัพย์">
               <div className="space-y-2">
@@ -225,7 +239,6 @@ export default async function ContractDetailPage({
             </Section>
           )}
 
-          {/* ลูกค้า */}
           {customer && (
             <Section title="ลูกค้า / ผู้เช่า">
               <div className="space-y-2">
@@ -245,14 +258,24 @@ export default async function ContractDetailPage({
             </Section>
           )}
 
-          {/* Actions */}
+          {/* Signers panel */}
+          <SignersPanel
+            contractId={id}
+            initialSigners={(signers ?? []) as ContractSigner[]}
+            owner={owner ? { name: ownerDisplayName(owner), phone: owner.phone ?? '' } : null}
+            customer={customer ? { name: customerDisplayName(customer), phone: customer.phone ?? '' } : null}
+          />
+
           <ContractActions
             contractId={contract.id}
             status={contract.status as ContractStatus}
             pdfUrl={contract.pdf_url}
             docxUrl={contract.docx_url ?? null}
+            finalizedDocxUrl={(contract as { finalized_docx_url?: string }).finalized_docx_url ?? null}
+            finalizedPdfUrl={(contract as { finalized_pdf_url?: string }).finalized_pdf_url ?? null}
             templateSlug={contract.template_slug ?? null}
-            signToken={contract.sign_token ?? null}
+            isFinalized={isFinalized}
+            finalizedAt={(contract as { finalized_at?: string }).finalized_at ?? null}
           />
         </div>
       </div>

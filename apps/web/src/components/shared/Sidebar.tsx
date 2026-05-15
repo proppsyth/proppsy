@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Users, UserCheck, Building2, Calendar,
-  TrendingUp, Settings, LogOut, ShieldCheck, Zap,
+  TrendingUp, Settings, LogOut, ShieldCheck, Zap, CreditCard, Newspaper,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { href: '/calendar', icon: '📅', label: 'นัดหมาย & ปฏิทิน', permission: null },
   { href: '/commission', icon: '💰', label: 'คอมมิชชัน', permission: null },
   { href: '/credits', icon: '⚡', label: 'เครดิต', permission: null },
+  { href: '/news', icon: '📰', label: 'ข่าวสาร', permission: null },
 ]
 
 const ADMIN_ITEMS = [
@@ -37,9 +38,11 @@ const MORE_ITEMS_BASE = [
   { href: '/owners', icon: UserCheck, label: 'เจ้าของทรัพย์' },
   { href: '/customers', icon: Users, label: 'ลูกค้า' },
   { href: '/projects', icon: Building2, label: 'โครงการ' },
-  { href: '/calendar', icon: Calendar, label: 'นัดหมาย & ปฏิทิน' },
+  { href: '/calendar', icon: Calendar, label: 'นัดหมาย' },
   { href: '/commission', icon: TrendingUp, label: 'คอมมิชชัน' },
   { href: '/credits', icon: Zap, label: 'เครดิต' },
+  { href: '/news', icon: Newspaper, label: 'ข่าวสาร' },
+  { href: '/billing', icon: CreditCard, label: 'การชำระเงิน' },
 ]
 
 const MORE_ITEM_ADMIN = { href: '/admin/users', icon: ShieldCheck, label: 'จัดการผู้ใช้' }
@@ -131,6 +134,11 @@ export default function Sidebar({ profile }: SidebarProps) {
         </nav>
 
         <div className="p-3 border-t border-gray-100 space-y-0.5">
+          <Link href="/billing"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${isActive('/billing') ? 'bg-blue-600 text-white font-medium' : 'text-gray-600 hover:bg-gray-100'}`}>
+            <CreditCard className="w-4 h-4 flex-shrink-0" />
+            การชำระเงิน
+          </Link>
           <Link href="/profile"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${isActive('/profile') ? 'bg-blue-600 text-white font-medium' : 'text-gray-600 hover:bg-gray-100'}`}>
             <Settings className="w-4 h-4 flex-shrink-0" />

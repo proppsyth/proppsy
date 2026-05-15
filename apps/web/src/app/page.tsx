@@ -297,7 +297,9 @@ export default async function PublicListingPage({
             <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={20} height={20} className="object-contain rounded" />
             <span>© {new Date().getFullYear()} Proppsy · Real Estate Management Platform</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap justify-center sm:justify-end">
+            <Link href="/guide" className="hover:text-gray-600 transition">คู่มือ</Link>
+            <Link href="/faq" className="hover:text-gray-600 transition">FAQ</Link>
             <Link href="/services" className="hover:text-gray-600 transition">บริการ</Link>
             <Link href="/news" className="hover:text-gray-600 transition">ข่าวสาร</Link>
             <Link href="/about" className="hover:text-gray-600 transition">เกี่ยวกับเรา</Link>

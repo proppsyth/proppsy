@@ -16,7 +16,11 @@ export type ContractDocType =
   | 'commission_confirm'
   | 'co_agent'
 export type PaymentMethod = 'cash' | 'transfer' | 'cheque'
-export type ContractStatus = 'draft' | 'sent' | 'signed' | 'cancelled'
+export type ContractStatus =
+  | 'draft' | 'sent' | 'viewed' | 'partially_signed'
+  | 'signed' | 'completed' | 'cancelled'
+export type SignerRole = 'tenant' | 'owner' | 'co_agent' | 'witness'
+export type SignerStatus = 'pending' | 'viewed' | 'signed' | 'declined'
 export type CustomerSource = 'line_oa' | 'referral' | 'walk_in' | 'online'
 export type CreditTransactionType = 'grant' | 'topup' | 'spend' | 'reset' | 'assign' | 'expire'
 
@@ -79,6 +83,8 @@ export interface Profile {
   plan_expires_at?: string
   ai_calls_this_month?: number
   ai_calls_month?: string
+  omise_customer_id?: string
+  team_name?: string
   created_at: string
   updated_at: string
 }
@@ -253,12 +259,37 @@ export interface Contract {
   signed_at?: string
   occupant_count?: number
   extra_vars?: Record<string, string>
+  // Finalization (immutable lock after all signers complete)
+  is_finalized?: boolean
+  finalized_at?: string
+  finalized_pdf_url?: string
+  finalized_docx_url?: string
   created_at: string
   updated_at: string
   // Joined
   stock?: Stock
   owner?: Owner
   customer?: Customer
+}
+
+export interface ContractSigner {
+  id: string
+  contract_id: string
+  agent_uid: string
+  signer_role: SignerRole
+  signer_name: string | null
+  signer_phone: string | null
+  sign_token: string
+  token_expires_at: string | null
+  status: SignerStatus
+  viewed_at: string | null
+  signed_at: string | null
+  signature_url: string | null
+  signature_type: 'drawn' | 'typed' | null
+  signed_name: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
 }
 
 export interface Appointment {

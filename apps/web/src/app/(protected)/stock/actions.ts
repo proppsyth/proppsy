@@ -110,12 +110,15 @@ export async function updateStock(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
 
+  const autoUnpublish = ['rented', 'sold', 'unavailable'].includes(input.status)
+
   const { error } = await supabase
     .from('stock')
     .update({
       ...input,
       project_id: input.project_id || null,
       owner_id: input.owner_id || null,
+      ...(autoUnpublish ? { is_published: false, published_at: null } : {}),
     })
     .eq('id', stockId)
     .eq('agent_uid', user.id)

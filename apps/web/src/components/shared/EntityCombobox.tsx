@@ -206,6 +206,7 @@ export default function EntityCombobox(props: Props) {
   const [activeIdx, setActiveIdx] = useState(-1)
   const [isPending, startTransition] = useTransition()
   const [hasSearched, setHasSearched] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   const triggerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -282,6 +283,10 @@ export default function EntityCombobox(props: Props) {
     el?.scrollIntoView({ block: 'nearest' })
   }, [activeIdx])
 
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 640)
+  }, [])
+
   // Close on outside pointer (works for mouse and touch)
   useEffect(() => {
     if (!open) return
@@ -299,7 +304,6 @@ export default function EntityCombobox(props: Props) {
 
   // Derive display label for selected item
   const displayLabel = selectedLabel || (value ? value : '')
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
 
   const emptyIcon = kind === 'stock' ? <Building2 className="w-8 h-8 text-gray-200" /> : <User className="w-8 h-8 text-gray-200" />
   const emptyHint = kind === 'stock'

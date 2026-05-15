@@ -44,7 +44,7 @@ export default async function PublicPropertyDetailPage({
     .select(`
       *,
       project:projects(name_th, name_en, developer, built_year, total_floors, facilities, bts_mrt, address_road, province, district),
-      agent:profiles(name, nickname, email, phone, line_id, logo_url)
+      agent:profiles(name, nickname, email, phone, line_id, logo_url, company_name, team_name, first_name_th, last_name_th, position)
     `)
     .eq('id', id)
     .eq('is_published', true)
@@ -55,7 +55,7 @@ export default async function PublicPropertyDetailPage({
 
   const stock = stockRaw as unknown as Stock & {
     project?: { name_th: string; name_en?: string; developer?: string; built_year?: number; total_floors?: number; facilities: string[]; bts_mrt: string[]; address_road?: string; province?: string; district?: string }
-    agent?: { name?: string; nickname?: string; email?: string; phone?: string; line_id?: string; logo_url?: string }
+    agent?: { name?: string; nickname?: string; email?: string; phone?: string; line_id?: string; logo_url?: string; company_name?: string; team_name?: string; first_name_th?: string; last_name_th?: string; position?: string }
   }
 
   const isRent = stock.listing_type !== 'sale'

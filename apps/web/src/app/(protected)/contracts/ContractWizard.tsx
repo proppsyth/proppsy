@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Loader2, ChevronRight, ChevronLeft, Check, FileText, X, Globe, Info,
+  Loader2, ChevronRight, ChevronLeft, Check, FileText, X, Globe, Info, AlertCircle,
 } from 'lucide-react'
 import { DOC_TYPE_LABELS } from '@/types'
 import type { ContractDocType, PaymentMethod } from '@/types'
@@ -148,6 +148,8 @@ export default function ContractWizard() {
   const [state, setState] = useState<WizardState>(INIT)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
+  const [showErrors, setShowErrors] = useState(false)
+  const [stepErrors, setStepErrors] = useState<string[]>([])
 
   const set = (k: keyof WizardState, v: string | boolean | Record<string, string>) =>
     setState(s => ({ ...s, [k]: v }))
@@ -168,6 +170,9 @@ export default function ContractWizard() {
   const isPaymentDoc  = ['invoice_reservation','receipt_reservation','invoice_deposit','receipt_deposit'].includes(state.doc_type)
   const isCoAgent     = state.doc_type === 'co_agent'
   const extraFields   = EXTRA_VAR_FIELDS[state.doc_type as ContractDocType] ?? []
+
+  const needsOwner    = isRental || isReservation || isPaymentDoc || isCommission || isCommissionConfirm || isCoAgent
+  const needsCustomer = isRental || isReservation || isPaymentDoc || isReceipt
 
   // ─── Field helpers ──────────────────────────────────────────
 
@@ -257,6 +262,53 @@ export default function ContractWizard() {
     return template?.slug
   }
 
+  // ─── Validation ─────────────────────────────────────────────
+
+  function validateStep1(): string[] {
+    const errs: string[] = []
+    if (!state.doc_type) errs.push('กรุณาเลือกประเภทเอกสาร')
+    if (!state.stock_id) errs.push('กรุณาเลือกทรัพย์สิน')
+    return errs
+  }
+
+  function validateStep2(): string[] {
+    const errs: string[] = []
+    if (needsOwner && !state.owner_id) errs.push('กรุณาเลือกเจ้าของทรัพย์ / ผู้ให้เช่า')
+    if (needsCustomer && !state.customer_id) errs.push('กรุณาเลือกลูกค้า / ผู้เช่า')
+    return errs
+  }
+
+  function validateStep3(): string[] {
+    const errs: string[] = []
+    if (isRental) {
+      if (!state.rent_price) errs.push('กรุณากรอกค่าเช่า / เดือน')
+      if (!state.contract_months) errs.push('กรุณาระบุระยะสัญญา (เดือน)')
+      if (!state.move_in_date) errs.push('กรุณาระบุวันเข้าอยู่ / เริ่มสัญญา')
+    }
+    if (isReservation) {
+      if (!state.deposit_amount) errs.push('กรุณากรอกเงินจอง')
+      if (!state.move_in_date) errs.push('กรุณาระบุวันที่ทำสัญญาจอง')
+    }
+    if (isReceipt) {
+      if (!state.rent_price) errs.push('กรุณากรอกจำนวนเงิน')
+      if (!state.move_in_date) errs.push('กรุณาระบุวันที่ / ประจำเดือน')
+    }
+    if (isCommission || isCommissionConfirm) {
+      if (!state.commission_net) errs.push('กรุณากรอกค่านายหน้าสุทธิ')
+    }
+    if (isPaymentDoc) {
+      if (!state.deposit_amount) errs.push('กรุณากรอกจำนวนเงิน')
+    }
+    if (isCoAgent) {
+      if (!state.rent_price) errs.push('กรุณากรอกค่าเช่า')
+      if (!state.move_in_date) errs.push('กรุณาระบุวันที่ทำสัญญา')
+    }
+    extraFields.forEach(f => {
+      if (f.required && !state.extra_vars[f.key]) errs.push(`กรุณากรอก${f.label}`)
+    })
+    return errs
+  }
+
   // ─── Submit ─────────────────────────────────────────────────
 
   function handleSubmit() {
@@ -310,6 +362,8 @@ export default function ContractWizard() {
   }
 
   // ─── Render ──────────────────────────────────────────────────
+
+  const reviewErrors = step === 4 ? [...validateStep1(), ...validateStep2(), ...validateStep3()] : []
 
   return (
     <div className="space-y-5">
@@ -407,17 +461,23 @@ export default function ContractWizard() {
           )}
 
           {/* Property search */}
-          <Section title="เลือกทรัพย์ (ไม่บังคับ)">
-            <EntityCombobox
-              kind="stock"
-              value={state.stock_id}
-              selectedLabel={state.stock_label}
-              onSelect={handleStockSelect}
-              searchFn={searchStocks}
-              placeholder="ค้นหาโครงการ, ห้อง, อาคาร..."
-            />
+          <Section title="เลือกทรัพย์สิน *">
+            <div className={showErrors && !state.stock_id ? 'ring-2 ring-red-300 rounded-xl' : ''}>
+              <EntityCombobox
+                kind="stock"
+                value={state.stock_id}
+                selectedLabel={state.stock_label}
+                onSelect={handleStockSelect}
+                searchFn={searchStocks}
+                placeholder="ค้นหาโครงการ, ห้อง, อาคาร..."
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block flex-shrink-0" />
+              แสดงเฉพาะทรัพย์ที่มีสถานะว่าง (available)
+            </p>
             {state.stock_id && state.rent_price && (
-              <p className="text-xs text-blue-600 mt-1.5">ค่าเช่า ฿{fmt(parseFloat(state.rent_price))}/เดือน (จากทรัพย์)</p>
+              <p className="text-xs text-blue-600 mt-1">ค่าเช่า ฿{fmt(parseFloat(state.rent_price))}/เดือน (จากทรัพย์)</p>
             )}
           </Section>
         </div>
@@ -426,26 +486,36 @@ export default function ContractWizard() {
       {/* ── Step 2: owner + customer ── */}
       {step === 2 && (
         <div className="space-y-4">
-          <Section title="เจ้าของทรัพย์ / ผู้ให้เช่า">
-            <EntityCombobox
-              kind="owner"
-              value={state.owner_id}
-              selectedLabel={state.owner_label}
-              onSelect={handleOwnerSelect}
-              searchFn={searchOwners}
-              placeholder="ค้นหาเจ้าของทรัพย์..."
-            />
+          <Section title={`เจ้าของทรัพย์ / ผู้ให้เช่า${needsOwner ? ' *' : ''}`}>
+            <div className={showErrors && needsOwner && !state.owner_id ? 'ring-2 ring-red-300 rounded-xl' : ''}>
+              <EntityCombobox
+                kind="owner"
+                value={state.owner_id}
+                selectedLabel={state.owner_label}
+                onSelect={handleOwnerSelect}
+                searchFn={searchOwners}
+                placeholder="ค้นหาเจ้าของทรัพย์..."
+              />
+            </div>
+            {needsOwner && (
+              <p className="text-xs text-gray-400 mt-1.5">* จำเป็นสำหรับเอกสารประเภทนี้</p>
+            )}
           </Section>
 
-          <Section title="ผู้เช่า / ลูกค้า">
-            <EntityCombobox
-              kind="customer"
-              value={state.customer_id}
-              selectedLabel={state.customer_label}
-              onSelect={handleCustomerSelect}
-              searchFn={searchCustomers}
-              placeholder="ค้นหาลูกค้า / ผู้เช่า..."
-            />
+          <Section title={`ผู้เช่า / ลูกค้า${needsCustomer ? ' *' : ''}`}>
+            <div className={showErrors && needsCustomer && !state.customer_id ? 'ring-2 ring-red-300 rounded-xl' : ''}>
+              <EntityCombobox
+                kind="customer"
+                value={state.customer_id}
+                selectedLabel={state.customer_label}
+                onSelect={handleCustomerSelect}
+                searchFn={searchCustomers}
+                placeholder="ค้นหาลูกค้า / ผู้เช่า..."
+              />
+            </div>
+            {needsCustomer && (
+              <p className="text-xs text-gray-400 mt-1.5">* จำเป็นสำหรับเอกสารประเภทนี้</p>
+            )}
           </Section>
         </div>
       )}
@@ -453,15 +523,15 @@ export default function ContractWizard() {
       {/* ── Step 3: financial details ── */}
       {step === 3 && (
         <div className="space-y-4">
-          {(isRental || state.doc_type === 'rental') && (
+          {isRental && (
             <>
               <Section title="ราคาและมัดจำ">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="ค่าเช่า / เดือน (บาท)" value={state.rent_price} onChange={handleRentChange} type="number" placeholder="0" />
+                  <Field label="ค่าเช่า / เดือน (บาท)" value={state.rent_price} onChange={handleRentChange} type="number" placeholder="0" required hasError={showErrors && !state.rent_price} />
                   <Field label="จำนวนเดือนมัดจำ" value={state.deposit_months} onChange={handleDepositMonthsChange} type="number" placeholder="2" />
                   <Field label="เงินมัดจำ (บาท)" value={state.deposit_amount} onChange={v => set('deposit_amount', v)} type="number" placeholder="คำนวณอัตโนมัติ" />
-                  <Field label="ระยะสัญญา (เดือน)" value={state.contract_months} onChange={handleContractMonthsChange} type="number" placeholder="12" />
-                  <Field label="วันที่เข้าอยู่" value={state.move_in_date} onChange={handleMoveInChange} type="date" />
+                  <Field label="ระยะสัญญา (เดือน)" value={state.contract_months} onChange={handleContractMonthsChange} type="number" placeholder="12" required hasError={showErrors && !state.contract_months} />
+                  <Field label="วันที่เข้าอยู่" value={state.move_in_date} onChange={handleMoveInChange} type="date" required hasError={showErrors && !state.move_in_date} />
                   <Field label="วันสิ้นสุดสัญญา" value={state.end_date} onChange={v => set('end_date', v)} type="date" />
                   <Field label="จำนวนผู้พักอาศัย" value={state.occupant_count} onChange={v => set('occupant_count', v)} type="number" placeholder="1" />
                 </div>
@@ -510,9 +580,9 @@ export default function ContractWizard() {
           {state.doc_type === 'renewal' && (
             <Section title="รายละเอียดต่อสัญญา">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="ค่าเช่า / เดือน (บาท)" value={state.rent_price} onChange={handleRentChange} type="number" placeholder="0" />
-                <Field label="ระยะเวลาต่อสัญญา (เดือน)" value={state.contract_months} onChange={handleContractMonthsChange} type="number" placeholder="12" />
-                <Field label="วันเริ่มต่อสัญญา" value={state.move_in_date} onChange={handleMoveInChange} type="date" />
+                <Field label="ค่าเช่า / เดือน (บาท)" value={state.rent_price} onChange={handleRentChange} type="number" placeholder="0" required hasError={showErrors && !state.rent_price} />
+                <Field label="ระยะเวลาต่อสัญญา (เดือน)" value={state.contract_months} onChange={handleContractMonthsChange} type="number" placeholder="12" required hasError={showErrors && !state.contract_months} />
+                <Field label="วันเริ่มต่อสัญญา" value={state.move_in_date} onChange={handleMoveInChange} type="date" required hasError={showErrors && !state.move_in_date} />
                 <Field label="วันสิ้นสุดสัญญาใหม่" value={state.end_date} onChange={v => set('end_date', v)} type="date" />
               </div>
             </Section>
@@ -522,10 +592,10 @@ export default function ContractWizard() {
             <>
               <Section title="เงื่อนไขการจอง">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="เงินจอง (บาท)" value={state.deposit_amount} onChange={v => set('deposit_amount', v)} type="number" placeholder="0" />
+                  <Field label="เงินจอง (บาท)" value={state.deposit_amount} onChange={v => set('deposit_amount', v)} type="number" placeholder="0" required hasError={showErrors && !state.deposit_amount} />
                   <Field label="ค่าเช่าต่อเดือน (บาท)" value={state.rent_price} onChange={handleRentChange} type="number" placeholder="0" />
                   <Field label="ค่าปรับกรณียกเลิก (บาท)" value={state.penalty_amount} onChange={v => set('penalty_amount', v)} type="number" placeholder="0" />
-                  <Field label="วันที่ทำสัญญาจอง" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" />
+                  <Field label="วันที่ทำสัญญาจอง" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" required hasError={showErrors && !state.move_in_date} />
                   <Field label="วันหมดอายุการจอง" value={state.reservation_expire_date} onChange={v => set('reservation_expire_date', v)} type="date" />
                 </div>
                 <div className="flex gap-4 mt-4">
@@ -550,7 +620,7 @@ export default function ContractWizard() {
           {isPaymentDoc && (
             <Section title="รายละเอียดการชำระเงิน">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="จำนวนเงิน (บาท)" value={state.deposit_amount} onChange={v => set('deposit_amount', v)} type="number" placeholder="0" />
+                <Field label="จำนวนเงิน (บาท)" value={state.deposit_amount} onChange={v => set('deposit_amount', v)} type="number" placeholder="0" required hasError={showErrors && !state.deposit_amount} />
                 <Field label="วันที่ชำระ" value={state.payment_date} onChange={v => set('payment_date', v)} type="date" />
                 <SelectField label="วิธีชำระ" value={state.payment_method} onChange={v => set('payment_method', v)} options={[
                   { value: 'transfer', label: 'โอนเงิน' },
@@ -565,8 +635,8 @@ export default function ContractWizard() {
           {isReceipt && (
             <Section title="รายละเอียดการชำระเงิน">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="จำนวนเงิน (บาท)" value={state.rent_price} onChange={v => set('rent_price', v)} type="number" placeholder="0" />
-                <Field label="ประจำเดือน (วันที่)" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" />
+                <Field label="จำนวนเงิน (บาท)" value={state.rent_price} onChange={v => set('rent_price', v)} type="number" placeholder="0" required hasError={showErrors && !state.rent_price} />
+                <Field label="ประจำเดือน (วันที่)" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" required hasError={showErrors && !state.move_in_date} />
               </div>
             </Section>
           )}
@@ -574,7 +644,7 @@ export default function ContractWizard() {
           {(isCommission || isCommissionConfirm) && (
             <Section title="ค่านายหน้า">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="ค่านายหน้าสุทธิ (บาท)" value={state.commission_net} onChange={v => set('commission_net', v)} type="number" placeholder="0" />
+                <Field label="ค่านายหน้าสุทธิ (บาท)" value={state.commission_net} onChange={v => set('commission_net', v)} type="number" placeholder="0" required hasError={showErrors && !state.commission_net} />
                 <Field label="ค่าเช่า / เดือน (บาท)" value={state.rent_price} onChange={v => set('rent_price', v)} type="number" placeholder="0" />
                 <Field label="ค่าคอมจากเจ้าของ (บาท)" value={state.commission_from_owner} onChange={v => set('commission_from_owner', v)} type="number" placeholder="0" />
                 <Field label="ค่าคอมจากลูกค้า (บาท)" value={state.commission_from_customer} onChange={v => set('commission_from_customer', v)} type="number" placeholder="0" />
@@ -589,9 +659,9 @@ export default function ContractWizard() {
           {isCoAgent && (
             <Section title="รายละเอียด Co-Agent">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="ค่าเช่า / เดือน (บาท)" value={state.rent_price} onChange={handleRentChange} type="number" placeholder="0" />
+                <Field label="ค่าเช่า / เดือน (บาท)" value={state.rent_price} onChange={handleRentChange} type="number" placeholder="0" required hasError={showErrors && !state.rent_price} />
                 <Field label="ระยะสัญญา (เดือน)" value={state.contract_months} onChange={v => set('contract_months', v)} type="number" placeholder="12" />
-                <Field label="วันที่ทำสัญญา" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" />
+                <Field label="วันที่ทำสัญญา" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" required hasError={showErrors && !state.move_in_date} />
               </div>
             </Section>
           )}
@@ -606,10 +676,12 @@ export default function ContractWizard() {
                 {extraFields.map(f => (
                   <Field
                     key={f.key}
-                    label={f.label + (f.required ? ' *' : '')}
+                    label={f.label}
                     value={state.extra_vars[f.key] ?? ''}
                     onChange={v => setExtra(f.key, v)}
                     placeholder={f.required ? 'จำเป็น' : 'ไม่บังคับ'}
+                    required={f.required}
+                    hasError={showErrors && !!f.required && !state.extra_vars[f.key]}
                   />
                 ))}
               </div>
@@ -656,6 +728,35 @@ export default function ContractWizard() {
             </div>
           </Section>
 
+          {reviewErrors.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <span className="text-sm font-semibold text-amber-800">ข้อมูลบางส่วนยังไม่ครบ</span>
+              </div>
+              <ul className="ml-6 space-y-0.5">
+                {reviewErrors.map((e, i) => <li key={i} className="text-xs text-amber-700">• {e}</li>)}
+              </ul>
+              <div className="flex gap-2 pt-1 flex-wrap">
+                {validateStep1().length > 0 && (
+                  <button type="button" onClick={() => { setStep(1); setShowErrors(true); setStepErrors(validateStep1()) }} className="text-xs px-2.5 py-1.5 border border-amber-300 text-amber-700 rounded-lg hover:bg-amber-100 transition">
+                    แก้ขั้นที่ 1 — ทรัพย์
+                  </button>
+                )}
+                {validateStep2().length > 0 && (
+                  <button type="button" onClick={() => { setStep(2); setShowErrors(true); setStepErrors(validateStep2()) }} className="text-xs px-2.5 py-1.5 border border-amber-300 text-amber-700 rounded-lg hover:bg-amber-100 transition">
+                    แก้ขั้นที่ 2 — คู่สัญญา
+                  </button>
+                )}
+                {validateStep3().length > 0 && (
+                  <button type="button" onClick={() => { setStep(3); setShowErrors(true); setStepErrors(validateStep3()) }} className="text-xs px-2.5 py-1.5 border border-amber-300 text-amber-700 rounded-lg hover:bg-amber-100 transition">
+                    แก้ขั้นที่ 3 — รายละเอียด
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700">
             สัญญาจะถูกบันทึกในสถานะ <strong>ร่าง</strong> — คุณสามารถ preview และดาวน์โหลด .docx ได้ในหน้าถัดไป
             {hasTemplate && (
@@ -667,7 +768,20 @@ export default function ContractWizard() {
         </div>
       )}
 
-      {/* Error */}
+      {/* Step validation errors */}
+      {stepErrors.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-start gap-2.5 mb-2">
+            <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+            <span className="text-sm font-semibold text-red-700">กรุณากรอกข้อมูลที่จำเป็น</span>
+          </div>
+          <ul className="ml-6 space-y-0.5">
+            {stepErrors.map((e, i) => <li key={i} className="text-xs text-red-600">• {e}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {/* General error */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
           {error}
@@ -679,7 +793,12 @@ export default function ContractWizard() {
         {step > 1 && (
           <button
             type="button"
-            onClick={() => setStep(s => (s - 1) as 1 | 2 | 3 | 4)}
+            onClick={() => {
+              setStepErrors([])
+              setShowErrors(false)
+              setError('')
+              setStep(s => (s - 1) as 1 | 2 | 3 | 4)
+            }}
             className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -691,7 +810,17 @@ export default function ContractWizard() {
           <button
             type="button"
             onClick={() => {
-              if (step === 1 && !state.doc_type) { setError('กรุณาเลือกประเภทเอกสาร'); return }
+              const errs = step === 1 ? validateStep1() :
+                           step === 2 ? validateStep2() :
+                           step === 3 ? validateStep3() : []
+              if (errs.length > 0) {
+                setStepErrors(errs)
+                setShowErrors(true)
+                setError('')
+                return
+              }
+              setStepErrors([])
+              setShowErrors(false)
               setError('')
               setStep(s => (s + 1) as 1 | 2 | 3 | 4)
             }}
@@ -705,8 +834,8 @@ export default function ContractWizard() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isPending}
-            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
+            disabled={isPending || reviewErrors.length > 0}
+            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             {isPending ? 'กำลังสร้าง...' : 'สร้างสัญญา'}
@@ -740,19 +869,25 @@ interface FieldProps {
   onChange: (v: string) => void
   placeholder?: string
   type?: string
+  required?: boolean
+  hasError?: boolean
 }
 
-function Field({ label, value, onChange, placeholder, type = 'text' }: FieldProps) {
+function Field({ label, value, onChange, placeholder, type = 'text', required, hasError }: FieldProps) {
   return (
     <div>
-      <Label>{label}</Label>
+      <label className="block text-xs text-gray-500 mb-1.5 font-medium">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
       <div className="relative flex items-center">
         <input
           type={type}
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition pr-8"
+          className={`w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 transition pr-8 ${
+            hasError ? 'border-red-300 bg-red-50/60 focus:ring-red-200' : 'border-gray-200 focus:ring-blue-500'
+          }`}
         />
         {type === 'date' && value && (
           <button

@@ -6,8 +6,6 @@ import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
 import { geminiParseDocument, geminiParseBankBook } from '@/lib/ocr'
 import type { OcrDocumentResult, BankBookOcrResult } from '@/lib/ocr'
 
-export type { OcrDocumentResult, BankBookOcrResult }
-
 export async function updateProfile(
   formData: FormData
 ): Promise<{ error?: string; success?: boolean }> {

@@ -9,23 +9,29 @@ import type { ContractDocType, ContractStatus } from '@/types'
 export const metadata: Metadata = { title: 'สัญญา' }
 
 const STATUS_COLORS: Record<ContractStatus, string> = {
-  draft: 'bg-gray-100 text-gray-600',
-  sent: 'bg-yellow-100 text-yellow-700',
-  signed: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-600',
+  draft:            'bg-gray-100 text-gray-600',
+  sent:             'bg-yellow-100 text-yellow-700',
+  viewed:           'bg-blue-100 text-blue-700',
+  partially_signed: 'bg-orange-100 text-orange-700',
+  signed:           'bg-green-100 text-green-700',
+  completed:        'bg-emerald-100 text-emerald-700',
+  cancelled:        'bg-red-100 text-red-600',
 }
 
 const STATUS_LABELS_TH: Record<ContractStatus, string> = {
-  draft: 'ร่าง',
-  sent: 'ส่งแล้ว',
-  signed: 'ลงนามแล้ว',
-  cancelled: 'ยกเลิก',
+  draft:            'ร่าง',
+  sent:             'ส่งแล้ว',
+  viewed:           'เปิดดูแล้ว',
+  partially_signed: 'ลงนามบางส่วน',
+  signed:           'ลงนามครบแล้ว',
+  completed:        'เสร็จสมบูรณ์',
+  cancelled:        'ยกเลิก',
 }
 
 const TABS: { value: string; label: string }[] = [
-  { value: 'all', label: 'ทั้งหมด' },
-  { value: 'draft', label: 'ร่าง' },
-  { value: 'sent', label: 'ส่งแล้ว' },
+  { value: 'all',    label: 'ทั้งหมด' },
+  { value: 'draft',  label: 'ร่าง' },
+  { value: 'sent',   label: 'ส่งแล้ว' },
   { value: 'signed', label: 'ลงนาม' },
   { value: 'cancelled', label: 'ยกเลิก' },
 ]
