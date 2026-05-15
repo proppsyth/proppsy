@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Search, LayoutGrid, List, Home, Globe } from 'lucide-react'
 import { ownerDisplayName, stockDisplayTitle } from '@/types'
 import type { Stock, StockStatus, ListingType } from '@/types'
+import StorageImage from '@/components/shared/StorageImage'
 
 const STATUS_COLORS: Record<StockStatus, string> = {
   available: 'bg-green-100 text-green-700',
@@ -129,13 +129,18 @@ function StockGridCard({ stock: s }: { stock: Stock }) {
     <Link href={`/stock/${s.id}`} className="group bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:border-blue-200 transition-all block">
       {/* Photo */}
       <div className="relative aspect-[4/3] bg-gray-100">
-        {photo ? (
-          <Image src={photo} alt={s.unit_no ?? s.id} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw" />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Home className="w-10 h-10 text-gray-300" />
-          </div>
-        )}
+        <StorageImage
+          src={photo}
+          alt={s.unit_no ?? s.id}
+          fill
+          className="object-cover group-hover:scale-105 transition-transform duration-300"
+          sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
+          fallback={
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Home className="w-10 h-10 text-gray-300" />
+            </div>
+          }
+        />
         <span className={`absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[s.status]}`}>
           {STATUS_LABELS[s.status]}
         </span>
@@ -201,13 +206,18 @@ function StockListRow({ stock: s }: { stock: Stock }) {
     <Link href={`/stock/${s.id}`} className="group bg-white rounded-xl border border-gray-100 shadow-sm flex overflow-hidden hover:shadow-md hover:border-blue-200 transition-all">
       {/* Photo */}
       <div className="relative w-24 sm:w-32 flex-shrink-0 bg-gray-100">
-        {photo ? (
-          <Image src={photo} alt={s.unit_no ?? s.id} fill className="object-cover" sizes="128px" />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Home className="w-6 h-6 text-gray-300" />
-          </div>
-        )}
+        <StorageImage
+          src={photo}
+          alt={s.unit_no ?? s.id}
+          fill
+          className="object-cover"
+          sizes="128px"
+          fallback={
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Home className="w-6 h-6 text-gray-300" />
+            </div>
+          }
+        />
       </div>
 
       {/* Content */}

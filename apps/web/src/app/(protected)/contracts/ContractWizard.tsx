@@ -2,33 +2,34 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, ChevronRight, ChevronLeft, Check, FileText, X } from 'lucide-react'
+import {
+  Loader2, ChevronRight, ChevronLeft, Check, FileText, X, Globe, Info,
+} from 'lucide-react'
 import { DOC_TYPE_LABELS } from '@/types'
-import type { ContractDocType, Owner, Customer, PaymentMethod } from '@/types'
+import type { ContractDocType, PaymentMethod } from '@/types'
 import { createContract } from './actions'
-import SearchSelect from '@/components/shared/SearchSelect'
+import {
+  searchStocks, searchOwners, searchCustomers,
+  type StockSearchResult, type OwnerSearchResult, type CustomerSearchResult,
+} from './search-actions'
+import EntityCombobox from '@/components/shared/EntityCombobox'
+import {
+  TEMPLATE_REGISTRY, TEMPLATE_SUPPORTED_TYPES,
+  type LanguageVersion, LANGUAGE_LABELS,
+  type TemplateDefinition,
+} from '@/lib/contracts/templateRegistry'
 
 // ─── Types ───────────────────────────────────────────────────
 
-type StockOption = {
-  id: string
-  project_name?: string | null
-  unit_no?: string | null
-  room_type?: string | null
-  status: string
-  owner_id?: string | null
-  rent_price?: number | null
-  sale_price?: number | null
-}
-
-type OwnerOption = Pick<Owner, 'id' | 'nickname' | 'first_name_th' | 'last_name_th' | 'phone'>
-type CustomerOption = Pick<Customer, 'id' | 'nickname' | 'first_name_th' | 'last_name_th' | 'phone'>
-
 interface WizardState {
   doc_type: ContractDocType | ''
+  language: LanguageVersion
   stock_id: string
+  stock_label: string
   owner_id: string
+  owner_label: string
   customer_id: string
+  customer_label: string
   rent_price: string
   deposit_months: string
   deposit_amount: string
@@ -42,113 +43,141 @@ interface WizardState {
   commission_net: string
   vat_7: boolean
   wht_3: boolean
-  // Monthly expenses
+  occupant_count: string
   water_unit_price: string
   electric_unit_price: string
   internet_fee: string
   common_fee: string
   parking_fee: string
-  // Payment details
   payment_date: string
   payment_method: PaymentMethod
   bank_ref: string
   reservation_expire_date: string
   payment_grace_days: string
   payment_day_of_month: string
-  // Commission split
   commission_rate_pct: string
   commission_from_owner: string
   commission_from_customer: string
+  extra_vars: Record<string, string>
 }
 
 const INIT: WizardState = {
-  doc_type: '', stock_id: '', owner_id: '', customer_id: '',
+  doc_type: '', language: 'th',
+  stock_id: '', stock_label: '',
+  owner_id: '', owner_label: '',
+  customer_id: '', customer_label: '',
   rent_price: '', deposit_months: '2', deposit_amount: '',
   contract_months: '12', move_in_date: '', end_date: '',
   cleaning_fee: '', ac_count: '', ac_wash_per_unit: '',
   penalty_amount: '', commission_net: '',
-  vat_7: false, wht_3: false,
+  vat_7: false, wht_3: false, occupant_count: '1',
   water_unit_price: '', electric_unit_price: '', internet_fee: '',
   common_fee: '', parking_fee: '',
   payment_date: '', payment_method: 'transfer', bank_ref: '',
   reservation_expire_date: '', payment_grace_days: '5', payment_day_of_month: '',
   commission_rate_pct: '', commission_from_owner: '', commission_from_customer: '',
-}
-
-interface Props {
-  stocks: StockOption[]
-  owners: OwnerOption[]
-  customers: CustomerOption[]
+  extra_vars: {},
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
 
 const DOC_GROUPS = [
   {
-    label: 'สัญญา',
-    types: ['rental', 'reservation', 'renewal'] as ContractDocType[],
+    label: 'สัญญา (มี template .docx)',
+    types: ['rental', 'reservation', 'renewal', 'co_agent'] as ContractDocType[],
+    highlight: true,
   },
   {
     label: 'ยกเลิก / แจ้ง',
     types: ['cancellation', 'termination', 'notice'] as ContractDocType[],
+    highlight: false,
   },
   {
     label: 'ใบแจ้งหนี้ / ใบเสร็จ',
     types: ['invoice_reservation', 'receipt_reservation', 'invoice_deposit', 'receipt_deposit', 'receipt_rent', 'receipt_book'] as ContractDocType[],
+    highlight: false,
   },
   {
     label: 'คอมมิชชัน',
     types: ['commission', 'commission_confirm'] as ContractDocType[],
+    highlight: false,
   },
 ]
 
-const STATUS_COLORS: Record<string, string> = {
-  available: 'text-green-600',
-  rented: 'text-blue-600',
-  sold: 'text-purple-600',
-  unavailable: 'text-gray-400',
-}
-
-const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  transfer: 'โอนเงิน',
-  cash: 'เงินสด',
-  cheque: 'เช็ค',
+const EXTRA_VAR_FIELDS: Partial<Record<ContractDocType, Array<{ key: string; label: string; required?: boolean }>>> = {
+  renewal: [
+    { key: 'สัญญาเช่าฉบับเก่าลงวันที่', label: 'วันที่สัญญาเช่าฉบับเดิม', required: true },
+  ],
+  co_agent: [
+    { key: 'ชื่อ', label: 'ชื่อ Co-Agent', required: true },
+    { key: 'เลขเสียภาษี', label: 'เลขบัตรประชาชน Co-Agent', required: true },
+    { key: 'บ้านเลขที่', label: 'บ้านเลขที่ Co-Agent' },
+    { key: 'ถนน', label: 'ถนน Co-Agent' },
+    { key: 'แขวงตำบล', label: 'แขวง/ตำบล Co-Agent' },
+    { key: 'เขตอำเภอ', label: 'เขต/อำเภอ Co-Agent' },
+    { key: 'จังหวัด', label: 'จังหวัด Co-Agent' },
+    { key: 'บริษัท (ถ้ามี)', label: 'บริษัท Co-Agent (ถ้ามี)' },
+  ],
+  rental: [
+    { key: 'ตึก', label: 'ตึก/อาคาร' },
+    { key: 'ซอย', label: 'ซอย' },
+  ],
+  reservation: [
+    { key: 'ตึก', label: 'ตึก/อาคาร' },
+  ],
 }
 
 function fmt(n: number): string {
   return new Intl.NumberFormat('th-TH').format(n)
 }
 
-function displayName(o: OwnerOption | CustomerOption): string {
-  if (o.nickname) return o.nickname
-  return [o.first_name_th, o.last_name_th].filter(Boolean).join(' ') || o.id
+function stockLabel(r: StockSearchResult): string {
+  return [r.project_name, r.unit_no, r.room_type].filter(Boolean).join(' · ') || r.id
+}
+
+function personLabel(r: OwnerSearchResult | CustomerSearchResult): string {
+  if (r.nickname) return r.nickname
+  return [r.first_name_th, r.last_name_th].filter(Boolean).join(' ') || r.id
 }
 
 // ─── Component ───────────────────────────────────────────────
 
-export default function ContractWizard({ stocks, owners, customers }: Props) {
+export default function ContractWizard() {
   const router = useRouter()
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [state, setState] = useState<WizardState>(INIT)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
 
-  const set = (k: keyof WizardState, v: string | boolean) =>
+  const set = (k: keyof WizardState, v: string | boolean | Record<string, string>) =>
     setState(s => ({ ...s, [k]: v }))
 
-  const selectedStock = stocks.find(s => s.id === state.stock_id)
-  const isRental = state.doc_type === 'rental' || state.doc_type === 'renewal'
+  const setExtra = (key: string, val: string) =>
+    setState(s => ({ ...s, extra_vars: { ...s.extra_vars, [key]: val } }))
+
+  const hasTemplate = TEMPLATE_SUPPORTED_TYPES.has(state.doc_type)
+  const availableTemplates = TEMPLATE_REGISTRY.filter(t => t.docType === state.doc_type)
+  const availableLanguages = availableTemplates.map(t => t.language)
+  const selectedTemplate = availableTemplates.find(t => t.language === state.language) ?? availableTemplates[0]
+
+  const isRental      = state.doc_type === 'rental' || state.doc_type === 'renewal'
   const isReservation = state.doc_type === 'reservation'
-  const isReceipt = state.doc_type === 'receipt_rent' || state.doc_type === 'receipt_book'
-  const isCommission = state.doc_type === 'commission'
+  const isReceipt     = state.doc_type === 'receipt_rent' || state.doc_type === 'receipt_book'
+  const isCommission  = state.doc_type === 'commission'
   const isCommissionConfirm = state.doc_type === 'commission_confirm'
-  const isPaymentDoc = ['invoice_reservation', 'receipt_reservation', 'invoice_deposit', 'receipt_deposit'].includes(state.doc_type)
+  const isPaymentDoc  = ['invoice_reservation','receipt_reservation','invoice_deposit','receipt_deposit'].includes(state.doc_type)
+  const isCoAgent     = state.doc_type === 'co_agent'
+  const extraFields   = EXTRA_VAR_FIELDS[state.doc_type as ContractDocType] ?? []
+
+  // ─── Field helpers ──────────────────────────────────────────
 
   function handleRentChange(v: string) {
     set('rent_price', v)
     const rent = parseFloat(v)
-    const months = parseFloat(state.deposit_months) || 2
-    if (rent > 0) set('deposit_amount', String(rent * months))
+    if (rent > 0) {
+      const isResPayment = state.doc_type === 'invoice_reservation' || state.doc_type === 'receipt_reservation'
+      set('deposit_amount', isResPayment ? String(rent) : String(rent * (parseFloat(state.deposit_months) || 2)))
+    }
   }
 
   function handleDepositMonthsChange(v: string) {
@@ -181,12 +210,54 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
     }
   }
 
-  function handleStockSelect(stockId: string) {
-    set('stock_id', stockId)
-    const stock = stocks.find(s => s.id === stockId)
-    if (stock?.owner_id) set('owner_id', stock.owner_id)
-    if (stock?.rent_price) handleRentChange(String(stock.rent_price))
+  // ─── Entity select handlers ─────────────────────────────────
+
+  function handleStockSelect(r: StockSearchResult | null) {
+    if (!r) {
+      setState(s => ({ ...s, stock_id: '', stock_label: '' }))
+      return
+    }
+    setState(s => {
+      const next = { ...s, stock_id: r.id, stock_label: stockLabel(r) }
+      if (r.owner_id) next.owner_id = r.owner_id
+      if (r.rent_price) {
+        const rent = r.rent_price
+        next.rent_price = String(rent)
+        const isResPayment = s.doc_type === 'invoice_reservation' || s.doc_type === 'receipt_reservation'
+        next.deposit_amount = isResPayment ? String(rent) : String(rent * (parseFloat(s.deposit_months) || 2))
+      }
+      return next
+    })
   }
+
+  function handleOwnerSelect(r: OwnerSearchResult | null) {
+    if (!r) { setState(s => ({ ...s, owner_id: '', owner_label: '' })); return }
+    setState(s => ({ ...s, owner_id: r.id, owner_label: personLabel(r) }))
+  }
+
+  function handleCustomerSelect(r: CustomerSearchResult | null) {
+    if (!r) { setState(s => ({ ...s, customer_id: '', customer_label: '' })); return }
+    setState(s => ({ ...s, customer_id: r.id, customer_label: personLabel(r) }))
+  }
+
+  function handleDocTypeSelect(type: ContractDocType) {
+    const templates = TEMPLATE_REGISTRY.filter(t => t.docType === type)
+    const defaultLang = templates.find(t => t.language === 'th')?.language ?? templates[0]?.language ?? 'th'
+    setState(s => {
+      const next: WizardState = { ...s, doc_type: type, language: defaultLang as LanguageVersion }
+      // Auto-set reservation amount = 1 month rent when switching to reservation invoice/receipt
+      if ((type === 'invoice_reservation' || type === 'receipt_reservation') && s.rent_price) {
+        next.deposit_amount = s.rent_price
+      }
+      return next
+    })
+  }
+
+  function computeTemplateSlug(template: TemplateDefinition | undefined): string | undefined {
+    return template?.slug
+  }
+
+  // ─── Submit ─────────────────────────────────────────────────
 
   function handleSubmit() {
     if (!state.doc_type) { setError('กรุณาเลือกประเภทเอกสาร'); return }
@@ -196,37 +267,41 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
       const int = (v: string) => v.trim() ? parseInt(v) || null : null
 
       const res = await createContract({
-        doc_type: state.doc_type as ContractDocType,
-        stock_id: state.stock_id || null,
-        owner_id: state.owner_id || null,
-        customer_id: state.customer_id || null,
-        rent_price: num(state.rent_price),
-        deposit_months: num(state.deposit_months),
-        deposit_amount: num(state.deposit_amount),
-        contract_months: num(state.contract_months),
-        move_in_date: state.move_in_date || null,
-        end_date: state.end_date || null,
-        cleaning_fee: num(state.cleaning_fee),
-        ac_count: num(state.ac_count),
-        ac_wash_per_unit: num(state.ac_wash_per_unit),
-        penalty_amount: num(state.penalty_amount),
-        commission_net: num(state.commission_net),
-        vat_7: state.vat_7,
-        wht_3: state.wht_3,
-        water_unit_price: num(state.water_unit_price),
+        doc_type:          state.doc_type as ContractDocType,
+        language_version:  state.language,
+        template_slug:     computeTemplateSlug(selectedTemplate) ?? null,
+        stock_id:          state.stock_id || null,
+        owner_id:          state.owner_id || null,
+        customer_id:       state.customer_id || null,
+        rent_price:        num(state.rent_price),
+        deposit_months:    num(state.deposit_months),
+        deposit_amount:    num(state.deposit_amount),
+        contract_months:   num(state.contract_months),
+        move_in_date:      state.move_in_date || null,
+        end_date:          state.end_date || null,
+        cleaning_fee:      num(state.cleaning_fee),
+        ac_count:          num(state.ac_count),
+        ac_wash_per_unit:  num(state.ac_wash_per_unit),
+        penalty_amount:    num(state.penalty_amount),
+        commission_net:    num(state.commission_net),
+        vat_7:             state.vat_7,
+        wht_3:             state.wht_3,
+        occupant_count:    int(state.occupant_count),
+        water_unit_price:  num(state.water_unit_price),
         electric_unit_price: num(state.electric_unit_price),
-        internet_fee: num(state.internet_fee),
-        common_fee: num(state.common_fee),
-        parking_fee: num(state.parking_fee),
-        payment_date: state.payment_date || null,
-        payment_method: state.payment_method,
-        bank_ref: state.bank_ref || null,
+        internet_fee:      num(state.internet_fee),
+        common_fee:        num(state.common_fee),
+        parking_fee:       num(state.parking_fee),
+        payment_date:      state.payment_date || null,
+        payment_method:    state.payment_method,
+        bank_ref:          state.bank_ref || null,
         reservation_expire_date: state.reservation_expire_date || null,
         payment_grace_days: int(state.payment_grace_days),
         payment_day_of_month: int(state.payment_day_of_month),
         commission_rate_pct: num(state.commission_rate_pct),
         commission_from_owner: num(state.commission_from_owner),
         commission_from_customer: num(state.commission_from_customer),
+        extra_vars: Object.keys(state.extra_vars).length > 0 ? state.extra_vars : null,
       })
 
       if (res.error) { setError(res.error); return }
@@ -234,11 +309,11 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
     })
   }
 
-  // ─── Steps ─────────────────────────────────────────────────
+  // ─── Render ──────────────────────────────────────────────────
 
   return (
     <div className="space-y-5">
-      {/* Progress bar */}
+      {/* Progress */}
       <div className="flex items-center gap-2">
         {([1, 2, 3, 4] as const).map(n => (
           <div key={n} className="flex items-center gap-2 flex-1">
@@ -254,55 +329,92 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
         ))}
       </div>
       <div className="flex justify-between text-xs text-gray-400 -mt-2">
-        <span>ประเภท</span>
+        <span>ประเภท + ภาษา</span>
         <span>คู่สัญญา</span>
         <span>รายละเอียด</span>
         <span>ยืนยัน</span>
       </div>
 
-      {/* ── Step 1: doc_type + stock ── */}
+      {/* ── Step 1: doc_type + language + stock ── */}
       {step === 1 && (
         <div className="space-y-4">
           {DOC_GROUPS.map(group => (
             <Section key={group.label} title={group.label}>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {group.types.map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => set('doc_type', type)}
-                    className={`flex items-center gap-2.5 p-3 rounded-xl border-2 text-left transition ${
-                      state.doc_type === type
-                        ? 'border-blue-600 bg-blue-50'
-                        : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <FileText className={`w-4 h-4 flex-shrink-0 ${state.doc_type === type ? 'text-blue-600' : 'text-gray-400'}`} />
-                    <span className={`text-xs font-medium leading-tight ${state.doc_type === type ? 'text-blue-700' : 'text-gray-700'}`}>
-                      {DOC_TYPE_LABELS[type]}
-                    </span>
-                  </button>
-                ))}
+                {group.types.map(type => {
+                  const isSelected = state.doc_type === type
+                  const hasTempl = TEMPLATE_SUPPORTED_TYPES.has(type)
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => handleDocTypeSelect(type)}
+                      className={`flex items-start gap-2 p-3 rounded-xl border-2 text-left transition ${
+                        isSelected
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <FileText className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isSelected ? 'text-blue-600' : 'text-gray-400'}`} />
+                      <div>
+                        <span className={`text-xs font-medium leading-tight block ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
+                          {DOC_TYPE_LABELS[type]}
+                        </span>
+                        {hasTempl && (
+                          <span className="text-[10px] text-emerald-600 font-medium">มี template</span>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </Section>
           ))}
 
+          {/* Language selector */}
+          {hasTemplate && availableLanguages.length > 0 && (
+            <Section title="เลือกภาษาสัญญา">
+              <div className="flex items-center gap-2 mb-3 text-xs text-blue-700 bg-blue-50 rounded-lg px-3 py-2">
+                <Globe className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Thai เป็น default เสมอ — ตัวเลือกเพิ่มภาษาอังกฤษหรือจีนเพื่อใช้ template 2/3 ภาษา</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {availableLanguages.map(lang => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => set('language', lang)}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm transition ${
+                      state.language === lang
+                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                        : 'border-gray-100 text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    {state.language === lang && <Check className="w-3.5 h-3.5 flex-shrink-0" />}
+                    {LANGUAGE_LABELS[lang]}
+                  </button>
+                ))}
+              </div>
+              {selectedTemplate && (
+                <p className="text-xs text-gray-400 mt-2">
+                  ไฟล์ template: {selectedTemplate.filename}
+                </p>
+              )}
+            </Section>
+          )}
+
+          {/* Property search */}
           <Section title="เลือกทรัพย์ (ไม่บังคับ)">
-            <SearchSelect
+            <EntityCombobox
+              kind="stock"
               value={state.stock_id}
-              onChange={handleStockSelect}
-              placeholder="— เลือกทรัพย์ —"
-              options={stocks.map(s => ({
-                id: s.id,
-                label: [s.project_name, s.unit_no, s.room_type].filter(Boolean).join(' · ') || s.id,
-                sub: s.id,
-              }))}
+              selectedLabel={state.stock_label}
+              onSelect={handleStockSelect}
+              searchFn={searchStocks}
+              placeholder="ค้นหาโครงการ, ห้อง, อาคาร..."
             />
-            {selectedStock && (
-              <p className={`text-xs mt-1.5 ${STATUS_COLORS[selectedStock.status] ?? 'text-gray-500'}`}>
-                สถานะ: {selectedStock.status === 'available' ? 'ว่าง' : selectedStock.status === 'rented' ? 'เช่าแล้ว' : selectedStock.status === 'sold' ? 'ขายแล้ว' : 'ไม่ว่าง'}
-                {selectedStock.rent_price ? ` • ค่าเช่า ฿${fmt(selectedStock.rent_price)}/เดือน` : ''}
-              </p>
+            {state.stock_id && state.rent_price && (
+              <p className="text-xs text-blue-600 mt-1.5">ค่าเช่า ฿{fmt(parseFloat(state.rent_price))}/เดือน (จากทรัพย์)</p>
             )}
           </Section>
         </div>
@@ -312,28 +424,24 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
       {step === 2 && (
         <div className="space-y-4">
           <Section title="เจ้าของทรัพย์ / ผู้ให้เช่า">
-            <SearchSelect
+            <EntityCombobox
+              kind="owner"
               value={state.owner_id}
-              onChange={v => set('owner_id', v)}
-              placeholder="— เลือกเจ้าของทรัพย์ —"
-              options={owners.map(o => ({
-                id: o.id,
-                label: displayName(o),
-                sub: o.phone ?? undefined,
-              }))}
+              selectedLabel={state.owner_label}
+              onSelect={handleOwnerSelect}
+              searchFn={searchOwners}
+              placeholder="ค้นหาเจ้าของทรัพย์..."
             />
           </Section>
 
           <Section title="ผู้เช่า / ลูกค้า">
-            <SearchSelect
+            <EntityCombobox
+              kind="customer"
               value={state.customer_id}
-              onChange={v => set('customer_id', v)}
-              placeholder="— เลือกลูกค้า —"
-              options={customers.map(c => ({
-                id: c.id,
-                label: displayName(c),
-                sub: c.phone ?? undefined,
-              }))}
+              selectedLabel={state.customer_label}
+              onSelect={handleCustomerSelect}
+              searchFn={searchCustomers}
+              placeholder="ค้นหาลูกค้า / ผู้เช่า..."
             />
           </Section>
         </div>
@@ -342,7 +450,7 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
       {/* ── Step 3: financial details ── */}
       {step === 3 && (
         <div className="space-y-4">
-          {isRental && (
+          {(isRental || state.doc_type === 'rental') && (
             <>
               <Section title="ราคาและมัดจำ">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -352,6 +460,7 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
                   <Field label="ระยะสัญญา (เดือน)" value={state.contract_months} onChange={handleContractMonthsChange} type="number" placeholder="12" />
                   <Field label="วันที่เข้าอยู่" value={state.move_in_date} onChange={handleMoveInChange} type="date" />
                   <Field label="วันสิ้นสุดสัญญา" value={state.end_date} onChange={v => set('end_date', v)} type="date" />
+                  <Field label="จำนวนผู้พักอาศัย" value={state.occupant_count} onChange={v => set('occupant_count', v)} type="number" placeholder="1" />
                 </div>
               </Section>
 
@@ -395,29 +504,40 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
             </>
           )}
 
+          {state.doc_type === 'renewal' && (
+            <Section title="รายละเอียดต่อสัญญา">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="ค่าเช่า / เดือน (บาท)" value={state.rent_price} onChange={handleRentChange} type="number" placeholder="0" />
+                <Field label="ระยะเวลาต่อสัญญา (เดือน)" value={state.contract_months} onChange={handleContractMonthsChange} type="number" placeholder="12" />
+                <Field label="วันเริ่มต่อสัญญา" value={state.move_in_date} onChange={handleMoveInChange} type="date" />
+                <Field label="วันสิ้นสุดสัญญาใหม่" value={state.end_date} onChange={v => set('end_date', v)} type="date" />
+              </div>
+            </Section>
+          )}
+
           {isReservation && (
             <>
               <Section title="เงื่อนไขการจอง">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="เงินจอง (บาท)" value={state.deposit_amount} onChange={v => set('deposit_amount', v)} type="number" placeholder="0" />
+                  <Field label="ค่าเช่าต่อเดือน (บาท)" value={state.rent_price} onChange={handleRentChange} type="number" placeholder="0" />
                   <Field label="ค่าปรับกรณียกเลิก (บาท)" value={state.penalty_amount} onChange={v => set('penalty_amount', v)} type="number" placeholder="0" />
-                  <Field label="วันที่จอง" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" />
+                  <Field label="วันที่ทำสัญญาจอง" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" />
                   <Field label="วันหมดอายุการจอง" value={state.reservation_expire_date} onChange={v => set('reservation_expire_date', v)} type="date" />
+                </div>
+                <div className="flex gap-4 mt-4">
+                  <Toggle label="VAT 7%" checked={state.vat_7} onChange={v => set('vat_7', v)} />
+                  <Toggle label="หัก ณ ที่จ่าย 3%" checked={state.wht_3} onChange={v => set('wht_3', v)} />
                 </div>
               </Section>
               <Section title="การชำระเงิน">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="วันที่ชำระ" value={state.payment_date} onChange={v => set('payment_date', v)} type="date" />
-                  <SelectField
-                    label="วิธีชำระ"
-                    value={state.payment_method}
-                    onChange={v => set('payment_method', v)}
-                    options={[
-                      { value: 'transfer', label: 'โอนเงิน' },
-                      { value: 'cash', label: 'เงินสด' },
-                      { value: 'cheque', label: 'เช็ค' },
-                    ]}
-                  />
+                  <SelectField label="วิธีชำระ" value={state.payment_method} onChange={v => set('payment_method', v)} options={[
+                    { value: 'transfer', label: 'โอนเงิน' },
+                    { value: 'cash', label: 'เงินสด' },
+                    { value: 'cheque', label: 'เช็ค' },
+                  ]} />
                   <Field label="เลขอ้างอิง / เลขเช็ค" value={state.bank_ref} onChange={v => set('bank_ref', v)} placeholder="ไม่บังคับ" />
                 </div>
               </Section>
@@ -429,16 +549,11 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="จำนวนเงิน (บาท)" value={state.deposit_amount} onChange={v => set('deposit_amount', v)} type="number" placeholder="0" />
                 <Field label="วันที่ชำระ" value={state.payment_date} onChange={v => set('payment_date', v)} type="date" />
-                <SelectField
-                  label="วิธีชำระ"
-                  value={state.payment_method}
-                  onChange={v => set('payment_method', v)}
-                  options={[
-                    { value: 'transfer', label: 'โอนเงิน' },
-                    { value: 'cash', label: 'เงินสด' },
-                    { value: 'cheque', label: 'เช็ค' },
-                  ]}
-                />
+                <SelectField label="วิธีชำระ" value={state.payment_method} onChange={v => set('payment_method', v)} options={[
+                  { value: 'transfer', label: 'โอนเงิน' },
+                  { value: 'cash', label: 'เงินสด' },
+                  { value: 'cheque', label: 'เช็ค' },
+                ]} />
                 <Field label="เลขอ้างอิง / เลขเช็ค" value={state.bank_ref} onChange={v => set('bank_ref', v)} placeholder="ไม่บังคับ" />
               </div>
             </Section>
@@ -453,22 +568,11 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
             </Section>
           )}
 
-          {isCommission && (
+          {(isCommission || isCommissionConfirm) && (
             <Section title="ค่านายหน้า">
-              <div className="space-y-4">
-                <Field label="ค่านายหน้าสุทธิ (บาท)" value={state.commission_net} onChange={v => set('commission_net', v)} type="number" placeholder="0" />
-                <div className="flex gap-4">
-                  <Toggle label="VAT 7%" checked={state.vat_7} onChange={v => set('vat_7', v)} />
-                  <Toggle label="หัก ณ ที่จ่าย 3%" checked={state.wht_3} onChange={v => set('wht_3', v)} />
-                </div>
-              </div>
-            </Section>
-          )}
-
-          {isCommissionConfirm && (
-            <Section title="รายละเอียดค่าคอมมิชชัน">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="อัตราค่าคอม (%)" value={state.commission_rate_pct} onChange={v => set('commission_rate_pct', v)} type="number" placeholder="0" />
+                <Field label="ค่านายหน้าสุทธิ (บาท)" value={state.commission_net} onChange={v => set('commission_net', v)} type="number" placeholder="0" />
+                <Field label="ค่าเช่า / เดือน (บาท)" value={state.rent_price} onChange={v => set('rent_price', v)} type="number" placeholder="0" />
                 <Field label="ค่าคอมจากเจ้าของ (บาท)" value={state.commission_from_owner} onChange={v => set('commission_from_owner', v)} type="number" placeholder="0" />
                 <Field label="ค่าคอมจากลูกค้า (บาท)" value={state.commission_from_customer} onChange={v => set('commission_from_customer', v)} type="number" placeholder="0" />
               </div>
@@ -479,7 +583,37 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
             </Section>
           )}
 
-          {!isRental && !isReservation && !isReceipt && !isCommission && !isCommissionConfirm && !isPaymentDoc && (
+          {isCoAgent && (
+            <Section title="รายละเอียด Co-Agent">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="ค่าเช่า / เดือน (บาท)" value={state.rent_price} onChange={handleRentChange} type="number" placeholder="0" />
+                <Field label="ระยะสัญญา (เดือน)" value={state.contract_months} onChange={v => set('contract_months', v)} type="number" placeholder="12" />
+                <Field label="วันที่ทำสัญญา" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" />
+              </div>
+            </Section>
+          )}
+
+          {extraFields.length > 0 && (
+            <Section title="ข้อมูลเพิ่มเติมสำหรับ template">
+              <div className="flex items-start gap-2 mb-3 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span>ข้อมูลด้านล่างจำเป็นสำหรับ template ที่เลือก กรอกให้ครบเพื่อป้องกันข้อมูลขาด</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {extraFields.map(f => (
+                  <Field
+                    key={f.key}
+                    label={f.label + (f.required ? ' *' : '')}
+                    value={state.extra_vars[f.key] ?? ''}
+                    onChange={v => setExtra(f.key, v)}
+                    placeholder={f.required ? 'จำเป็น' : 'ไม่บังคับ'}
+                  />
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {!isRental && !isReservation && !isReceipt && !isCommission && !isCommissionConfirm && !isPaymentDoc && !isCoAgent && state.doc_type !== 'renewal' && (
             <Section title="รายละเอียด">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="ค่าปรับ (บาท)" value={state.penalty_amount} onChange={v => set('penalty_amount', v)} type="number" placeholder="0" />
@@ -496,31 +630,36 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
           <Section title="สรุปสัญญา">
             <div className="space-y-3">
               <ReviewRow label="ประเภทเอกสาร" value={state.doc_type ? DOC_TYPE_LABELS[state.doc_type as ContractDocType] : '-'} />
-              {selectedStock && (
-                <ReviewRow label="ทรัพย์" value={[selectedStock.project_name, selectedStock.unit_no, selectedStock.room_type].filter(Boolean).join(' · ')} />
+              {hasTemplate && selectedTemplate && (
+                <ReviewRow label="ภาษา" value={LANGUAGE_LABELS[state.language]} />
               )}
-              {state.owner_id && (
-                <ReviewRow label="เจ้าของ" value={displayName(owners.find(o => o.id === state.owner_id) ?? { id: state.owner_id })} />
+              {hasTemplate && selectedTemplate && (
+                <ReviewRow label="Template" value={selectedTemplate.filename} />
               )}
-              {state.customer_id && (
-                <ReviewRow label="ลูกค้า" value={displayName(customers.find(c => c.id === state.customer_id) ?? { id: state.customer_id })} />
+              {state.stock_label && (
+                <ReviewRow label="ทรัพย์" value={state.stock_label} />
+              )}
+              {state.owner_label && (
+                <ReviewRow label="เจ้าของ" value={state.owner_label} />
+              )}
+              {state.customer_label && (
+                <ReviewRow label="ลูกค้า" value={state.customer_label} />
               )}
               {state.rent_price && <ReviewRow label="ค่าเช่า / เดือน" value={`฿${fmt(parseFloat(state.rent_price))}`} />}
               {state.deposit_amount && <ReviewRow label="เงินมัดจำ / จอง" value={`฿${fmt(parseFloat(state.deposit_amount))}`} />}
               {state.contract_months && <ReviewRow label="ระยะสัญญา" value={`${state.contract_months} เดือน`} />}
               {state.move_in_date && <ReviewRow label="วันเข้าอยู่" value={new Date(state.move_in_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })} />}
               {state.end_date && <ReviewRow label="วันสิ้นสุด" value={new Date(state.end_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })} />}
-              {state.payment_date && <ReviewRow label="วันที่ชำระ" value={new Date(state.payment_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })} />}
-              {(isReservation || isPaymentDoc) && <ReviewRow label="วิธีชำระ" value={PAYMENT_METHOD_LABELS[state.payment_method]} />}
-              {state.bank_ref && <ReviewRow label="เลขอ้างอิง" value={state.bank_ref} />}
-              {state.commission_net && <ReviewRow label="ค่านายหน้าสุทธิ" value={`฿${fmt(parseFloat(state.commission_net))}`} />}
-              {state.commission_from_owner && <ReviewRow label="ค่าคอมจากเจ้าของ" value={`฿${fmt(parseFloat(state.commission_from_owner))}`} />}
-              {state.commission_from_customer && <ReviewRow label="ค่าคอมจากลูกค้า" value={`฿${fmt(parseFloat(state.commission_from_customer))}`} />}
             </div>
           </Section>
 
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700">
-            สัญญาจะถูกบันทึกในสถานะ <strong>ร่าง</strong> — คุณสามารถสร้าง PDF และเปลี่ยนสถานะได้ในหน้าถัดไป
+            สัญญาจะถูกบันทึกในสถานะ <strong>ร่าง</strong> — คุณสามารถ preview และดาวน์โหลด .docx ได้ในหน้าถัดไป
+            {hasTemplate && (
+              <span className="block mt-1 text-xs">
+                สำหรับสัญญาเช่า (rental) มีช่อง <strong>รายการเฟอร์นิเจอร์</strong> ให้กรอกในหน้าถัดไปด้วย
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -579,8 +718,8 @@ export default function ContractWizard({ stocks, owners, customers }: Props) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-visible">
+      <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70 rounded-t-xl">
         <h2 className="text-sm font-semibold text-gray-700">{title}</h2>
       </div>
       <div className="p-4">{children}</div>
@@ -602,7 +741,7 @@ interface FieldProps {
 
 function Field({ label, value, onChange, placeholder, type = 'text' }: FieldProps) {
   return (
-    <div className={type === 'date' ? 'col-span-full sm:col-span-1' : ''}>
+    <div>
       <Label>{label}</Label>
       <div className="relative flex items-center">
         <input
@@ -617,7 +756,6 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: FieldProp
             type="button"
             onClick={() => onChange('')}
             className="absolute right-2.5 text-gray-400 hover:text-gray-600"
-            title="ล้างวันที่"
           >
             <X className="w-3.5 h-3.5" />
           </button>

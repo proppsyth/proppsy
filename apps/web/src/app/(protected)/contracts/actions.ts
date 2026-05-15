@@ -11,6 +11,8 @@ export type ContractInput = {
   stock_id?: string | null
   owner_id?: string | null
   customer_id?: string | null
+  language_version?: string | null
+  template_slug?: string | null
   rent_price?: number | null
   deposit_months?: number | null
   deposit_amount?: number | null
@@ -24,6 +26,7 @@ export type ContractInput = {
   commission_net?: number | null
   vat_7: boolean
   wht_3: boolean
+  occupant_count?: number | null
   // Monthly expenses
   water_unit_price?: number | null
   electric_unit_price?: number | null
@@ -41,6 +44,8 @@ export type ContractInput = {
   commission_rate_pct?: number | null
   commission_from_owner?: number | null
   commission_from_customer?: number | null
+  // Extra template variables (unmapped DB fields)
+  extra_vars?: Record<string, string> | null
 }
 
 // ─── ID Generator ────────────────────────────────────────────
@@ -86,9 +91,10 @@ export async function createContract(
     agent_uid: user.id,
     status: 'draft',
     ...input,
-    stock_id: input.stock_id || null,
-    owner_id: input.owner_id || null,
+    stock_id:   input.stock_id   || null,
+    owner_id:   input.owner_id   || null,
     customer_id: input.customer_id || null,
+    extra_vars:  input.extra_vars  || {},
   })
 
   if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
@@ -120,7 +126,148 @@ export async function updateContractStatus(
   return {}
 }
 
-// ─── Generate PDF ────────────────────────────────────────────
+// ─── Generate .docx (new canonical method) ───────────────────
+
+export async function generateContractDocx(
+  contractId: string
+): Promise<{ error?: string; url?: string; missing?: string[] }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  // Fetch contract with all related data + project for address fields
+  const [{ data: contract }, { data: profile }] = await Promise.all([
+    supabase
+      .from('contracts')
+      .select('*, stock:stock(*, project:projects(*)), owner:owners(*), customer:customers(*)')
+      .eq('id', contractId)
+      .eq('agent_uid', user.id)
+      .single(),
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+  ])
+
+  if (!contract) return { error: 'ไม่พบสัญญา' }
+
+  const templateSlug = contract.template_slug
+  if (!templateSlug) {
+    return { error: 'ยังไม่ได้เลือก template — กรุณาสร้างสัญญาใหม่โดยเลือกภาษา' }
+  }
+
+  try {
+    const { getTemplateBySlug } = await import('@/lib/contracts/templateRegistry')
+    const { computeVariables } = await import('@/lib/contracts/variableCompute')
+    const { validateVariables } = await import('@/lib/contracts/validation')
+    const { generateDocx } = await import('@/lib/contracts/docxGenerator')
+
+    const template = getTemplateBySlug(templateSlug)
+    if (!template) return { error: `ไม่พบ template: ${templateSlug}` }
+
+    const variables = computeVariables({
+      contract: contract as Parameters<typeof computeVariables>[0]['contract'],
+      stock:    contract.stock ?? null,
+      owner:    contract.owner ?? null,
+      customer: contract.customer ?? null,
+      agent:    profile ?? null,
+    }, template)
+
+    const validation = validateVariables(variables, template)
+    if (!validation.valid) {
+      return {
+        error: `ข้อมูลไม่ครบ: ${validation.missing.map(m => m.label).join(', ')}`,
+        missing: validation.missing.map(m => m.label),
+      }
+    }
+
+    const docxBuffer = generateDocx(template.filename, variables)
+
+    const path = `${user.id}/${contractId}.docx`
+    const { error: uploadError } = await supabase.storage
+      .from('documents')
+      .upload(path, docxBuffer, {
+        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        upsert: true,
+      })
+
+    if (uploadError) return { error: 'อัปโหลดไฟล์ไม่สำเร็จ: ' + uploadError.message }
+
+    const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
+
+    await supabase
+      .from('contracts')
+      .update({ docx_url: publicUrl })
+      .eq('id', contractId)
+
+    revalidatePath(`/contracts/${contractId}`)
+    return { url: publicUrl }
+  } catch (err) {
+    console.error('docx generation error:', err)
+    return { error: 'สร้างเอกสารไม่สำเร็จ: ' + String(err) }
+  }
+}
+
+// ─── Generate HTML Preview ────────────────────────────────────
+
+export async function getContractPreviewHtml(
+  contractId: string
+): Promise<{ error?: string; html?: string; missing?: string[] }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const [{ data: contract }, { data: profile }] = await Promise.all([
+    supabase
+      .from('contracts')
+      .select('*, stock:stock(*, project:projects(*)), owner:owners(*), customer:customers(*)')
+      .eq('id', contractId)
+      .eq('agent_uid', user.id)
+      .single(),
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+  ])
+
+  if (!contract) return { error: 'ไม่พบสัญญา' }
+
+  const templateSlug = contract.template_slug
+  if (!templateSlug) {
+    return { error: 'ยังไม่ได้เลือก template' }
+  }
+
+  try {
+    const { getTemplateBySlug } = await import('@/lib/contracts/templateRegistry')
+    const { computeVariables } = await import('@/lib/contracts/variableCompute')
+    const { validateVariables } = await import('@/lib/contracts/validation')
+    const { generateDocx } = await import('@/lib/contracts/docxGenerator')
+    const mammoth = await import('mammoth')
+
+    const template = getTemplateBySlug(templateSlug)
+    if (!template) return { error: `ไม่พบ template: ${templateSlug}` }
+
+    const variables = computeVariables({
+      contract: contract as Parameters<typeof computeVariables>[0]['contract'],
+      stock:    contract.stock ?? null,
+      owner:    contract.owner ?? null,
+      customer: contract.customer ?? null,
+      agent:    profile ?? null,
+    }, template)
+
+    const validation = validateVariables(variables, template)
+    if (!validation.valid) {
+      return {
+        error: `ข้อมูลไม่ครบสำหรับ preview`,
+        missing: validation.missing.map(m => m.label),
+      }
+    }
+
+    const docxBuffer = generateDocx(template.filename, variables)
+    const result = await mammoth.convertToHtml({ buffer: docxBuffer })
+
+    return { html: result.value }
+  } catch (err) {
+    console.error('preview error:', err)
+    return { error: 'สร้าง preview ไม่สำเร็จ: ' + String(err) }
+  }
+}
+
+// ─── Generate PDF (legacy — kept for backward compatibility) ──
 
 export async function generateContractPdf(
   contractId: string
@@ -129,7 +276,6 @@ export async function generateContractPdf(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
 
-  // Fetch all needed data
   const [{ data: contract }, { data: profile }] = await Promise.all([
     supabase
       .from('contracts')
@@ -143,12 +289,12 @@ export async function generateContractPdf(
   if (!contract) return { error: 'ไม่พบสัญญา' }
 
   try {
-    // Dynamic import to avoid bundling in client
     const { renderToBuffer } = await import('@react-pdf/renderer')
     const { ContractDocument } = await import('@/lib/pdf/ContractDocument')
     const { createElement } = await import('react')
 
-    const element = createElement(ContractDocument, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const element = createElement(ContractDocument as any, {
       contract: {
         id: contract.id,
         doc_type: contract.doc_type,
@@ -200,7 +346,6 @@ export async function generateContractPdf(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const buffer = await renderToBuffer(element as any)
 
-    // Upload to Supabase Storage
     const path = `${user.id}/${contractId}.pdf`
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('documents')
@@ -212,7 +357,6 @@ export async function generateContractPdf(
 
     const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
 
-    // Update contract with pdf_url
     await supabase
       .from('contracts')
       .update({ pdf_url: publicUrl })
@@ -224,4 +368,78 @@ export async function generateContractPdf(
     console.error('PDF generation error:', err)
     return { error: 'สร้าง PDF ไม่สำเร็จ กรุณาลองใหม่' }
   }
+}
+
+// ─── Furniture Items ──────────────────────────────────────────
+
+export type FurnitureItemInput = {
+  item_name: string
+  quantity: number
+  condition: 'good' | 'fair' | 'damaged' | 'missing'
+  notes?: string | null
+  serial_no?: string | null
+  sort_order?: number
+}
+
+export async function saveFurnitureItems(
+  contractId: string,
+  items: FurnitureItemInput[]
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  // Delete existing items first, then insert new ones
+  const { error: delErr } = await supabase
+    .from('contract_furniture_items')
+    .delete()
+    .eq('contract_id', contractId)
+    .eq('agent_uid', user.id)
+
+  if (delErr) return { error: 'ลบรายการเดิมไม่สำเร็จ: ' + delErr.message }
+
+  if (items.length === 0) return {}
+
+  const rows = items.map((item, i) => ({
+    contract_id: contractId,
+    agent_uid:   user.id,
+    item_name:   item.item_name,
+    quantity:    item.quantity,
+    condition:   item.condition,
+    notes:       item.notes ?? null,
+    serial_no:   item.serial_no ?? null,
+    sort_order:  item.sort_order ?? i,
+  }))
+
+  const { error } = await supabase.from('contract_furniture_items').insert(rows)
+  if (error) return { error: 'บันทึกรายการไม่สำเร็จ: ' + error.message }
+
+  revalidatePath(`/contracts/${contractId}`)
+  return {}
+}
+
+// ─── E-sign token ─────────────────────────────────────────────
+
+export async function generateSignToken(
+  contractId: string
+): Promise<{ error?: string; token?: string; link?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const token = crypto.randomUUID()
+
+  const { error } = await supabase
+    .from('contracts')
+    .update({ sign_token: token })
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+
+  if (error) return { error: 'สร้าง sign link ไม่สำเร็จ: ' + error.message }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const link = `${baseUrl}/sign/${token}`
+
+  revalidatePath(`/contracts/${contractId}`)
+  return { token, link }
 }

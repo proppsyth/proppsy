@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Users, UserCheck, Building2, Calendar,
-  TrendingUp, Settings, LogOut, ShieldCheck, HelpCircle,
+  TrendingUp, Settings, LogOut, ShieldCheck, Zap,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
@@ -26,7 +26,6 @@ const NAV_ITEMS = [
   { href: '/calendar', icon: '📅', label: 'นัดหมาย & ปฏิทิน', permission: null },
   { href: '/commission', icon: '💰', label: 'คอมมิชชัน', permission: null },
   { href: '/credits', icon: '⚡', label: 'เครดิต', permission: null },
-  { href: '/help', icon: '❓', label: 'คู่มือ & FAQ', permission: null },
 ]
 
 const ADMIN_ITEMS = [
@@ -40,11 +39,10 @@ const MORE_ITEMS_BASE = [
   { href: '/projects', icon: Building2, label: 'โครงการ' },
   { href: '/calendar', icon: Calendar, label: 'นัดหมาย & ปฏิทิน' },
   { href: '/commission', icon: TrendingUp, label: 'คอมมิชชัน' },
-  { href: '/help', icon: HelpCircle, label: 'คู่มือ & FAQ' },
+  { href: '/credits', icon: Zap, label: 'เครดิต' },
 ]
 
 const MORE_ITEM_ADMIN = { href: '/admin/users', icon: ShieldCheck, label: 'จัดการผู้ใช้' }
-const MORE_ITEM_PROFILE = { href: '/profile', icon: Settings, label: 'โปรไฟล์' }
 
 export default function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
@@ -191,7 +189,7 @@ export default function Sidebar({ profile }: SidebarProps) {
           </div>
 
           <div className="grid grid-cols-3 gap-2.5 mb-5">
-            {[...MORE_ITEMS_BASE, profile.role === 'admin' ? MORE_ITEM_ADMIN : MORE_ITEM_PROFILE].map(item => {
+            {[...MORE_ITEMS_BASE, ...(profile.role === 'admin' ? [MORE_ITEM_ADMIN] : [])].map(item => {
               const Icon = item.icon
               const active = isActive(item.href)
               return (

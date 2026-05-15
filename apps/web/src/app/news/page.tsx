@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { Newspaper, ArrowLeft } from 'lucide-react'
+import StorageImage from '@/components/shared/StorageImage'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import PublicNav from '@/components/shared/PublicNav'
@@ -47,7 +47,7 @@ export default async function NewsPage() {
                 <div className="flex gap-4">
                   {n.cover_url && (
                     <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
-                      <Image src={n.cover_url} alt={n.title} fill className="object-cover" sizes="80px" />
+                      <StorageImage src={n.cover_url} alt={n.title} fill className="object-cover" sizes="80px" bucket="news" />
                     </div>
                   )}
                   <div className="min-w-0 flex-1">

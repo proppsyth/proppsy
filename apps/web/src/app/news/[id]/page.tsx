@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { notFound } from 'next/navigation'
+import StorageImage from '@/components/shared/StorageImage'
 import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
@@ -38,7 +38,7 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ id:
 
         {news.cover_url && (
           <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-gray-100 mb-6">
-            <Image src={news.cover_url} alt={news.title} fill className="object-cover" sizes="100vw" />
+            <StorageImage src={news.cover_url} alt={news.title} fill className="object-cover" sizes="100vw" bucket="news" />
           </div>
         )}
 

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getCreditBalance, getTransactions } from '@/lib/credits/actions'
-import { resolvePlan, PLAN_META } from '@/types'
+import { resolvePlan, PLAN_META, PLAN_LIMITS } from '@/types'
 import CreditGauge from '@/components/credits/CreditGauge'
 import TransactionHistory from '@/components/credits/TransactionHistory'
 import HotBadge from '@/components/credits/HotBadge'
@@ -21,14 +21,24 @@ export default async function CreditsPage() {
   if (!user) redirect('/login')
 
   const [{ data: profile }, balanceData, { transactions }] = await Promise.all([
-    supabase.from('profiles').select('plan, plan_expires_at').eq('id', user.id).single(),
+    supabase.from('profiles').select('plan, plan_expires_at, ai_calls_this_month, ai_calls_month').eq('id', user.id).single(),
     getCreditBalance(),
     getTransactions(50),
   ])
 
   const plan = resolvePlan(profile?.plan)
   const planMeta = PLAN_META[plan]
+  const limits = PLAN_LIMITS[plan]
   const quota = PLAN_QUOTA[plan] ?? Math.max(balanceData.totalEarned, balanceData.balance, 10)
+
+  const now = new Date()
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const planExpired = profile?.plan_expires_at && new Date(profile.plan_expires_at) < now
+  const aiLimit = (planExpired && plan !== 'starter') ? 0 : limits.aiCallsPerMonth
+  const aiUsed = (profile?.ai_calls_month ?? '').startsWith(currentMonthStr)
+    ? (profile?.ai_calls_this_month ?? 0)
+    : 0
+
   const nextReset = profile?.plan_expires_at
     ? new Date(profile.plan_expires_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
     : null
@@ -118,6 +128,31 @@ export default async function CreditsPage() {
           </div>
           <p className="text-2xl font-bold text-orange-600 mt-1">3 <span className="text-sm font-normal text-gray-500">เครดิต</span></p>
           <p className="text-xs text-gray-400 mt-0.5">≈ 60 บาท · 30 วัน</p>
+        </div>
+      </div>
+
+      {/* AI / OCR quota */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h2 className="text-sm font-semibold text-gray-700 mb-4">โควต้า AI ประจำเดือน</h2>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600">OCR อ่านเอกสาร / สแกนข้อมูล</span>
+            <span className={`font-semibold tabular-nums ${aiUsed >= aiLimit ? 'text-red-500' : 'text-gray-900'}`}>
+              {aiUsed} / {aiLimit === Infinity ? '∞' : aiLimit}
+            </span>
+          </div>
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${
+                aiUsed >= aiLimit ? 'bg-red-400' :
+                aiLimit > 0 && aiUsed / aiLimit >= 0.7 ? 'bg-amber-400' : 'bg-emerald-400'
+              }`}
+              style={{ width: `${aiLimit > 0 ? Math.min((aiUsed / aiLimit) * 100, 100) : 0}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-400">
+            รีเซ็ตทุกต้นเดือน · แต่ละ OCR ใช้ 1 ครั้ง
+          </p>
         </div>
       </div>
 

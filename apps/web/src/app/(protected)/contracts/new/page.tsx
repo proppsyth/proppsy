@@ -15,14 +15,10 @@ export default async function NewContractPage() {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
 
-  const [{ data: profile }, { data: stocks }, { data: owners }, { data: customers }, { count: contractsThisMonth }] =
-    await Promise.all([
-      supabase.from('profiles').select('plan').eq('id', user.id).single(),
-      supabase.from('stock').select('id, project_name, unit_no, room_type, status, owner_id, rent_price, sale_price').eq('agent_uid', user.id).order('created_at', { ascending: false }),
-      supabase.from('owners').select('id, nickname, first_name_th, last_name_th, phone').eq('agent_uid', user.id).order('created_at', { ascending: false }),
-      supabase.from('customers').select('id, nickname, first_name_th, last_name_th, phone').eq('agent_uid', user.id).order('created_at', { ascending: false }),
-      supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).gte('created_at', startOfMonth),
-    ])
+  const [{ data: profile }, { count: contractsThisMonth }] = await Promise.all([
+    supabase.from('profiles').select('plan').eq('id', user.id).single(),
+    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).gte('created_at', startOfMonth),
+  ])
 
   const plan = resolvePlan(profile?.plan)
   const limits = PLAN_LIMITS[plan]
@@ -52,11 +48,7 @@ export default async function NewContractPage() {
   return (
     <div className="p-4 lg:p-8 pt-6 max-w-3xl">
       <h1 className="text-xl font-bold text-gray-900 mb-6">สร้างสัญญาใหม่</h1>
-      <ContractWizard
-        stocks={stocks ?? []}
-        owners={owners ?? []}
-        customers={customers ?? []}
-      />
+      <ContractWizard />
     </div>
   )
 }

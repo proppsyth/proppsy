@@ -3,8 +3,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
+import { geminiParseDocument } from '@/lib/ocr'
+import type { OcrDocumentResult } from '@/lib/ocr'
 
 // ─── Types ───────────────────────────────────────────────────
+
+export type { OcrDocumentResult as OcrResult }
 
 export type CustomerInput = {
   prefix?: string
@@ -26,9 +30,6 @@ export type CustomerInput = {
   district?: string
   subdistrict?: string
   zip?: string
-  bank_name?: string
-  bank_account_no?: string
-  bank_account_name?: string
   signature_url?: string
   notes?: string
 }
@@ -96,79 +97,24 @@ export async function updateCustomer(
   return {}
 }
 
-// ─── OCR ID Card (reuse same logic as owners) ────────────────
+// ─── OCR Document (ID card or Passport) ──────────────────────
 
-export type OcrResult = {
-  prefix?: string | null
-  first_name_th?: string | null
-  last_name_th?: string | null
-  national_id?: string | null
-  address_no?: string | null
-  address_road?: string | null
-  province?: string | null
-  district?: string | null
-  subdistrict?: string | null
-  zip?: string | null
-}
-
-export async function parseIdCard(
+export async function parseDocument(
   base64: string,
   mimeType: string
-): Promise<OcrResult | { error: string }> {
+): Promise<OcrDocumentResult | { error: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'ไม่พบ Gemini API key' }
 
-  {
-    const { allowed, error: quotaErr } = await checkAiQuota()
-    if (!allowed) return { error: quotaErr ?? 'เกินโควต้า AI' }
-  }
-
-  const prompt = `วิเคราะห์ภาพบัตรประชาชนไทยนี้และส่งคืน JSON เท่านั้น ไม่ต้องมีคำอธิบาย:
-
-{
-  "prefix": "คำนำหน้า เช่น นาย/นาง/นางสาว หรือ null",
-  "first_name_th": "ชื่อภาษาไทย หรือ null",
-  "last_name_th": "นามสกุลภาษาไทย หรือ null",
-  "national_id": "เลขบัตรประชาชน 13 หลัก (ตัวเลขล้วน ไม่มีเครื่องหมาย) หรือ null",
-  "address_no": "บ้านเลขที่ หรือ null",
-  "address_road": "ถนน/ซอย หรือ null",
-  "province": "จังหวัด หรือ null",
-  "district": "อำเภอ/เขต หรือ null",
-  "subdistrict": "ตำบล/แขวง หรือ null",
-  "zip": "รหัสไปรษณีย์ หรือ null"
-}`
+  const { allowed, error: quotaErr } = await checkAiQuota()
+  if (!allowed) return { error: quotaErr ?? 'เกินโควต้า AI' }
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { inlineData: { mimeType, data: base64 } },
-              { text: prompt },
-            ],
-          }],
-          generationConfig: {
-            temperature: 0.1,
-            responseMimeType: 'application/json',
-          },
-        }),
-      }
-    )
-
-    if (!res.ok) return { error: `Gemini API error ${res.status}` }
-
-    const data = await res.json()
-    const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    const result = JSON.parse(cleaned || '{}') as OcrResult
+    const result = await geminiParseDocument(base64, mimeType, apiKey)
     await incrementAiUsage()
     return result
   } catch (err) {
     console.error('OCR error:', err)
-    return { error: 'อ่านบัตรประชาชนไม่สำเร็จ กรุณาลองใหม่' }
+    return { error: 'อ่านเอกสารไม่สำเร็จ กรุณาลองใหม่' }
   }
 }

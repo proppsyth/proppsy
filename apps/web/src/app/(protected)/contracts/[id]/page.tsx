@@ -1,11 +1,13 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, FileText, ExternalLink } from 'lucide-react'
+import { ArrowLeft, FileText, Eye } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { DOC_TYPE_LABELS, ownerDisplayName, customerDisplayName, stockDisplayTitle } from '@/types'
 import type { ContractDocType, ContractStatus, Stock, Owner, Customer } from '@/types'
 import ContractActions from './ContractActions'
+import FurnitureChecklist from './FurnitureChecklist'
+import { TEMPLATE_SUPPORTED_TYPES } from '@/lib/contracts/templateRegistry'
 
 export const metadata: Metadata = { title: 'รายละเอียดสัญญา' }
 
@@ -42,24 +44,32 @@ export default async function ContractDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: contract } = await supabase
-    .from('contracts')
-    .select('*, stock:stock(*), owner:owners(*), customer:customers(*)')
-    .eq('id', id)
-    .eq('agent_uid', user.id)
-    .single()
+  const [{ data: contract }, { data: furnitureItems }] = await Promise.all([
+    supabase
+      .from('contracts')
+      .select('*, stock:stock(*), owner:owners(*), customer:customers(*)')
+      .eq('id', id)
+      .eq('agent_uid', user.id)
+      .single(),
+    supabase
+      .from('contract_furniture_items')
+      .select('*')
+      .eq('contract_id', id)
+      .order('sort_order'),
+  ])
 
   if (!contract) notFound()
 
-  const stock = contract.stock as unknown as Stock | null
-  const owner = contract.owner as unknown as Owner | null
+  const stock    = contract.stock as unknown as Stock | null
+  const owner    = contract.owner as unknown as Owner | null
   const customer = contract.customer as unknown as Customer | null
 
-  const docDate = fmtDate(contract.created_at)
-  const isRental = contract.doc_type === 'rental' || contract.doc_type === 'renewal'
-  const isReceipt = contract.doc_type === 'receipt_rent' || contract.doc_type === 'receipt_book'
-  const isCommission = contract.doc_type === 'commission'
-  const isReservation = contract.doc_type === 'reservation'
+  const docDate         = fmtDate(contract.created_at)
+  const isRental        = contract.doc_type === 'rental'
+  const isReceipt       = contract.doc_type === 'receipt_rent' || contract.doc_type === 'receipt_book'
+  const isCommission    = contract.doc_type === 'commission'
+  const isReservation   = contract.doc_type === 'reservation'
+  const hasTemplate     = TEMPLATE_SUPPORTED_TYPES.has(contract.doc_type)
 
   return (
     <div className="p-4 lg:p-8 pt-6 max-w-4xl">
@@ -84,21 +94,24 @@ export default async function ContractDetailPage({
                   {STATUS_LABELS_TH[contract.status as ContractStatus] ?? contract.status}
                 </span>
                 <span className="text-xs text-gray-400">{docDate}</span>
+                {contract.language_version && (
+                  <span className="text-xs px-2 py-0.5 bg-purple-50 text-purple-600 rounded-full">
+                    {contract.language_version === 'th' ? 'ไทย' : contract.language_version === 'th_en' ? 'ไทย+EN' : 'ไทย+EN+จีน'}
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* PDF link */}
-          {contract.pdf_url && (
-            <a
-              href={contract.pdf_url}
-              target="_blank"
-              rel="noopener noreferrer"
+          {/* Preview link (for template-based contracts) */}
+          {hasTemplate && (
+            <Link
+              href={`/contracts/${id}/preview`}
               className="flex items-center gap-1.5 px-4 py-2 border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 text-sm font-medium rounded-lg transition flex-shrink-0"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
-              ดู PDF
-            </a>
+              <Eye className="w-3.5 h-3.5" />
+              Preview
+            </Link>
           )}
         </div>
       </div>
@@ -171,6 +184,23 @@ export default async function ContractDetailPage({
               </div>
             </Section>
           )}
+
+          {/* Furniture checklist — rental only */}
+          {isRental && (
+            <Section title="รายการเฟอร์นิเจอร์และอุปกรณ์">
+              <FurnitureChecklist
+                contractId={id}
+                initialItems={(furnitureItems ?? []).map(item => ({
+                  id: item.id,
+                  item_name: item.item_name,
+                  quantity: item.quantity ?? 1,
+                  condition: item.condition ?? 'good',
+                  notes: item.notes ?? '',
+                  serial_no: item.serial_no ?? '',
+                }))}
+              />
+            </Section>
+          )}
         </div>
 
         {/* Right: parties + actions */}
@@ -215,11 +245,14 @@ export default async function ContractDetailPage({
             </Section>
           )}
 
-          {/* Actions (status change + PDF) */}
+          {/* Actions */}
           <ContractActions
             contractId={contract.id}
             status={contract.status as ContractStatus}
             pdfUrl={contract.pdf_url}
+            docxUrl={contract.docx_url ?? null}
+            templateSlug={contract.template_slug ?? null}
+            signToken={contract.sign_token ?? null}
           />
         </div>
       </div>

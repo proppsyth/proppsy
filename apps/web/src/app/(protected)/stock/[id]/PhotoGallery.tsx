@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import { ChevronLeft, ChevronRight, Home, Download, Loader2 } from 'lucide-react'
+import StorageImage from '@/components/shared/StorageImage'
 
 export default function PhotoGallery({ urls }: { urls: string[] }) {
   const [current, setCurrent] = useState(0)
@@ -41,13 +41,18 @@ export default function PhotoGallery({ urls }: { urls: string[] }) {
     <div className="w-full space-y-2">
       {/* Main photo */}
       <div className="relative w-full aspect-video bg-gray-100 rounded-xl overflow-hidden group">
-        <Image
-          src={urls[current]!}
+        <StorageImage
+          src={urls[current]}
           alt={`ภาพที่ ${current + 1}`}
           fill
           className="object-cover"
           sizes="(max-width: 1024px) 100vw, 60vw"
           priority={current === 0}
+          fallback={
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+              <Home className="w-14 h-14 text-gray-300" />
+            </div>
+          }
         />
 
         {/* Prev / Next arrows */}
@@ -91,7 +96,7 @@ export default function PhotoGallery({ urls }: { urls: string[] }) {
                 i === current ? 'border-blue-500' : 'border-transparent opacity-60 hover:opacity-100'
               }`}
             >
-              <Image src={url} alt={`thumb ${i + 1}`} fill className="object-cover" sizes="64px" />
+              <StorageImage src={url} alt={`thumb ${i + 1}`} fill className="object-cover" sizes="64px" />
             </button>
           ))}
         </div>

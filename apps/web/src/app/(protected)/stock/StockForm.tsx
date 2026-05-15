@@ -3,8 +3,8 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, X, Plus, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
-import { ownerDisplayName, formatRoomType } from '@/types'
-import type { Stock, Owner, Project } from '@/types'
+import { formatRoomType } from '@/types'
+import type { Stock, Project } from '@/types'
 import { createStock, updateStock, parseStockTextWithEntities } from './actions'
 import type { StockInput } from './actions'
 import { usePropertyImages } from '@/hooks/useUpload'
@@ -12,6 +12,9 @@ import ImageUploader from '@/components/shared/ImageUploader'
 import { useAiQuota } from '@/hooks/useAiQuota'
 import { AiQuotaBadge } from '@/components/shared/AiQuotaBadge'
 import { AiLimitModal } from '@/components/shared/AiLimitModal'
+import EntityCombobox from '@/components/shared/EntityCombobox'
+import { searchOwners } from '@/app/(protected)/contracts/search-actions'
+import type { OwnerSearchResult } from '@/app/(protected)/contracts/search-actions'
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -40,13 +43,13 @@ const FACILITY_OPTIONS = [
 
 // ─── Types ───────────────────────────────────────────────────
 
-type OwnerOption = Pick<Owner, 'id' | 'nickname' | 'first_name_th' | 'last_name_th' | 'phone'>
 type ProjectOption = Pick<Project, 'id' | 'name_th' | 'name_en'>
 
 interface FormState {
   project_name: string
   project_id: string
   owner_id: string
+  owner_label: string
   unit_no: string
   unit_name: string
   building: string
@@ -67,7 +70,7 @@ interface FormState {
 }
 
 const DEFAULT: FormState = {
-  project_name: '', project_id: '', owner_id: '',
+  project_name: '', project_id: '', owner_id: '', owner_label: '',
   unit_no: '', unit_name: '', building: '', floor: '',
   room_type: '', size_sqm: '', view_direction: '',
   listing_type: 'rent', rent_price: '', sale_price: '',
@@ -81,6 +84,7 @@ function stockToForm(s: Stock): FormState {
     project_name: s.project_name ?? '',
     project_id: s.project_id ?? '',
     owner_id: s.owner_id ?? '',
+    owner_label: '',
     unit_no: s.unit_no ?? '',
     unit_name: s.unit_name ?? '',
     building: s.building ?? '',
@@ -129,22 +133,27 @@ function toInput(f: FormState): StockInput {
   }
 }
 
+function ownerLabel(r: OwnerSearchResult): string {
+  return r.nickname || [r.first_name_th, r.last_name_th].filter(Boolean).join(' ') || r.id
+}
+
 // ─── Main Component ───────────────────────────────────────────
 
 interface Props {
-  owners: OwnerOption[]
   projects: ProjectOption[]
   initialData?: Stock
   stockId?: string
   allowAI?: boolean
+  initialOwnerLabel?: string
 }
 
-export default function StockForm({ owners, projects, initialData, stockId, allowAI = true }: Props) {
+export default function StockForm({ projects, initialData, stockId, allowAI = true, initialOwnerLabel }: Props) {
   const router = useRouter()
   const [form, setForm] = useState<FormState>(() =>
-    initialData ? stockToForm(initialData) : DEFAULT
+    initialData
+      ? { ...stockToForm(initialData), owner_label: initialOwnerLabel ?? '' }
+      : DEFAULT
   )
-  const [localOwners, setLocalOwners] = useState<OwnerOption[]>(owners)
   const [localProjects, setLocalProjects] = useState<ProjectOption[]>(projects)
   const [aiEntities, setAiEntities] = useState<{ ownerDisplay?: string; ownerCreated?: boolean; projectDisplay?: string; projectCreated?: boolean } | null>(null)
   const [error, setError] = useState('')
@@ -183,6 +192,14 @@ export default function StockForm({ owners, projects, initialData, stockId, allo
     }))
   }
 
+  function handleOwnerSelect(r: OwnerSearchResult | null) {
+    if (!r) {
+      setForm(f => ({ ...f, owner_id: '', owner_label: '' }))
+      return
+    }
+    setForm(f => ({ ...f, owner_id: r.id, owner_label: ownerLabel(r) }))
+  }
+
   // ── AI parse with entity creation
   function handleAIParse() {
     if (!aiText.trim()) return
@@ -214,21 +231,11 @@ export default function StockForm({ owners, projects, initialData, stockId, allo
         facilities: s.facilities?.length ? s.facilities : f.facilities,
         notes: s.notes ?? f.notes,
         owner_id: owner_id ?? f.owner_id,
+        owner_label: owner_id ? (owner_display ?? f.owner_label) : f.owner_label,
         project_id: project_id ?? f.project_id,
         project_name: s.project_name ?? f.project_name,
       }))
 
-      // Add newly created owner/project to local lists so dropdowns reflect them
-      if (owner_id && !localOwners.find(o => o.id === owner_id)) {
-        const nameParts = (owner_display ?? '').split(' ')
-        setLocalOwners(prev => [...prev, {
-          id: owner_id,
-          first_name_th: nameParts[0] ?? owner_display ?? '',
-          last_name_th: nameParts.slice(1).join(' '),
-          nickname: undefined,
-          phone: undefined,
-        }])
-      }
       if (project_id && project_display && !localProjects.find(p => p.id === project_id)) {
         setLocalProjects(prev => [...prev, { id: project_id, name_th: project_display, name_en: undefined }])
       }
@@ -427,14 +434,14 @@ export default function StockForm({ owners, projects, initialData, stockId, allo
       {/* ── Owner ────────────────────────────────────────────── */}
       <Section title="เจ้าของทรัพย์">
         <Label text="เลือกเจ้าของ" />
-        <select value={form.owner_id} onChange={setField('owner_id')} className={INPUT_CLS}>
-          <option value="">-- ไม่ระบุ --</option>
-          {localOwners.map(o => (
-            <option key={o.id} value={o.id}>
-              {ownerDisplayName(o)}{o.phone ? ` — ${o.phone}` : ''}
-            </option>
-          ))}
-        </select>
+        <EntityCombobox
+          kind="owner"
+          value={form.owner_id}
+          selectedLabel={form.owner_label}
+          onSelect={handleOwnerSelect}
+          searchFn={searchOwners}
+          placeholder="ค้นหาเจ้าของทรัพย์..."
+        />
       </Section>
 
       {/* ── Furniture ────────────────────────────────────────── */}
@@ -474,10 +481,12 @@ export default function StockForm({ owners, projects, initialData, stockId, allo
               {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
-          <div>
-            <Label text="วันสัญญาสิ้นสุด" />
-            <input value={form.contract_end_date} onChange={setField('contract_end_date')} type="date" className={INPUT_CLS} />
-          </div>
+          {form.status === 'rented' && (
+            <div>
+              <Label text="วันสัญญาสิ้นสุด" />
+              <input value={form.contract_end_date} onChange={setField('contract_end_date')} type="date" className={INPUT_CLS} />
+            </div>
+          )}
           <div className="sm:col-span-2">
             <Label text="หมายเหตุ" />
             <textarea
@@ -528,7 +537,7 @@ const INPUT_CLS = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm 
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-visible">
       <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/70">
         <h2 className="text-sm font-semibold text-gray-700">{title}</h2>
       </div>

@@ -3,9 +3,9 @@
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ScanLine, Upload, Loader2, PenLine } from 'lucide-react'
+import { ScanLine, Upload, Loader2, PenLine, BookOpen } from 'lucide-react'
 import type { Owner } from '@/types'
-import { createOwner, updateOwner, parseIdCard } from './actions'
+import { createOwner, updateOwner, parseDocument, parseBankBook } from './actions'
 import { compressForOcr } from '@/lib/compressForOcr'
 import type { OwnerInput } from './actions'
 import AddressSelector from '@/components/shared/AddressSelector'
@@ -126,12 +126,15 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const [isOcrPending, startOcr] = useTransition()
+  const [isBankOcrPending, startBankOcr] = useTransition()
   const [ocrMessage, setOcrMessage] = useState('')
+  const [bankOcrMessage, setBankOcrMessage] = useState('')
   const [sigMode, setSigMode] = useState<'upload' | 'draw'>('upload')
   const [showLimitModal, setShowLimitModal] = useState(false)
   const { quota, refresh: refreshQuota, isExhausted } = useAiQuota()
 
   const ocrInputRef = useRef<HTMLInputElement>(null)
+  const bankOcrInputRef = useRef<HTMLInputElement>(null)
 
   const idCardState = useDocumentUpload({
     category: 'id-cards',
@@ -149,33 +152,72 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
   const set = (k: keyof FormState, v: string) =>
     setForm(f => ({ ...f, [k]: v }))
 
-  // ─── OCR ─────────────────────────────────────────────────
+  // ─── OCR Document ─────────────────────────────────────────
 
   function handleOcr(file: File) {
     setOcrMessage('')
     startOcr(async () => {
       const { base64, mimeType } = await compressForOcr(file)
-      const result = await parseIdCard(base64, mimeType)
+      const result = await parseDocument(base64, mimeType)
       if ('error' in result) { setOcrMessage(result.error); return }
+
       const fields: (keyof FormState)[] = []
       const apply = (k: keyof FormState, v: string | null | undefined) => {
         if (v) { set(k, v); fields.push(k) }
       }
+
+      const isPassport = result.doc_type === 'passport'
+
       apply('prefix', result.prefix)
       apply('first_name_th', result.first_name_th)
       apply('last_name_th', result.last_name_th)
+      apply('first_name_en', result.first_name_en)
+      apply('last_name_en', result.last_name_en)
       apply('national_id', result.national_id)
-      apply('address_no', result.address_no)
-      apply('address_road', result.address_road)
-      apply('province', result.province)
-      apply('district', result.district)
-      apply('subdistrict', result.subdistrict)
-      apply('zip', result.zip)
 
-      // Upload the scanned image as the id card
+      if (!isPassport) {
+        apply('address_no', result.address_no)
+        apply('address_road', result.address_road)
+        apply('province', result.province)
+        apply('district', result.district)
+        apply('subdistrict', result.subdistrict)
+        apply('zip', result.zip)
+      }
+
       await idCardState.upload(file)
       refreshQuota()
-      setOcrMessage(`กรอกข้อมูลอัตโนมัติ ${fields.length} ช่อง · แนบรูปบัตรแล้ว`)
+
+      const docLabel = isPassport ? 'พาสปอร์ต' : 'บัตรประชาชน'
+      const extras: string[] = []
+      if (isPassport) {
+        if (result.nationality) extras.push(`สัญชาติ: ${result.nationality}`)
+        if (result.gender) extras.push(`เพศ: ${result.gender === 'M' ? 'ชาย' : 'หญิง'}`)
+        if (result.birth_date) extras.push(`วันเกิด: ${result.birth_date}`)
+        if (result.expiry_date) extras.push(`หมดอายุ: ${result.expiry_date}`)
+      }
+      const extraNote = extras.length ? ` · ${extras.join(' · ')}` : ''
+      setOcrMessage(`อ่าน${docLabel}สำเร็จ · กรอก ${fields.length} ช่อง${extraNote}`)
+    })
+  }
+
+  // ─── OCR Bank Book ────────────────────────────────────────
+
+  function handleBankOcr(file: File) {
+    setBankOcrMessage('')
+    startBankOcr(async () => {
+      const { base64, mimeType } = await compressForOcr(file)
+      const result = await parseBankBook(base64, mimeType)
+      if ('error' in result) { setBankOcrMessage(result.error); return }
+
+      const fields: string[] = []
+      if (result.bank_name) { set('bank_name', result.bank_name); fields.push('ธนาคาร') }
+      if (result.bank_account_name) { set('bank_account_name', result.bank_account_name); fields.push('ชื่อบัญชี') }
+      if (result.bank_account_no) { set('bank_account_no', result.bank_account_no); fields.push('เลขบัญชี') }
+
+      refreshQuota()
+      setBankOcrMessage(fields.length
+        ? `กรอกข้อมูลธนาคาร: ${fields.join(', ')}`
+        : 'ไม่พบข้อมูลธนาคาร กรุณากรอกเอง')
     })
   }
 
@@ -210,12 +252,12 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
         <div className="px-4 py-3 bg-emerald-100/60 border-b border-emerald-200 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <ScanLine className="w-4 h-4 text-emerald-700" />
-            <span className="text-sm font-semibold text-emerald-800">OCR บัตรประชาชน</span>
+            <span className="text-sm font-semibold text-emerald-800">OCR เอกสารตัวตน</span>
           </div>
           {quota && <AiQuotaBadge used={quota.used} limit={quota.limit} />}
         </div>
         <div className="p-4 space-y-3">
-          <p className="text-xs text-emerald-700">ถ่ายภาพหรืออัปโหลดบัตรประชาชน ระบบจะกรอกข้อมูลให้อัตโนมัติ</p>
+          <p className="text-xs text-emerald-700">ถ่ายภาพบัตรประชาชนหรือพาสปอร์ต ระบบจะกรอกข้อมูลให้อัตโนมัติ</p>
           <input
             ref={ocrInputRef}
             type="file"
@@ -239,10 +281,10 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
             {isOcrPending
               ? <Loader2 className="w-4 h-4 animate-spin" />
               : <ScanLine className="w-4 h-4" />}
-            {isOcrPending ? 'กำลังอ่านข้อมูล...' : 'สแกนบัตรประชาชน'}
+            {isOcrPending ? 'กำลังอ่านข้อมูล...' : 'สแกนบัตร / พาสปอร์ต'}
           </button>
           {ocrMessage && (
-            <p className={`text-xs font-medium ${ocrMessage.startsWith('กรอก') ? 'text-emerald-700' : 'text-red-600'}`}>
+            <p className={`text-xs font-medium ${ocrMessage.startsWith('อ่าน') ? 'text-emerald-700' : 'text-red-600'}`}>
               {ocrMessage}
             </p>
           )}
@@ -292,19 +334,19 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
         </div>
       </Section>
 
-      {/* บัตรประชาชน */}
-      <Section title="บัตรประชาชน">
+      {/* บัตรประชาชน / พาสปอร์ต */}
+      <Section title="บัตรประชาชน / พาสปอร์ต">
         <div className="space-y-4">
           <Field
-            label="เลขบัตรประชาชน (13 หลัก)"
+            label="เลขบัตรประชาชน หรือเลขพาสปอร์ต"
             value={form.national_id}
-            onChange={v => set('national_id', v.replace(/\D/g, '').slice(0, 13))}
-            placeholder="x xxxx xxxxx xx x"
-            maxLength={13}
+            onChange={v => set('national_id', v.replace(/[^A-Za-z0-9]/g, '').slice(0, 20))}
+            placeholder="x xxxx xxxxx xx x หรือ AA1234567"
+            maxLength={20}
           />
           <DocumentUploader
             {...idCardState}
-            label="รูปบัตรประชาชน"
+            label="รูปบัตรประชาชน / พาสปอร์ต"
             isPrivate
             enableWatermark
           />
@@ -330,21 +372,61 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
 
       {/* ธนาคาร */}
       <Section title="บัญชีธนาคาร">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <Label>ธนาคาร</Label>
-            <select
-              value={form.bank_name}
-              onChange={e => set('bank_name', e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">— เลือกธนาคาร —</option>
-              {BANK_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
+        <div className="space-y-4">
+          {/* Bank book OCR */}
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-3">
+            <BookOpen className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-blue-700 mb-2">สแกนสมุดบัญชีเพื่อกรอกข้อมูลธนาคารอัตโนมัติ</p>
+              <input
+                ref={bankOcrInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0]
+                  if (file) handleBankOcr(file)
+                  e.target.value = ''
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (isExhausted) { setShowLimitModal(true); return }
+                  bankOcrInputRef.current?.click()
+                }}
+                disabled={isBankOcrPending}
+                className={`flex items-center gap-2 px-3 py-1.5 text-white text-xs font-medium rounded-lg transition disabled:opacity-50 ${isExhausted ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+              >
+                {isBankOcrPending
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <ScanLine className="w-3.5 h-3.5" />}
+                {isBankOcrPending ? 'กำลังอ่าน...' : 'สแกนสมุดบัญชี'}
+              </button>
+              {bankOcrMessage && (
+                <p className={`text-xs font-medium mt-2 ${bankOcrMessage.startsWith('กรอก') ? 'text-blue-700' : 'text-red-600'}`}>
+                  {bankOcrMessage}
+                </p>
+              )}
+            </div>
           </div>
-          <Field label="ชื่อบัญชี" value={form.bank_account_name} onChange={v => set('bank_account_name', v)} placeholder="ชื่อเจ้าของบัญชี" />
-          <div className="sm:col-span-2">
-            <Field label="เลขที่บัญชี" value={form.bank_account_no} onChange={v => set('bank_account_no', v)} placeholder="xxx-x-xxxxx-x" />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label>ธนาคาร</Label>
+              <select
+                value={form.bank_name}
+                onChange={e => set('bank_name', e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">— เลือกธนาคาร —</option>
+                {BANK_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+            <Field label="ชื่อบัญชี" value={form.bank_account_name} onChange={v => set('bank_account_name', v)} placeholder="ชื่อเจ้าของบัญชี" />
+            <div className="sm:col-span-2">
+              <Field label="เลขที่บัญชี" value={form.bank_account_no} onChange={v => set('bank_account_no', v)} placeholder="xxx-x-xxxxx-x" />
+            </div>
           </div>
         </div>
       </Section>

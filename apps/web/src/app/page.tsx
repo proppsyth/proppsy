@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import StorageImage from '@/components/shared/StorageImage'
 import { Building2, Maximize, Layers, MapPin, Newspaper, Play } from 'lucide-react'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
@@ -263,15 +264,21 @@ export default async function PublicListingPage({
             {latestNews!.map(n => (
               <Link key={n.id} href={`/news/${n.id}`}
                 className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition block group">
-                {n.cover_url ? (
-                  <div className="relative aspect-video overflow-hidden">
-                    <Image src={n.cover_url} alt={n.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 640px) 100vw, 33vw" />
-                  </div>
-                ) : (
-                  <div className="aspect-video bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-                    <Newspaper className="w-8 h-8 text-blue-200" />
-                  </div>
-                )}
+                <div className="relative aspect-video overflow-hidden">
+                  <StorageImage
+                    src={n.cover_url}
+                    bucket="news"
+                    alt={n.title}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    sizes="(max-width: 640px) 100vw, 33vw"
+                    fallback={
+                      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+                        <Newspaper className="w-8 h-8 text-blue-200" />
+                      </div>
+                    }
+                  />
+                </div>
                 <div className="p-4">
                   <p className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1">{n.title}</p>
                   {n.summary && <p className="text-xs text-gray-400 line-clamp-2">{n.summary}</p>}
@@ -317,15 +324,18 @@ function PropertyCard({ stock }: { stock: Stock & { project?: { province?: strin
       }`}
     >
       <div className="relative aspect-[4/3] bg-gray-100">
-        {photo ? (
-          <Image src={photo} alt={stock.project_name ?? 'ทรัพย์'} fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Building2 className="w-12 h-12 text-gray-200" />
-          </div>
-        )}
+        <StorageImage
+          src={photo}
+          alt={stock.project_name ?? 'ทรัพย์'}
+          fill
+          className="object-cover group-hover:scale-105 transition-transform duration-300"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          fallback={
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Building2 className="w-12 h-12 text-gray-200" />
+            </div>
+          }
+        />
         <div className="absolute top-2 left-2 flex gap-1">
           {isRent && <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/90 text-white backdrop-blur-sm">เช่า</span>}
           {isSale && stock.listing_type !== 'rent' && <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-500/90 text-white backdrop-blur-sm">ขาย</span>}

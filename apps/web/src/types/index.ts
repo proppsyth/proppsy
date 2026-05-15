@@ -14,6 +14,7 @@ export type ContractDocType =
   | 'invoice_reservation' | 'receipt_reservation'
   | 'invoice_deposit' | 'receipt_deposit'
   | 'commission_confirm'
+  | 'co_agent'
 export type PaymentMethod = 'cash' | 'transfer' | 'cheque'
 export type ContractStatus = 'draft' | 'sent' | 'signed' | 'cancelled'
 export type CustomerSource = 'line_oa' | 'referral' | 'walk_in' | 'online'
@@ -52,7 +53,16 @@ export interface Profile {
   permissions: Permissions
   company_name?: string
   tax_id?: string
+  prefix?: string
+  prefix_en?: string
+  first_name_th?: string
+  last_name_th?: string
+  first_name_en?: string
+  last_name_en?: string
   national_id?: string
+  nationality?: string
+  gender?: string
+  birth_date?: string
   id_card_url?: string
   signature_url?: string
   logo_url?: string
@@ -234,7 +244,15 @@ export interface Contract {
   commission_from_customer?: number
   doc_url?: string
   pdf_url?: string
+  docx_url?: string
   snapshot?: Record<string, unknown>
+  // Contract V2 fields
+  language_version?: string
+  template_slug?: string
+  sign_token?: string
+  signed_at?: string
+  occupant_count?: number
+  extra_vars?: Record<string, string>
   created_at: string
   updated_at: string
   // Joined
@@ -307,6 +325,7 @@ export const DOC_TYPE_LABELS: Record<ContractDocType, string> = {
   invoice_deposit: 'ใบแจ้งหนี้เงินประกัน',
   receipt_deposit: 'ใบเสร็จเงินประกัน',
   commission_confirm: 'ยืนยันค่าคอมมิชชัน',
+  co_agent: 'สัญญา Co-Agent',
 }
 
 export const STATUS_LABELS: Record<StockStatus, string> = {

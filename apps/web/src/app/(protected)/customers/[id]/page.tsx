@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, Pencil, Phone, MessageCircle, CreditCard, Bell } from 'lucide-react'
+import { ArrowLeft, Pencil, Phone, MessageCircle, CreditCard, Bell, ImageOff } from 'lucide-react'
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
+import StorageImage from '@/components/shared/StorageImage'
 import { customerDisplayName } from '@/types'
 import type { Customer } from '@/types'
 
@@ -148,8 +148,21 @@ export default async function CustomerDetailPage({
           {/* รูปบัตร */}
           {c.id_card_url && (
             <Section title="รูปบัตรประชาชน">
-              <div className="relative w-64 h-40 rounded-lg overflow-hidden border border-gray-200">
-                <Image src={c.id_card_url} alt="บัตรประชาชน" fill className="object-cover" sizes="256px" />
+              <div className="relative w-64 h-40 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                <StorageImage
+                  src={c.id_card_url}
+                  bucket="documents"
+                  alt="บัตรประชาชน"
+                  fill
+                  className="object-cover"
+                  sizes="256px"
+                  fallback={
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-gray-300">
+                      <ImageOff className="w-8 h-8" />
+                      <span className="text-xs">ไม่พบรูปภาพ</span>
+                    </div>
+                  }
+                />
               </div>
             </Section>
           )}
@@ -158,7 +171,19 @@ export default async function CustomerDetailPage({
           {c.signature_url && (
             <Section title="ลายเซ็น">
               <div className="relative w-52 h-24 rounded-lg overflow-hidden border border-gray-200 bg-white">
-                <Image src={c.signature_url} alt="ลายเซ็น" fill className="object-contain p-2" sizes="208px" />
+                <StorageImage
+                  src={c.signature_url}
+                  bucket="documents"
+                  alt="ลายเซ็น"
+                  fill
+                  className="object-contain p-2"
+                  sizes="208px"
+                  fallback={
+                    <div className="absolute inset-0 flex items-center justify-center text-gray-300">
+                      <ImageOff className="w-6 h-6" />
+                    </div>
+                  }
+                />
               </div>
             </Section>
           )}

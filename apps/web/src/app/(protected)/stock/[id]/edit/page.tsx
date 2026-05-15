@@ -17,18 +17,13 @@ export default async function EditStockPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: stock }, { data: owners }, { data: projects }] = await Promise.all([
+  const [{ data: stock }, { data: projects }] = await Promise.all([
     supabase
       .from('stock')
-      .select('*')
+      .select('*, owner:owners(id, nickname, first_name_th, last_name_th)')
       .eq('id', id)
       .eq('agent_uid', user.id)
       .single(),
-    supabase
-      .from('owners')
-      .select('id, nickname, first_name_th, last_name_th, phone')
-      .eq('agent_uid', user.id)
-      .order('created_at', { ascending: false }),
     supabase
       .from('projects')
       .select('id, name_th, name_en')
@@ -37,14 +32,22 @@ export default async function EditStockPage({
 
   if (!stock) notFound()
 
+  // Derive owner display label from joined data
+  const o = (stock as Record<string, unknown>).owner as {
+    id?: string; nickname?: string | null; first_name_th?: string | null; last_name_th?: string | null
+  } | null | undefined
+  const initialOwnerLabel = o
+    ? (o.nickname || [o.first_name_th, o.last_name_th].filter(Boolean).join(' ') || '')
+    : ''
+
   return (
     <div className="p-4 lg:p-8 pt-6 max-w-3xl">
       <h1 className="text-xl font-bold text-gray-900 mb-6">แก้ไขทรัพย์</h1>
       <StockForm
         stockId={id}
         initialData={stock as unknown as Stock}
-        owners={owners ?? []}
         projects={projects ?? []}
+        initialOwnerLabel={initialOwnerLabel}
       />
     </div>
   )

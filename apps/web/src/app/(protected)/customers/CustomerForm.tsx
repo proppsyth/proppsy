@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ScanLine, Loader2 } from 'lucide-react'
 import type { Customer } from '@/types'
-import { createCustomer, updateCustomer, parseIdCard } from './actions'
+import { createCustomer, updateCustomer, parseDocument } from './actions'
 import { compressForOcr } from '@/lib/compressForOcr'
 import type { CustomerInput } from './actions'
 import AddressSelector from '@/components/shared/AddressSelector'
@@ -18,11 +18,6 @@ import { AiLimitModal } from '@/components/shared/AiLimitModal'
 // ─── Constants ───────────────────────────────────────────────
 
 const PREFIXES_TH = ['นาย', 'นาง', 'นางสาว']
-const BANK_OPTIONS = [
-  'ธนาคารกรุงเทพ', 'ธนาคารกสิกรไทย', 'ธนาคารไทยพาณิชย์',
-  'ธนาคารกรุงไทย', 'ธนาคารกรุงศรีอยุธยา', 'ธนาคารทหารไทยธนชาต',
-  'ธนาคารออมสิน', 'ธนาคารอาคารสงเคราะห์', 'ธนาคารเกียรตินาคินภัทร',
-]
 const SOURCE_OPTIONS = [
   { value: 'line_oa', label: 'LINE OA' },
   { value: 'referral', label: 'แนะนำ' },
@@ -51,9 +46,6 @@ interface FormState {
   district: string
   subdistrict: string
   zip: string
-  bank_name: string
-  bank_account_no: string
-  bank_account_name: string
   notes: string
 }
 
@@ -64,7 +56,6 @@ const DEFAULT: FormState = {
   source: '', follow_up: false,
   address_no: '', address_road: '',
   province: '', district: '', subdistrict: '', zip: '',
-  bank_name: '', bank_account_no: '', bank_account_name: '',
   notes: '',
 }
 
@@ -88,9 +79,6 @@ function customerToForm(c: Customer): FormState {
     district: c.district ?? '',
     subdistrict: c.subdistrict ?? '',
     zip: c.zip ?? '',
-    bank_name: c.bank_name ?? '',
-    bank_account_no: c.bank_account_no ?? '',
-    bank_account_name: c.bank_account_name ?? '',
     notes: c.notes ?? '',
   }
 }
@@ -116,9 +104,6 @@ function toInput(f: FormState): CustomerInput {
     district: str(f.district),
     subdistrict: str(f.subdistrict),
     zip: str(f.zip),
-    bank_name: str(f.bank_name),
-    bank_account_no: str(f.bank_account_no),
-    bank_account_name: str(f.bank_account_name),
     notes: str(f.notes),
   }
 }
@@ -166,27 +151,45 @@ export default function CustomerForm({ initialData, customerId }: Props) {
     setOcrMessage('')
     startOcr(async () => {
       const { base64, mimeType } = await compressForOcr(file)
-      const result = await parseIdCard(base64, mimeType)
+      const result = await parseDocument(base64, mimeType)
       if ('error' in result) { setOcrMessage(result.error); return }
+
       const fields: string[] = []
       const apply = (k: keyof FormState, v: string | null | undefined) => {
         if (v) { set(k, v); fields.push(k) }
       }
+
+      const isPassport = result.doc_type === 'passport'
+
       apply('prefix', result.prefix)
       apply('first_name_th', result.first_name_th)
       apply('last_name_th', result.last_name_th)
+      apply('first_name_en', result.first_name_en)
+      apply('last_name_en', result.last_name_en)
       apply('national_id', result.national_id)
-      apply('address_no', result.address_no)
-      apply('address_road', result.address_road)
-      apply('province', result.province)
-      apply('district', result.district)
-      apply('subdistrict', result.subdistrict)
-      apply('zip', result.zip)
 
-      // Upload the scanned image as the id card
+      if (!isPassport) {
+        apply('address_no', result.address_no)
+        apply('address_road', result.address_road)
+        apply('province', result.province)
+        apply('district', result.district)
+        apply('subdistrict', result.subdistrict)
+        apply('zip', result.zip)
+      }
+
       await idCardState.upload(file)
       refreshQuota()
-      setOcrMessage(`กรอกข้อมูลอัตโนมัติ ${fields.length} ช่อง · แนบรูปบัตรแล้ว`)
+
+      const docLabel = isPassport ? 'พาสปอร์ต' : 'บัตรประชาชน'
+      const extras: string[] = []
+      if (isPassport) {
+        if (result.nationality) extras.push(`สัญชาติ: ${result.nationality}`)
+        if (result.gender) extras.push(`เพศ: ${result.gender === 'M' ? 'ชาย' : 'หญิง'}`)
+        if (result.birth_date) extras.push(`วันเกิด: ${result.birth_date}`)
+        if (result.expiry_date) extras.push(`หมดอายุ: ${result.expiry_date}`)
+      }
+      const extraNote = extras.length ? ` · ${extras.join(' · ')}` : ''
+      setOcrMessage(`อ่าน${docLabel}สำเร็จ · กรอก ${fields.length} ช่อง${extraNote}`)
     })
   }
 
@@ -221,12 +224,12 @@ export default function CustomerForm({ initialData, customerId }: Props) {
         <div className="px-4 py-3 bg-emerald-100/60 border-b border-emerald-200 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <ScanLine className="w-4 h-4 text-emerald-700" />
-            <span className="text-sm font-semibold text-emerald-800">OCR บัตรประชาชน</span>
+            <span className="text-sm font-semibold text-emerald-800">OCR เอกสารตัวตน</span>
           </div>
           {quota && <AiQuotaBadge used={quota.used} limit={quota.limit} />}
         </div>
         <div className="p-4 space-y-3">
-          <p className="text-xs text-emerald-700">ถ่ายภาพหรืออัปโหลดบัตรประชาชน ระบบจะกรอกข้อมูลให้อัตโนมัติ</p>
+          <p className="text-xs text-emerald-700">ถ่ายภาพบัตรประชาชนหรือพาสปอร์ต ระบบจะกรอกข้อมูลให้อัตโนมัติ</p>
           <input
             ref={ocrInputRef}
             type="file"
@@ -248,10 +251,10 @@ export default function CustomerForm({ initialData, customerId }: Props) {
             className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-lg transition disabled:opacity-50 ${isExhausted ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
           >
             {isOcrPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanLine className="w-4 h-4" />}
-            {isOcrPending ? 'กำลังอ่านข้อมูล...' : 'สแกนบัตรประชาชน'}
+            {isOcrPending ? 'กำลังอ่านข้อมูล...' : 'สแกนบัตร / พาสปอร์ต'}
           </button>
           {ocrMessage && (
-            <p className={`text-xs font-medium ${ocrMessage.startsWith('กรอก') ? 'text-emerald-700' : 'text-red-600'}`}>
+            <p className={`text-xs font-medium ${ocrMessage.startsWith('อ่าน') ? 'text-emerald-700' : 'text-red-600'}`}>
               {ocrMessage}
             </p>
           )}
@@ -327,19 +330,19 @@ export default function CustomerForm({ initialData, customerId }: Props) {
         </div>
       </Section>
 
-      {/* บัตรประชาชน */}
-      <Section title="บัตรประชาชน">
+      {/* บัตรประชาชน / พาสปอร์ต */}
+      <Section title="บัตรประชาชน / พาสปอร์ต">
         <div className="space-y-4">
           <Field
-            label="เลขบัตรประชาชน (13 หลัก)"
+            label="เลขบัตรประชาชน หรือเลขพาสปอร์ต"
             value={form.national_id}
-            onChange={v => set('national_id', v.replace(/\D/g, '').slice(0, 13))}
-            placeholder="x xxxx xxxxx xx x"
-            maxLength={13}
+            onChange={v => set('national_id', v.replace(/[^A-Za-z0-9]/g, '').slice(0, 20))}
+            placeholder="x xxxx xxxxx xx x หรือ AA1234567"
+            maxLength={20}
           />
           <DocumentUploader
             {...idCardState}
-            label="รูปบัตรประชาชน"
+            label="รูปบัตรประชาชน / พาสปอร์ต"
             isPrivate
             enableWatermark
           />
@@ -360,27 +363,6 @@ export default function CustomerForm({ initialData, customerId }: Props) {
             zip={form.zip}
             onChange={(field, value) => set(field, value)}
           />
-        </div>
-      </Section>
-
-      {/* ธนาคาร */}
-      <Section title="บัญชีธนาคาร">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <Label>ธนาคาร</Label>
-            <select
-              value={form.bank_name}
-              onChange={e => set('bank_name', e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">— เลือกธนาคาร —</option>
-              {BANK_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
-          </div>
-          <Field label="ชื่อบัญชี" value={form.bank_account_name} onChange={v => set('bank_account_name', v)} placeholder="ชื่อเจ้าของบัญชี" />
-          <div className="sm:col-span-2">
-            <Field label="เลขที่บัญชี" value={form.bank_account_no} onChange={v => set('bank_account_no', v)} placeholder="xxx-x-xxxxx-x" />
-          </div>
         </div>
       </Section>
 
