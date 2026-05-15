@@ -195,18 +195,18 @@ export default function ContractActions({
         </div>
         <div className="p-4 space-y-2">
           {signLink ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
+            <div className="space-y-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
                 <input
                   type="text"
                   value={signLink}
                   readOnly
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-600 bg-gray-50"
+                  className="flex-1 min-w-0 px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-600 bg-gray-50 truncate"
                 />
                 <button
                   type="button"
                   onClick={copySignLink}
-                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition ${
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition ${
                     linkCopied
                       ? 'bg-green-100 text-green-700'
                       : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -216,6 +216,14 @@ export default function ContractActions({
                   {linkCopied ? 'คัดลอกแล้ว' : 'คัดลอก'}
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={copySignLink}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition"
+              >
+                {linkCopied ? <Check className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
+                {linkCopied ? 'คัดลอกลิงก์แล้ว!' : 'คัดลอกลิงก์ลงนาม'}
+              </button>
             </div>
           ) : (
             <button
