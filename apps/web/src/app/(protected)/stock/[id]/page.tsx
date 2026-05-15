@@ -79,7 +79,7 @@ export default async function StockDetailPage({
           กลับรายการทรัพย์
         </Link>
 
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-sm text-gray-400 mb-0.5">{s.id}</p>
             <h1 className="text-xl font-bold text-gray-900 leading-snug break-words">
@@ -101,7 +101,7 @@ export default async function StockDetailPage({
             </div>
           </div>
 
-          <div className="flex items-start gap-2 flex-shrink-0 flex-wrap justify-end">
+          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
             <PublishActions
               stockId={s.id}
               isPublished={s.is_published ?? false}

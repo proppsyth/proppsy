@@ -112,9 +112,10 @@ function DropdownPortal({ triggerRef, open, children }: DropdownProps) {
   const isMobile = window.innerWidth < 640
   if (isMobile) {
     return createPortal(
-      <div className="fixed inset-0 z-[9999] flex flex-col">
+      <>
+        <div className="fixed inset-0 z-[9998] bg-black/40" />
         {children}
-      </div>,
+      </>,
       document.body,
     )
   }
@@ -312,7 +313,7 @@ export default function EntityCombobox(props: Props) {
       data-entity-portal
       className={`
         bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col
-        ${isMobile ? 'fixed inset-x-0 bottom-0 rounded-b-none max-h-[80vh]' : 'max-h-[min(400px,60vh)]'}
+        ${isMobile ? 'fixed inset-x-2 bottom-16 z-[9999] max-h-[65vh]' : 'max-h-[min(400px,60vh)]'}
       `}
     >
       {/* Search input */}

@@ -314,25 +314,28 @@ export default function ContractWizard() {
   return (
     <div className="space-y-5">
       {/* Progress */}
-      <div className="flex items-center gap-2">
-        {([1, 2, 3, 4] as const).map(n => (
-          <div key={n} className="flex items-center gap-2 flex-1">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition ${
-              step > n ? 'bg-blue-600 text-white' :
-              step === n ? 'bg-blue-600 text-white ring-4 ring-blue-100' :
-              'bg-gray-100 text-gray-400'
-            }`}>
-              {step > n ? <Check className="w-3.5 h-3.5" /> : n}
+      <div className="relative mb-1">
+        <div className="absolute top-3.5 left-0 right-0 flex items-center px-3.5">
+          {[1, 2, 3].map(n => (
+            <div key={n} className={`flex-1 h-0.5 ${step > n ? 'bg-blue-600' : 'bg-gray-200'}`} />
+          ))}
+        </div>
+        <div className="relative z-10 flex justify-between">
+          {([1, 2, 3, 4] as const).map(n => (
+            <div key={n} className="flex flex-col items-center gap-1.5">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition ${
+                step > n ? 'bg-blue-600 text-white' :
+                step === n ? 'bg-blue-600 text-white ring-4 ring-blue-100' :
+                'bg-gray-100 text-gray-400'
+              }`}>
+                {step > n ? <Check className="w-3.5 h-3.5" /> : n}
+              </div>
+              <span className="text-[9px] text-gray-400 text-center leading-tight max-w-[3.5rem]">
+                {n === 1 ? 'ประเภท+ภาษา' : n === 2 ? 'คู่สัญญา' : n === 3 ? 'รายละเอียด' : 'ยืนยัน'}
+              </span>
             </div>
-            {n < 4 && <div className={`flex-1 h-0.5 ${step > n ? 'bg-blue-600' : 'bg-gray-200'}`} />}
-          </div>
-        ))}
-      </div>
-      <div className="flex justify-between text-xs text-gray-400 -mt-2">
-        <span>ประเภท + ภาษา</span>
-        <span>คู่สัญญา</span>
-        <span>รายละเอียด</span>
-        <span>ยืนยัน</span>
+          ))}
+        </div>
       </div>
 
       {/* ── Step 1: doc_type + language + stock ── */}

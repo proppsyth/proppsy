@@ -72,7 +72,7 @@ export default async function ContractDetailPage({
   const hasTemplate     = TEMPLATE_SUPPORTED_TYPES.has(contract.doc_type)
 
   return (
-    <div className="p-4 lg:p-8 pt-6 max-w-4xl">
+    <div className="p-4 lg:p-8 pt-6 max-w-4xl overflow-x-hidden">
       {/* Header */}
       <div className="mb-5">
         <Link href="/contracts" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition mb-3 w-fit">
@@ -275,9 +275,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function FinRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
-      <span className="text-xs text-gray-500">{label}</span>
-      <span className="text-sm font-semibold text-gray-900">{value}</span>
+    <div className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0 gap-3">
+      <span className="text-xs text-gray-500 min-w-0 flex-1">{label}</span>
+      <span className="text-sm font-semibold text-gray-900 flex-shrink-0 text-right">{value}</span>
     </div>
   )
 }

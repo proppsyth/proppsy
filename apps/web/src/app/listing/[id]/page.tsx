@@ -9,6 +9,7 @@ import { formatRoomType } from '@/types'
 import PublicNav from '@/components/shared/PublicNav'
 import PhotoGallery from '@/app/(protected)/stock/[id]/PhotoGallery'
 import ContactCard from './ContactCard'
+import ShareButtons from './ShareButtons'
 
 export async function generateMetadata({
   params,
@@ -120,6 +121,15 @@ export default async function PublicPropertyDetailPage({
                     <p className="text-2xl font-bold text-green-700">฿{fmt(stock.sale_price)}</p>
                   </div>
                 )}
+              </div>
+
+              {/* Share */}
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <p className="text-xs text-gray-400 mb-2">แชร์ประกาศนี้</p>
+                <ShareButtons
+                  path={`/listing/${stock.id}`}
+                  title={[projectName, stock.unit_no].filter(Boolean).join(' · ') || 'ทรัพย์'}
+                />
               </div>
             </div>
 

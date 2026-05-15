@@ -320,10 +320,9 @@ export default function CustomerForm({ initialData, customerId }: Props) {
             <button
               type="button"
               onClick={() => set('follow_up', !form.follow_up)}
-              className={`relative w-10 h-5.5 rounded-full transition-colors ${form.follow_up ? 'bg-blue-600' : 'bg-gray-200'}`}
-              style={{ height: '22px' }}
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${form.follow_up ? 'bg-blue-600' : 'bg-gray-200'}`}
             >
-              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.follow_up ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.follow_up ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
             <span className="text-sm text-gray-700">ต้องการติดตาม (Follow-up)</span>
           </div>

@@ -14,7 +14,7 @@ import StatsCounter from './listing/StatsCounter'
 export const metadata: Metadata = { title: 'Proppsy — ค้นหาที่พัก' }
 
 // ── เปลี่ยน YouTube Video ID ที่นี่ ──────────────────────────
-const YOUTUBE_ID = '' // ใส่ ID ของคลิป เช่น 'abc123xyz' จาก youtu.be/abc123xyz
+const YOUTUBE_ID = '16IweHfUBa4'
 
 const RENT_RANGES: Record<string, [number, number]> = {
   low:     [0,     15000],
