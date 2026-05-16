@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   Users, UserCheck, Building2, Calendar,
   TrendingUp, Settings, LogOut, ShieldCheck, Zap, CreditCard, Newspaper,
+  Menu, X,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
@@ -52,6 +53,7 @@ export default function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -154,6 +156,13 @@ export default function Sidebar({ profile }: SidebarProps) {
 
       {/* ── Mobile: top bar ── */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur border-b border-gray-100 flex items-center justify-between px-4 z-30">
+        <button
+          onClick={() => setDrawerOpen(true)}
+          className="w-8 h-8 flex items-center justify-center text-gray-600 active:bg-gray-100 rounded-lg transition"
+          aria-label="เปิดเมนู"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         <Link href="/" className="flex items-center gap-2">
           <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={26} height={26} className="object-contain rounded-md flex-shrink-0" />
           <span className="font-bold text-base text-gray-900 tracking-tight">Proppsy</span>
@@ -168,6 +177,120 @@ export default function Sidebar({ profile }: SidebarProps) {
 
       {/* ── Mobile Bottom Navigation ── */}
       <MobileBottomNav profile={profile} />
+
+      {/* ── Left Drawer Backdrop ── */}
+      {drawerOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          onClick={() => setDrawerOpen(false)}
+        />
+      )}
+
+      {/* ── Left Drawer ── */}
+      <div className={`lg:hidden fixed top-0 left-0 bottom-0 w-72 bg-white z-50 shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+        drawerOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        {/* Drawer header */}
+        <div className="flex items-center justify-between px-4 h-14 border-b border-gray-100 flex-shrink-0">
+          <Link href="/" className="flex items-center gap-2.5" onClick={() => setDrawerOpen(false)}>
+            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={28} height={28} className="object-contain rounded-md flex-shrink-0" />
+            <span className="font-bold text-base text-gray-900 tracking-tight">Proppsy</span>
+          </Link>
+          <button
+            onClick={() => setDrawerOpen(false)}
+            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 active:bg-gray-100 rounded-lg transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Nav items */}
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+          {NAV_ITEMS.filter(item => hasPermission(item.permission)).map(item => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setDrawerOpen(false)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+                isActive(item.href)
+                  ? 'bg-blue-600 text-white font-medium'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
+            >
+              <span className="w-5 shrink-0 text-center leading-none">{item.icon}</span>
+              {item.label}
+            </Link>
+          ))}
+
+          {profile.role === 'admin' && (
+            <>
+              <div className="pt-4 pb-1 px-3">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">แอดมิน</p>
+              </div>
+              {ADMIN_ITEMS.map(item => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setDrawerOpen(false)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+                    isActive(item.href)
+                      ? 'bg-blue-600 text-white font-medium'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  <span className="w-5 shrink-0 text-center leading-none">{item.icon}</span>
+                  {item.label}
+                </Link>
+              ))}
+            </>
+          )}
+
+          {/* Public links */}
+          <div className="pt-4 pb-1 px-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">ทั่วไป</p>
+          </div>
+          {[
+            { href: '/news', label: 'ข่าวสาร', icon: '📰' },
+            { href: '/guide', label: 'คู่มือ', icon: '📖' },
+            { href: '/faq', label: 'FAQ', icon: '❓' },
+            { href: '/services', label: 'บริการ', icon: '⚙️' },
+            { href: '/contact', label: 'ติดต่อเรา', icon: '📞' },
+          ].map(item => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setDrawerOpen(false)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+                isActive(item.href)
+                  ? 'bg-blue-600 text-white font-medium'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
+            >
+              <span className="w-5 shrink-0 text-center leading-none">{item.icon}</span>
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Bottom links */}
+        <div className="p-3 border-t border-gray-100 space-y-0.5 flex-shrink-0">
+          <Link href="/billing" onClick={() => setDrawerOpen(false)}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${isActive('/billing') ? 'bg-blue-600 text-white font-medium' : 'text-gray-600 hover:bg-gray-100'}`}>
+            <CreditCard className="w-4 h-4 flex-shrink-0" />
+            การชำระเงิน
+          </Link>
+          <Link href="/profile" onClick={() => setDrawerOpen(false)}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${isActive('/profile') ? 'bg-blue-600 text-white font-medium' : 'text-gray-600 hover:bg-gray-100'}`}>
+            <Settings className="w-4 h-4 flex-shrink-0" />
+            ตั้งค่า
+          </Link>
+          <button onClick={() => { setDrawerOpen(false); handleSignOut() }}
+            className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-50 transition">
+            <LogOut className="w-4 h-4 flex-shrink-0" />
+            ออกจากระบบ
+          </button>
+        </div>
+      </div>
 
       {/* ── More Backdrop ── */}
       {moreOpen && (
@@ -215,26 +338,6 @@ export default function Sidebar({ profile }: SidebarProps) {
                 </Link>
               )
             })}
-          </div>
-
-          {/* Public links */}
-          <div className="flex flex-wrap gap-2 mb-4 pt-4 border-t border-gray-100">
-            {[
-              { href: '/news', label: 'ข่าวสาร' },
-              { href: '/guide', label: 'คู่มือ' },
-              { href: '/faq', label: 'FAQ' },
-              { href: '/services', label: 'บริการ' },
-              { href: '/contact', label: 'ติดต่อเรา' },
-            ].map(link => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMoreOpen(false)}
-                className="px-3 py-1.5 text-xs text-gray-500 bg-gray-50 rounded-full border border-gray-100 hover:bg-gray-100 transition"
-              >
-                {link.label}
-              </Link>
-            ))}
           </div>
 
           <button
