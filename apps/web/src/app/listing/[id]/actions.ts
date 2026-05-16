@@ -12,6 +12,8 @@ export interface InquiryInput {
   nickname: string
   phone: string
   line_id?: string
+  gender?: string
+  occupation?: string
   move_in_date?: string
   budget?: string
   occupants?: string
@@ -54,6 +56,8 @@ export async function submitInquiry(
     nickname: input.nickname.trim(),
     phone: input.phone.trim(),
     line_id: input.line_id?.trim() || null,
+    gender: input.gender || null,
+    occupation: input.occupation || null,
     source: 'public_listing',
     lead_status: 'lead',
     follow_up: true,
@@ -87,6 +91,8 @@ export async function submitInquiry(
       projectName: input.project_name,
       unitNo: input.unit_no,
       nickname: input.nickname.trim(),
+      gender: input.gender,
+      occupation: input.occupation,
       budget: input.budget,
       moveInDate: input.move_in_date,
       occupants: input.occupants,

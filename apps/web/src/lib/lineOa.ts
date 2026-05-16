@@ -30,6 +30,8 @@ export function buildInquiryNotification(args: {
   budget?: string
   moveInDate?: string
   occupants?: string
+  gender?: string
+  occupation?: string
   phone: string
   lineId?: string
 }): string {
@@ -40,6 +42,8 @@ export function buildInquiryNotification(args: {
     ...(args.unitNo ? [`Unit: ${args.unitNo}`] : []),
     '',
     `Name: ${args.nickname}`,
+    ...(args.gender ? [`Gender: ${args.gender}`] : []),
+    ...(args.occupation ? [`Occupation: ${args.occupation}`] : []),
     ...(args.budget ? [`Budget: ${args.budget}`] : []),
     ...(args.moveInDate ? [`Move-in: ${args.moveInDate}`] : []),
     ...(args.occupants ? [`Occupants: ${args.occupants}`] : []),

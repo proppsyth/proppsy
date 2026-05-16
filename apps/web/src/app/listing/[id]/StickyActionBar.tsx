@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Phone, MessageCircle, X, CheckCircle2, Loader2, ChevronUp } from 'lucide-react'
+import { Phone, MessageCircle, X, CheckCircle2, Loader2, ChevronUp, CalendarX } from 'lucide-react'
 import { submitInquiry } from './actions'
 import type { InquiryInput } from './actions'
 
@@ -25,6 +25,9 @@ interface FormState {
   nickname: string
   phone: string
   line_id: string
+  gender: string
+  occupation: string
+  occupation_other: string
   budget: string
   occupants: string
   duration: string
@@ -35,28 +38,75 @@ const BLANK: FormState = {
   nickname: '',
   phone: '',
   line_id: '',
+  gender: '',
+  occupation: '',
+  occupation_other: '',
   budget: '',
   occupants: '',
   duration: '',
   move_in_date: '',
 }
 
-// ─── Chip helper ─────────────────────────────────────────────
+// ─── Option lists ─────────────────────────────────────────────
+
+const GENDER_OPTIONS = [
+  { value: 'ชาย', label: 'ชาย' },
+  { value: 'หญิง', label: 'หญิง' },
+  { value: 'อื่น', label: 'อื่น' },
+  { value: 'ไม่ระบุ', label: 'ไม่ระบุ' },
+]
+
+const OCCUPATION_OPTIONS = [
+  { value: 'พนักงาน', label: 'พนักงาน' },
+  { value: 'เจ้าของกิจการ', label: 'เจ้าของกิจการ' },
+  { value: 'ฟรีแลนซ์', label: 'ฟรีแลนซ์' },
+  { value: 'นักศึกษา', label: 'นักศึกษา' },
+  { value: 'ชาวต่างชาติ', label: 'ชาวต่างชาติ' },
+  { value: 'other', label: 'อื่นๆ' },
+]
+
+const BUDGET_OPTIONS = [
+  { value: 'ไม่เกิน 10,000', label: 'ไม่เกิน 10k' },
+  { value: '10k–20k', label: '10k–20k' },
+  { value: '20k–30k', label: '20k–30k' },
+  { value: '30k+', label: '30k+' },
+]
+
+const OCCUPANT_OPTIONS = [
+  { value: '1 คน', label: '1 คน' },
+  { value: '2 คน', label: '2 คน' },
+  { value: '3 คน', label: '3 คน' },
+  { value: '4+ คน', label: '4+ คน' },
+]
+
+const DURATION_OPTIONS = [
+  { value: '6 เดือน', label: '6 เดือน' },
+  { value: '1 ปี', label: '1 ปี' },
+  { value: '2 ปี', label: '2 ปี' },
+  { value: 'ยังไม่แน่ใจ', label: 'ยังไม่แน่ใจ' },
+]
+
+// ─── ChipGroup ────────────────────────────────────────────────
 
 function ChipGroup({
   label,
+  hint,
   options,
   value,
   onChange,
 }: {
   label: string
+  hint?: string
   options: { value: string; label: string }[]
   value: string
   onChange: (v: string) => void
 }) {
   return (
     <div>
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{label}</p>
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        {label}
+        {hint && <span className="ml-1 text-xs font-normal normal-case text-gray-400">{hint}</span>}
+      </p>
       <div className="flex flex-wrap gap-2">
         {options.map(opt => (
           <button
@@ -77,50 +127,9 @@ function ChipGroup({
   )
 }
 
-// ─── Budget options (dynamic relative to listing price) ──────
-
-function getBudgetOptions(rentPrice?: number) {
-  if (rentPrice && rentPrice >= 30000) {
-    return [
-      { value: 'under30k', label: 'ไม่เกิน 30,000' },
-      { value: '30k-50k', label: '30k–50k' },
-      { value: '50k-80k', label: '50k–80k' },
-      { value: '80k+', label: '80k+' },
-    ]
-  }
-  if (rentPrice && rentPrice >= 15000) {
-    return [
-      { value: 'under15k', label: 'ไม่เกิน 15,000' },
-      { value: '15k-20k', label: '15k–20k' },
-      { value: '20k-30k', label: '20k–30k' },
-      { value: '30k+', label: '30k+' },
-    ]
-  }
-  return [
-    { value: 'under10k', label: 'ไม่เกิน 10,000' },
-    { value: '10k-20k', label: '10k–20k' },
-    { value: '20k-30k', label: '20k–30k' },
-    { value: '30k+', label: '30k+' },
-  ]
-}
-
-const OCCUPANT_OPTIONS = [
-  { value: '1 คน', label: '1 คน' },
-  { value: '2 คน', label: '2 คน' },
-  { value: '3 คน', label: '3 คน' },
-  { value: '4+ คน', label: '4+ คน' },
-]
-
-const DURATION_OPTIONS = [
-  { value: '6 เดือน', label: '6 เดือน' },
-  { value: '1 ปี', label: '1 ปี' },
-  { value: '2 ปี', label: '2 ปี' },
-  { value: 'ยังไม่แน่ใจ', label: 'ยังไม่แน่ใจ' },
-]
-
 // ─── Main component ───────────────────────────────────────────
 
-export default function StickyActionBar({ agent, stockId, agentUid, projectName, unitNo, rentPrice }: Props) {
+export default function StickyActionBar({ agent, stockId, agentUid, projectName, unitNo }: Props) {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<FormState>(BLANK)
   const [error, setError] = useState('')
@@ -144,6 +153,11 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
 
     setError('')
     startTransition(async () => {
+      const resolvedOccupation =
+        form.occupation === 'other'
+          ? (form.occupation_other.trim() || 'อื่นๆ')
+          : form.occupation || undefined
+
       const input: InquiryInput = {
         stock_id: stockId,
         agent_uid: agentUid,
@@ -152,6 +166,8 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
         nickname: form.nickname,
         phone: form.phone,
         line_id: form.line_id || undefined,
+        gender: form.gender || undefined,
+        occupation: resolvedOccupation,
         budget: form.budget || undefined,
         occupants: form.occupants || undefined,
         duration: form.duration || undefined,
@@ -166,14 +182,11 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
     })
   }
 
-  const budgetOptions = getBudgetOptions(rentPrice)
-
   return (
     <>
       {/* ── Sticky bottom action bar ─────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-4 py-3 safe-pb">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center gap-2">
-          {/* Small contact buttons */}
           <div className="flex gap-2">
             {agent?.phone && (
               <a
@@ -196,8 +209,6 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
               </a>
             )}
           </div>
-
-          {/* Primary CTA */}
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -272,10 +283,11 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
           <>
             {/* ── Form ──────────────────────────────────── */}
             <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-5">
-              {/* Contact info */}
+
+              {/* ── Contact ──────────────────────────────── */}
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                     ชื่อที่ต้องการให้เรียก <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -288,7 +300,7 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                     เบอร์โทรศัพท์ <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -301,7 +313,7 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                     LINE ID <span className="text-xs font-normal text-gray-400">(ถ้ามี)</span>
                   </label>
                   <input
@@ -317,19 +329,55 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
 
               <hr className="border-gray-100" />
 
-              {/* Chip groups */}
+              {/* ── Gender ───────────────────────────────── */}
+              <ChipGroup
+                label="เพศ"
+                hint="(ถ้ามี)"
+                options={GENDER_OPTIONS}
+                value={form.gender}
+                onChange={v => set('gender', v)}
+              />
+
+              {/* ── Occupation ───────────────────────────── */}
+              <div>
+                <ChipGroup
+                  label="อาชีพ"
+                  hint="(ถ้ามี)"
+                  options={OCCUPATION_OPTIONS}
+                  value={form.occupation}
+                  onChange={v => { set('occupation', v); if (v !== 'other') set('occupation_other', '') }}
+                />
+                {form.occupation === 'other' && (
+                  <input
+                    type="text"
+                    value={form.occupation_other}
+                    onChange={e => set('occupation_other', e.target.value)}
+                    placeholder="ระบุอาชีพ..."
+                    autoFocus
+                    className="mt-2 w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                )}
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* ── Budget ───────────────────────────────── */}
               <ChipGroup
                 label="งบประมาณ / เดือน"
-                options={budgetOptions}
+                options={BUDGET_OPTIONS}
                 value={form.budget}
                 onChange={v => set('budget', v)}
               />
+
+              {/* ── Occupants ────────────────────────────── */}
               <ChipGroup
                 label="จำนวนผู้พัก"
                 options={OCCUPANT_OPTIONS}
                 value={form.occupants}
                 onChange={v => set('occupants', v)}
               />
+
+              {/* ── Duration ─────────────────────────────── */}
               <ChipGroup
                 label="ระยะเวลาเช่า"
                 options={DURATION_OPTIONS}
@@ -337,16 +385,30 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
                 onChange={v => set('duration', v)}
               />
 
+              {/* ── Move-in date ─────────────────────────── */}
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  วันที่ต้องการย้ายเข้า <span className="text-xs font-normal normal-case text-gray-400">(ถ้ามี)</span>
+                  วันที่ต้องการย้ายเข้า
+                  <span className="ml-1 text-xs font-normal normal-case text-gray-400">(ถ้ามี)</span>
                 </p>
-                <input
-                  type="date"
-                  value={form.move_in_date}
-                  onChange={e => set('move_in_date', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={form.move_in_date}
+                    onChange={e => set('move_in_date', e.target.value)}
+                    className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                  {form.move_in_date && (
+                    <button
+                      type="button"
+                      onClick={() => set('move_in_date', '')}
+                      className="flex items-center justify-center w-11 h-11 rounded-xl border border-gray-200 bg-white text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition flex-shrink-0"
+                      aria-label="ล้างวันที่"
+                    >
+                      <CalendarX className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Error */}
@@ -356,19 +418,18 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
                 </p>
               )}
 
-              {/* Disclaimer */}
               <p className="text-xs text-center text-gray-400 pb-2">
                 ข้อมูลของคุณจะถูกส่งให้ตัวแทนเพื่อติดต่อกลับเท่านั้น
               </p>
             </div>
 
-            {/* ── Submit button ──────────────────────────── */}
-            <div className="px-5 pb-6 pt-3 border-t border-gray-100 flex-shrink-0 safe-pb">
+            {/* ── Submit ────────────────────────────────── */}
+            <div className="px-5 pb-6 pt-3 border-t border-gray-100 flex-shrink-0">
               <button
                 type="button"
                 onClick={handleSubmit}
                 disabled={isPending}
-                className="w-full h-13 flex items-center justify-center gap-2 rounded-xl font-bold text-white text-base transition disabled:opacity-60 active:scale-95"
+                className="w-full py-3.5 flex items-center justify-center gap-2 rounded-xl font-bold text-white text-base transition disabled:opacity-60 active:scale-95"
                 style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)' }}
               >
                 {isPending ? (

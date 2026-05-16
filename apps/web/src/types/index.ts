@@ -158,6 +158,8 @@ export interface Customer {
   national_id?: string
   id_card_url?: string
   source?: CustomerSource
+  gender?: string
+  occupation?: string
   follow_up: boolean
   address_no?: string
   address_road?: string
