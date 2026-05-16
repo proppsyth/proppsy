@@ -21,6 +21,7 @@ export type CustomerInput = {
   national_id?: string
   id_card_url?: string
   source?: string
+  lead_status?: string
   follow_up?: boolean
   address_no?: string
   address_road?: string

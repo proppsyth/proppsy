@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Search, Users, Bell } from 'lucide-react'
 import { customerDisplayName } from '@/types'
-import type { Customer } from '@/types'
+import type { Customer, LeadStatus } from '@/types'
 
 const SOURCE_LABELS: Record<string, string> = {
   line_oa: 'LINE OA',
@@ -13,6 +13,17 @@ const SOURCE_LABELS: Record<string, string> = {
   online: 'ออนไลน์',
 }
 
+export const LEAD_STATUS_CONFIG: Record<LeadStatus, { label: string; className: string }> = {
+  lead:        { label: 'Lead',       className: 'bg-gray-100 text-gray-600' },
+  prospect:    { label: 'Prospect',   className: 'bg-blue-100 text-blue-700' },
+  viewing:     { label: 'นัดชม',      className: 'bg-yellow-100 text-yellow-700' },
+  negotiating: { label: 'เจรจา',      className: 'bg-orange-100 text-orange-700' },
+  converted:   { label: 'ปิดดีล',     className: 'bg-green-100 text-green-700' },
+  lost:        { label: 'เสียลูกค้า', className: 'bg-red-100 text-red-600' },
+}
+
+const LEAD_STATUS_ORDER: LeadStatus[] = ['lead', 'prospect', 'viewing', 'negotiating', 'converted', 'lost']
+
 interface Props {
   customers: Customer[]
 }
@@ -20,9 +31,11 @@ interface Props {
 export default function CustomerList({ customers }: Props) {
   const [search, setSearch] = useState('')
   const [followUpOnly, setFollowUpOnly] = useState(false)
+  const [leadFilter, setLeadFilter] = useState<LeadStatus | null>(null)
 
   const filtered = customers.filter(c => {
     if (followUpOnly && !c.follow_up) return false
+    if (leadFilter && c.lead_status !== leadFilter) return false
     if (!search.trim()) return true
     const q = search.toLowerCase()
     return (
@@ -35,10 +48,12 @@ export default function CustomerList({ customers }: Props) {
     )
   })
 
+  const hasFilter = !!search || followUpOnly || !!leadFilter
+
   return (
     <div>
       {/* Controls */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -63,6 +78,35 @@ export default function CustomerList({ customers }: Props) {
         </button>
       </div>
 
+      {/* Lead status filter chips */}
+      <div className="flex gap-1.5 flex-wrap mb-4">
+        <button
+          type="button"
+          onClick={() => setLeadFilter(null)}
+          className={`px-2.5 py-1 text-xs font-medium rounded-full border transition ${
+            !leadFilter ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          ทั้งหมด
+        </button>
+        {LEAD_STATUS_ORDER.map(s => {
+          const cfg = LEAD_STATUS_CONFIG[s]
+          const active = leadFilter === s
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setLeadFilter(active ? null : s)}
+              className={`px-2.5 py-1 text-xs font-medium rounded-full border transition ${
+                active ? cfg.className + ' border-current' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {cfg.label}
+            </button>
+          )
+        })}
+      </div>
+
       {/* Empty */}
       {filtered.length === 0 && (
         <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
@@ -70,10 +114,10 @@ export default function CustomerList({ customers }: Props) {
             <Users className="w-6 h-6 text-gray-400" />
           </div>
           <p className="text-gray-500 font-medium mb-1">
-            {search || followUpOnly ? 'ไม่พบลูกค้าที่ค้นหา' : 'ยังไม่มีลูกค้า'}
+            {hasFilter ? 'ไม่พบลูกค้าที่ค้นหา' : 'ยังไม่มีลูกค้า'}
           </p>
           <p className="text-gray-400 text-sm">
-            {search || followUpOnly ? 'ลองปรับตัวกรอง' : 'กดปุ่ม "เพิ่มลูกค้า" เพื่อเริ่มต้น'}
+            {hasFilter ? 'ลองปรับตัวกรอง' : 'กดปุ่ม "เพิ่มลูกค้า" เพื่อเริ่มต้น'}
           </p>
         </div>
       )}
@@ -91,6 +135,7 @@ export default function CustomerList({ customers }: Props) {
 function CustomerRow({ customer: c }: { customer: Customer }) {
   const name = customerDisplayName(c)
   const initial = name.charAt(0) || '?'
+  const leadCfg = c.lead_status ? LEAD_STATUS_CONFIG[c.lead_status as LeadStatus] : null
 
   return (
     <Link
@@ -110,6 +155,11 @@ function CustomerRow({ customer: c }: { customer: Customer }) {
           {c.source && (
             <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded-full">
               {SOURCE_LABELS[c.source] ?? c.source}
+            </span>
+          )}
+          {leadCfg && (
+            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${leadCfg.className}`}>
+              {leadCfg.label}
             </span>
           )}
         </div>

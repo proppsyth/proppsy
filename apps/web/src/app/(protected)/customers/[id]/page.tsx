@@ -5,7 +5,8 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import StorageImage from '@/components/shared/StorageImage'
 import { customerDisplayName } from '@/types'
-import type { Customer } from '@/types'
+import type { Customer, LeadStatus } from '@/types'
+import { LEAD_STATUS_CONFIG } from '../CustomerList'
 
 export const metadata: Metadata = { title: 'รายละเอียดลูกค้า' }
 
@@ -72,11 +73,18 @@ export default async function CustomerDetailPage({
               {showFullName && (
                 <p className="text-sm text-gray-500 mt-0.5">{fullNameTh}</p>
               )}
-              {c.follow_up && (
-                <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full mt-1">
-                  <Bell className="w-3 h-3" /> ต้องการติดตาม
-                </span>
-              )}
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {c.follow_up && (
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full">
+                    <Bell className="w-3 h-3" /> ต้องการติดตาม
+                  </span>
+                )}
+                {c.lead_status && LEAD_STATUS_CONFIG[c.lead_status as LeadStatus] && (
+                  <span className={`inline-flex items-center text-xs px-2 py-0.5 rounded-full font-medium ${LEAD_STATUS_CONFIG[c.lead_status as LeadStatus].className}`}>
+                    {LEAD_STATUS_CONFIG[c.lead_status as LeadStatus].label}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <Link
@@ -199,7 +207,22 @@ export default async function CustomerDetailPage({
         {/* Right */}
         <div>
           <Section title="ข้อมูลเพิ่มเติม">
-            <InfoItem label="บันทึกเมื่อ">{createdDate}</InfoItem>
+            <div className="space-y-3">
+              {c.lead_status && LEAD_STATUS_CONFIG[c.lead_status as LeadStatus] && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">สถานะ Lead</p>
+                  <span className={`inline-flex items-center text-xs px-2.5 py-1 rounded-full font-medium ${LEAD_STATUS_CONFIG[c.lead_status as LeadStatus].className}`}>
+                    {LEAD_STATUS_CONFIG[c.lead_status as LeadStatus].label}
+                  </span>
+                </div>
+              )}
+              {c.converted_at && (
+                <InfoItem label="วันที่ปิดดีล">
+                  {new Date(c.converted_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}
+                </InfoItem>
+              )}
+              <InfoItem label="บันทึกเมื่อ">{createdDate}</InfoItem>
+            </div>
           </Section>
         </div>
       </div>

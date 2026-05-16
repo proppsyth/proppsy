@@ -10,6 +10,7 @@ import PublicNav from '@/components/shared/PublicNav'
 import PhotoGallery from '@/app/(protected)/stock/[id]/PhotoGallery'
 import ContactCard from './ContactCard'
 import ShareButtons from './ShareButtons'
+import StickyActionBar from './StickyActionBar'
 
 export async function generateMetadata({
   params,
@@ -67,7 +68,7 @@ export default async function PublicPropertyDetailPage({
     <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       <PublicNav />
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-4 py-6 pb-28">
         <Link href="/" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition mb-5 w-fit">
           <ArrowLeft className="w-4 h-4" />
           กลับรายการทรัพย์สิน
@@ -243,6 +244,16 @@ export default async function PublicPropertyDetailPage({
       <footer className="border-t border-gray-100 mt-12 py-8 text-center text-xs text-gray-400">
         © {new Date().getFullYear()} Proppsy · Real Estate Management Platform
       </footer>
+
+      {/* Sticky bottom inquiry bar */}
+      <StickyActionBar
+        agent={stock.agent ?? null}
+        stockId={stock.id}
+        agentUid={stock.agent_uid}
+        projectName={projectName}
+        unitNo={stock.unit_no}
+        rentPrice={stock.rent_price}
+      />
     </div>
   )
 }

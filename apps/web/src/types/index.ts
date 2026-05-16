@@ -86,6 +86,7 @@ export interface Profile {
   ai_calls_month?: string
   omise_customer_id?: string
   team_name?: string
+  line_user_id?: string
   created_at: string
   updated_at: string
 }

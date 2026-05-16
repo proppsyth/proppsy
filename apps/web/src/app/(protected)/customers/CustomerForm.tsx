@@ -21,6 +21,14 @@ import { AiLimitModal } from '@/components/shared/AiLimitModal'
 const PREFIXES_TH = ['นาย', 'นาง', 'นางสาว']
 const PREFIXES_EN = ['Mr.', 'Mrs.', 'Miss', 'Ms.']
 const KNOWN_SOURCES = ['line_oa', 'facebook', 'instagram', 'tiktok', 'website', 'referral', 'walk_in', 'online', 'other']
+const LEAD_STATUS_OPTIONS = [
+  { value: 'lead',        label: 'Lead' },
+  { value: 'prospect',    label: 'Prospect' },
+  { value: 'viewing',     label: 'นัดชม' },
+  { value: 'negotiating', label: 'เจรจา' },
+  { value: 'converted',   label: 'ปิดดีล' },
+  { value: 'lost',        label: 'เสียลูกค้า' },
+]
 const SOURCE_OPTIONS = [
   { value: 'line_oa', label: 'LINE OA' },
   { value: 'facebook', label: 'Facebook' },
@@ -48,6 +56,7 @@ interface FormState {
   national_id: string
   source: string
   source_other: string
+  lead_status: string
   follow_up: boolean
   address_no: string
   address_road: string
@@ -62,7 +71,7 @@ const DEFAULT: FormState = {
   prefix: '', prefix_en: '', first_name_th: '', last_name_th: '',
   first_name_en: '', last_name_en: '', nickname: '',
   phone: '', line_id: '', national_id: '',
-  source: '', source_other: '', follow_up: false,
+  source: '', source_other: '', lead_status: 'lead', follow_up: false,
   address_no: '', address_road: '',
   province: '', district: '', subdistrict: '', zip: '',
   notes: '',
@@ -84,6 +93,7 @@ function customerToForm(c: Customer): FormState {
     national_id: c.national_id ?? '',
     source: isKnown ? rawSource : (rawSource ? 'other' : ''),
     source_other: !isKnown ? rawSource : '',
+    lead_status: c.lead_status ?? 'lead',
     follow_up: c.follow_up ?? false,
     address_no: c.address_no ?? '',
     address_road: c.address_road ?? '',
@@ -112,6 +122,7 @@ function toInput(f: FormState): CustomerInput {
     line_id: str(f.line_id),
     national_id: str(f.national_id),
     source: resolvedSource,
+    lead_status: f.lead_status || undefined,
     follow_up: f.follow_up,
     address_no: str(f.address_no),
     address_road: str(f.address_road),
@@ -361,8 +372,29 @@ export default function CustomerForm({ initialData, customerId }: Props) {
             )}
           </div>
 
+          {/* Lead Status */}
+          <div>
+            <Label>สถานะ Lead</Label>
+            <div className="flex gap-2 flex-wrap">
+              {LEAD_STATUS_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => set('lead_status', opt.value)}
+                  className={`px-3 py-1.5 text-sm rounded-lg border transition ${
+                    form.lead_status === opt.value
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Follow-up */}
-          <div className="flex items-center gap-3 pt-5">
+          <div className="flex items-center gap-3 pt-2">
             <button
               type="button"
               onClick={() => set('follow_up', !form.follow_up)}
