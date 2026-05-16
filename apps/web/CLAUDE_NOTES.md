@@ -44,6 +44,7 @@
 /register           สมัครเป็นเอเจนต์ — OTP verify, ID card upload (required), terms/privacy modal
 /reset-password     ตั้งรหัสผ่านใหม่ — กรอก email + OTP 6 หลัก + password ใหม่ (verifyOtp recovery)
 /checkout           ชำระเงิน Omise — monthly/yearly toggle, OmiseJS card popup, อัปเกรดแพ็กเกจ
+/sign/[token]       E-Sign: ผู้ลงนามเปิดลิงก์ → ดูสรุปสัญญา → วาด/พิมพ์ลายเซ็น → ส่ง (ไม่ต้อง login)
 ```
 
 ### Protected (ต้อง login + approved)
@@ -129,7 +130,9 @@
 | `owners` | id (OWN-xxxx), first_name_th, last_name_th, nickname, phone, line_id, id_card_url |
 | `customers` | id (CUS-xxxx), first_name_th, last_name_th, nickname, phone, line_id, id_card_url |
 | `stock` | id (STK-xxxx), agent_uid, owner_id, project_id, project_name, unit_no, status (available/rented/sold/unavailable), listing_type (rent/sale/both), photo_urls[] |
-| `contracts` | id (BK-xxxx), stock_id, owner_id, customer_id, doc_type, status (draft/sent/signed/cancelled), commission_net |
+| `contracts` | id (BK-xxxx), stock_id, owner_id, customer_id, doc_type, status (draft/sent/viewed/partially_signed/signed/completed/cancelled), viewed_at, commission_net |
+| `contract_signers` | id, contract_id, agent_uid, signer_role (tenant/owner/co_agent/witness), signer_name, signer_phone, sign_token (UUID unique), status (pending/viewed/signed/declined), signed_at, signature_url, sort_order |
+| `contract_sign_events` | audit log — id, contract_id, signer_id, event_type, actor_name, user_agent, created_at |
 | `appointments` | id, agent_uid, stock_id, customer_id, datetime, status |
 | `news` | id (UUID), title, summary, content, cover_url, published (bool), created_by, created_at |
 
@@ -137,6 +140,7 @@
 - `stock-photos` — รูปทรัพย์ (stock form upload)
 - `documents` — id-cards/..., signatures/..., PDF เอกสาร
 - `logos` — โลโก้บริษัท/เอเจนต์
+- `signatures` — **public** bucket, e-sign PNG uploads (`{contract_id}/{signer_id}.png`), bypasses RLS via service client
 
 **RLS:** ข้อมูล agent ใช้ `.eq('agent_uid', user.id)` | news ใช้ `is_admin()` function | public stock ใช้ `.eq('status', 'available')` ไม่มี agent filter
 
@@ -300,12 +304,15 @@ Test card: `4242 4242 4242 4242` | any future expiry | any CVV
 
 ## Known Manual Steps (Supabase)
 1. **Site URL** → Dashboard → Authentication → URL Configuration → Site URL = Vercel URL
-2. **Migration 002** → SQL Editor → รัน `002_contracts_expansion.sql` (bank_ref, payment fields, commission fields) ✅ Done
+2. **Migration 002** → SQL Editor → รัน `002_contracts_expansion.sql` ✅ Done
 3. **Storage RLS** → SQL Editor → INSERT/SELECT/UPDATE/DELETE policies บน `documents` bucket ✅ Done
-4. **documents bucket public** → `UPDATE storage.buckets SET public = true WHERE id = 'documents'` (ให้ publicUrl ใช้งานได้)
-5. **Profile phone/LINE** → เอเจนต์กรอกในหน้า /profile เพื่อให้ ContactCard แสดงข้อมูล
-6. **Plan columns** → SQL Editor → `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'starter' ..., ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMPTZ` ✅ Done
-7. **Omise keys** → `.env.local` → `NEXT_PUBLIC_OMISE_PUBLIC_KEY` + `OMISE_SECRET_KEY` ✅ Done (test keys)
+4. **documents bucket public** → `UPDATE storage.buckets SET public = true WHERE id = 'documents'`
+5. **Profile phone/LINE** → เอเจนต์กรอกใน /profile
+6. **Plan columns** → `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS plan TEXT ...` ✅ Done
+7. **Omise keys** → `.env.local` → `NEXT_PUBLIC_OMISE_PUBLIC_KEY` + `OMISE_SECRET_KEY` ✅ Done
+8. **⚠️ Migration 009** → SQL Editor → รัน `supabase/migrations/009_esign.sql` (contract_signers, contract_sign_events tables, 7-status constraint) — **ยังไม่ได้รัน**
+9. **⚠️ Migration 010** → SQL Editor → รัน `supabase/migrations/010_esign_storage_fix.sql` (storage INSERT/UPDATE policies on `signatures` bucket) — **ยังไม่ได้รัน**
+10. **⚠️ signatures bucket** → Storage → สร้าง bucket ชื่อ `signatures` → Public ON
 
 ## Signature System
 - **OwnerForm**: tab toggle "วาดออนไลน์" / "อัปโหลดไฟล์" — canvas drawing → PNG → upload `documents/signatures/`
