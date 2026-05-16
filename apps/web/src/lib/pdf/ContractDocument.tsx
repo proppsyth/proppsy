@@ -25,7 +25,7 @@ Font.register({
 // ─── Styles ───────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  page: { fontFamily: 'Sarabun', fontSize: 9.5, paddingTop: 36, paddingBottom: 48, paddingHorizontal: 45, color: '#1a1a1a' },
+  page: { fontFamily: 'Sarabun', fontSize: 9.5, paddingTop: 36, paddingBottom: 68, paddingHorizontal: 45, color: '#1a1a1a' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, paddingBottom: 12, borderBottomWidth: 1.5, borderBottomColor: '#2563EB' },
   logo: { width: 56, height: 56, objectFit: 'contain' },
   docTitle: { fontSize: 14, fontWeight: 700, color: '#2563EB', textAlign: 'right' },
@@ -365,12 +365,21 @@ interface SigFooterProps {
   agentOnly?: boolean
 }
 
-function SigFooter({ owner, customer, agent, agentOnly = false }: SigFooterProps) {
-  const hasAnySig = agentOnly
-    ? !!agent.signature_url
-    : !!(owner?.signature_url || customer?.signature_url)
+interface FooterSlot {
+  sigUrl?: string | null
+  name: string
+  role: string
+}
 
-  if (!hasAnySig) return null
+function SigFooter({ owner, customer, agent, agentOnly = false }: SigFooterProps) {
+  const slots: FooterSlot[] = agentOnly
+    ? [{ sigUrl: agent.signature_url, name: agent.name ?? '-', role: 'ตัวแทน / นายหน้า' }]
+    : ([
+        owner    ? { sigUrl: owner.signature_url,    name: fullName(owner),    role: 'ผู้ให้เช่า' } : null,
+        customer ? { sigUrl: customer.signature_url, name: fullName(customer), role: 'ผู้เช่า'    } : null,
+      ] as Array<FooterSlot | null>).filter((s): s is FooterSlot => s !== null)
+
+  if (slots.length === 0) return null
 
   return (
     <View
@@ -382,34 +391,21 @@ function SigFooter({ owner, customer, agent, agentOnly = false }: SigFooterProps
         right: 45,
         flexDirection: 'row',
         justifyContent: 'space-around',
-        borderTopWidth: 0.3,
-        borderTopColor: '#ddd',
-        paddingTop: 3,
+        borderTopWidth: 0.5,
+        borderTopColor: '#ccc',
+        paddingTop: 4,
       }}
     >
-      {agentOnly ? (
-        <View style={{ alignItems: 'center' }}>
-          {agent.signature_url && (
-            <Image src={agent.signature_url} style={{ width: 44, height: 15, objectFit: 'contain' }} />
-          )}
-          <Text style={{ fontSize: 6.5, color: '#999' }}>{agent.name ?? '-'} (ตัวแทน)</Text>
+      {slots.map((slot, i) => (
+        <View key={i} style={{ alignItems: 'center', minWidth: 90 }}>
+          {slot.sigUrl
+            ? <Image src={slot.sigUrl} style={{ width: 80, height: 26, objectFit: 'contain', marginBottom: 2 }} />
+            : <View style={{ height: 26, marginBottom: 2 }} />
+          }
+          <Text style={{ fontSize: 7.5, fontWeight: 700, color: '#222', textAlign: 'center' }}>{slot.name}</Text>
+          <Text style={{ fontSize: 6.5, color: '#999', textAlign: 'center' }}>({slot.role})</Text>
         </View>
-      ) : (
-        <>
-          {owner?.signature_url && (
-            <View style={{ alignItems: 'center' }}>
-              <Image src={owner.signature_url} style={{ width: 44, height: 15, objectFit: 'contain' }} />
-              <Text style={{ fontSize: 6.5, color: '#999' }}>{fullName(owner)} (ผู้ให้เช่า)</Text>
-            </View>
-          )}
-          {customer?.signature_url && (
-            <View style={{ alignItems: 'center' }}>
-              <Image src={customer.signature_url} style={{ width: 44, height: 15, objectFit: 'contain' }} />
-              <Text style={{ fontSize: 6.5, color: '#999' }}>{fullName(customer)} (ผู้เช่า)</Text>
-            </View>
-          )}
-        </>
-      )}
+      ))}
     </View>
   )
 }

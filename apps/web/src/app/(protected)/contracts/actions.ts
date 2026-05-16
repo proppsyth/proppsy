@@ -239,7 +239,27 @@ export async function generateContractDocx(
       }
     }
 
-    const docxBuffer = generateDocx(template.filename, variables)
+    const isAgentDoc = ['commission_confirm', 'co_agent'].includes(contract.doc_type)
+    const ownerFullName = contract.owner
+      ? [contract.owner.prefix, contract.owner.first_name_th, contract.owner.last_name_th].filter(Boolean).join(' ') || null
+      : undefined
+    const customerFullName = contract.customer
+      ? [contract.customer.prefix, contract.customer.first_name_th, contract.customer.last_name_th].filter(Boolean).join(' ') || null
+      : undefined
+
+    const signatures = {
+      ownerName:    isAgentDoc ? undefined : ownerFullName,
+      ownerRole:    'ผู้ให้เช่า',
+      ownerSigUrl:  isAgentDoc ? undefined : (contract.owner as { signature_url?: string | null } | null)?.signature_url,
+      customerName: isAgentDoc ? undefined : customerFullName,
+      customerRole: 'ผู้เช่า',
+      customerSigUrl: isAgentDoc ? undefined : (contract.customer as { signature_url?: string | null } | null)?.signature_url,
+      agentName:    profile?.name ?? null,
+      agentSigUrl:  isAgentDoc ? (profile?.signature_url ?? null) : undefined,
+      showAgent:    isAgentDoc,
+    }
+
+    const docxBuffer = await generateDocx(template.filename, variables, signatures)
 
     const path = `${user.id}/${contractId}.docx`
     const { error: uploadError } = await supabase.storage
@@ -318,7 +338,7 @@ export async function getContractPreviewHtml(
       }
     }
 
-    const docxBuffer = generateDocx(template.filename, variables)
+    const docxBuffer = await generateDocx(template.filename, variables)
     const result = await mammoth.convertToHtml({ buffer: docxBuffer })
 
     return { html: result.value }
