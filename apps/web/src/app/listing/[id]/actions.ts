@@ -62,7 +62,7 @@ export async function submitInquiry(
 
   if (customerError) {
     console.error('submitInquiry customer insert:', customerError)
-    return { error: 'บันทึกไม่สำเร็จ กรุณาลองใหม่' }
+    return { error: `บันทึกไม่สำเร็จ: ${customerError.message}` }
   }
 
   // Create property inquiry event

@@ -21,7 +21,7 @@ export type ContractStatus =
   | 'signed' | 'completed' | 'cancelled'
 export type SignerRole = 'tenant' | 'owner' | 'co_agent' | 'witness'
 export type SignerStatus = 'pending' | 'viewed' | 'signed' | 'declined'
-export type CustomerSource = 'line_oa' | 'referral' | 'walk_in' | 'online'
+export type CustomerSource = 'line_oa' | 'referral' | 'walk_in' | 'online' | 'facebook' | 'instagram' | 'tiktok' | 'website' | 'other' | 'public_listing'
 export type LeadStatus = 'lead' | 'prospect' | 'viewing' | 'negotiating' | 'converted' | 'lost'
 export type CreditTransactionType = 'grant' | 'topup' | 'spend' | 'reset' | 'assign' | 'expire'
 
