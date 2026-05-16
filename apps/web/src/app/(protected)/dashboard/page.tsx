@@ -26,6 +26,30 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-600',
 }
 
+const SOURCE_LABELS: Record<string, string> = {
+  line_oa: 'LINE OA',
+  referral: 'แนะนำ / Referral',
+  walk_in: 'Walk-in',
+  online: 'ออนไลน์',
+  facebook: 'Facebook',
+  direct: 'โดยตรง',
+  website: 'เว็บไซต์',
+  public_listing: 'รายการทรัพย์',
+  other: 'อื่นๆ',
+}
+
+const SOURCE_COLORS: Record<string, string> = {
+  line_oa: 'bg-green-500',
+  referral: 'bg-blue-500',
+  walk_in: 'bg-violet-500',
+  online: 'bg-cyan-500',
+  facebook: 'bg-indigo-500',
+  direct: 'bg-slate-400',
+  website: 'bg-orange-400',
+  public_listing: 'bg-emerald-500',
+  other: 'bg-gray-400',
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -33,8 +57,9 @@ export default async function DashboardPage() {
 
   const now = new Date()
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-  const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-CA')
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
   const todayStr = now.toLocaleDateString('en-CA')
+  const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-CA')
 
   const [
     { count: totalStock },
@@ -48,6 +73,12 @@ export default async function DashboardPage() {
     { data: upcomingAppointments },
     { data: expiringContracts },
     { data: commissionThisMonth },
+    // CRM analytics queries
+    { data: customersLast30 },
+    { data: allCustomerSources },
+    { data: convertedContractCustomers },
+    { count: upcomingApptCount },
+    { count: publishedStockCount },
   ] = await Promise.all([
     supabase.from('stock').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
     supabase.from('stock').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).eq('status', 'available'),
@@ -76,7 +107,34 @@ export default async function DashboardPage() {
       .eq('status', 'signed')
       .gte('created_at', thisMonthStart)
       .not('commission_net', 'is', null),
+    // CRM: trend data (last 30 days)
+    supabase.from('customers')
+      .select('created_at, source')
+      .eq('agent_uid', user.id)
+      .gte('created_at', thirtyDaysAgo),
+    // CRM: all-time source breakdown
+    supabase.from('customers')
+      .select('source')
+      .eq('agent_uid', user.id),
+    // CRM: converted (have a signed/finalized contract)
+    supabase.from('contracts')
+      .select('customer_id')
+      .eq('agent_uid', user.id)
+      .or('status.eq.signed,status.eq.completed,is_finalized.eq.true')
+      .not('customer_id', 'is', null),
+    // CRM: upcoming appointment count
+    supabase.from('appointments')
+      .select('*', { count: 'exact', head: true })
+      .eq('agent_uid', user.id)
+      .gte('start_time', now.toISOString()),
+    // CRM: published properties
+    supabase.from('stock')
+      .select('*', { count: 'exact', head: true })
+      .eq('agent_uid', user.id)
+      .eq('is_published', true),
   ])
+
+  // ─── KPI calculations ───────────────────────────────────────
 
   const commissionSum = (commissionThisMonth ?? []).reduce((s, c) => s + (c.commission_net ?? 0), 0)
 
@@ -91,6 +149,48 @@ export default async function DashboardPage() {
   const isExpired = expiresAt ? expiresAt < now : false
   const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - now.getTime()) / 86400000) : null
   const isPaid = !!profile?.plan && profile.plan !== 'starter'
+
+  // ─── CRM analytics ─────────────────────────────────────────
+
+  const totalLeads = totalCustomers ?? 0
+
+  const newLeadsToday = (customersLast30 ?? []).filter(
+    c => new Date(c.created_at).toLocaleDateString('en-CA') === todayStr
+  ).length
+
+  const newLeadsThisMonth = (customersLast30 ?? []).filter(
+    c => c.created_at >= thisMonthStart
+  ).length
+
+  const convertedSet = new Set(
+    (convertedContractCustomers ?? []).map(c => c.customer_id).filter(Boolean)
+  )
+  const convertedCount = convertedSet.size
+  const conversionRate = totalLeads > 0 ? Math.round((convertedCount / totalLeads) * 100) : 0
+
+  // Source counts (all-time)
+  const sourceCountMap: Record<string, number> = {}
+  for (const c of allCustomerSources ?? []) {
+    const src = (c.source as string) || 'other'
+    sourceCountMap[src] = (sourceCountMap[src] ?? 0) + 1
+  }
+  const topSources = Object.entries(sourceCountMap)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 6)
+
+  // 30-day trend
+  const last30Dates = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date(now)
+    d.setDate(d.getDate() - (29 - i))
+    return d.toLocaleDateString('en-CA')
+  })
+  const trendCounts = last30Dates.map(date =>
+    (customersLast30 ?? []).filter(
+      c => new Date(c.created_at).toLocaleDateString('en-CA') === date
+    ).length
+  )
+  const trendMax = Math.max(...trendCounts, 1)
+  const trendTotal = trendCounts.reduce((a, b) => a + b, 0)
 
   return (
     <div className="p-4 lg:p-8 pt-6">
@@ -227,33 +327,139 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* ─── CRM & Lead Analytics ──────────────────────────────── */}
+      <div className="mt-10">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-lg font-bold text-gray-900">CRM & ลูกค้าเป้าหมาย</h2>
+          <Link href="/customers" className="text-xs text-blue-600 hover:underline">จัดการลูกค้า →</Link>
+        </div>
+        <p className="text-xs text-gray-400 mb-4">ข้อมูลทั้งหมดของบัญชีคุณ · เทรนด์ 30 วันล่าสุด</p>
+
+        {/* CRM KPI row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <CrmKpiCard
+            label="ลูกค้าทั้งหมด"
+            value={totalLeads}
+            badge={totalLeads > 0 ? `+${newLeadsToday} วันนี้` : undefined}
+            badgeColor="blue"
+            icon="👥"
+            href="/customers"
+          />
+          <CrmKpiCard
+            label="เพิ่มวันนี้"
+            value={newLeadsToday}
+            badge={newLeadsToday > 0 ? 'ใหม่' : undefined}
+            badgeColor="green"
+            icon="🆕"
+            href="/customers"
+          />
+          <CrmKpiCard
+            label="เพิ่มเดือนนี้"
+            value={newLeadsThisMonth}
+            badge={`${trendTotal} / 30 วัน`}
+            badgeColor="cyan"
+            icon="📅"
+            href="/customers"
+          />
+          <CrmKpiCard
+            label="Conversion Rate"
+            value={`${conversionRate}%`}
+            badge={`${convertedCount} / ${totalLeads} ราย`}
+            badgeColor={conversionRate >= 20 ? 'green' : 'gray'}
+            icon="🎯"
+            href="/customers"
+          />
+        </div>
+
+        {/* Charts row */}
+        <div className="grid lg:grid-cols-2 gap-4 mb-4">
+          {/* 30-day trend sparkline */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800">ลูกค้าใหม่ 30 วันล่าสุด</h3>
+                <p className="text-xs text-gray-400 mt-0.5">{trendTotal} ราย</p>
+              </div>
+              <span className="text-2xl font-bold text-blue-600">{newLeadsThisMonth}</span>
+            </div>
+            <Sparkline data={trendCounts} max={trendMax} />
+            <div className="flex justify-between mt-2">
+              <span className="text-[10px] text-gray-300">30 วันก่อน</span>
+              <span className="text-[10px] text-gray-300">วันนี้</span>
+            </div>
+          </div>
+
+          {/* Source breakdown */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-800">แหล่งที่มาลูกค้า</h3>
+              <span className="text-xs text-gray-400">{totalLeads} รายทั้งหมด</span>
+            </div>
+            {topSources.length === 0 ? (
+              <div className="py-6 text-center text-sm text-gray-400">ยังไม่มีข้อมูลแหล่งที่มา</div>
+            ) : (
+              <div className="space-y-2.5">
+                {topSources.map(([src, count]) => (
+                  <SourceBar
+                    key={src}
+                    label={SOURCE_LABELS[src] ?? src}
+                    count={count}
+                    total={totalLeads}
+                    colorClass={SOURCE_COLORS[src] ?? 'bg-gray-400'}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Activity tiles */}
+        <div className="grid grid-cols-3 gap-3">
+          <ActivityTile
+            emoji="📅"
+            label="นัดหมายที่รอ"
+            value={upcomingApptCount ?? 0}
+            href="/calendar"
+            colorClass="bg-blue-50 border-blue-100 text-blue-700"
+          />
+          <ActivityTile
+            emoji="🏠"
+            label="ทรัพย์เผยแพร่"
+            value={publishedStockCount ?? 0}
+            href="/stock"
+            colorClass="bg-emerald-50 border-emerald-100 text-emerald-700"
+          />
+          <ActivityTile
+            emoji="✅"
+            label="ลูกค้า Converted"
+            value={convertedCount}
+            href="/customers"
+            colorClass="bg-violet-50 border-violet-100 text-violet-700"
+          />
+        </div>
+      </div>
     </div>
   )
 }
 
+// ─── Existing KpiCard ────────────────────────────────────────────
+
 const COLOR_MAP: Record<string, { card: string; value: string; sub: string }> = {
-  blue:   { card: 'bg-blue-50 border-blue-100',   value: 'text-blue-700',   sub: 'text-blue-500' },
+  blue:   { card: 'bg-blue-50 border-blue-100',    value: 'text-blue-700',   sub: 'text-blue-500' },
   orange: { card: 'bg-orange-50 border-orange-100', value: 'text-orange-700', sub: 'text-orange-500' },
   violet: { card: 'bg-violet-50 border-violet-100', value: 'text-violet-700', sub: 'text-violet-500' },
-  slate:  { card: 'bg-slate-50 border-slate-100',  value: 'text-slate-700',  sub: 'text-slate-500' },
-  green:  { card: 'bg-green-50 border-green-100',  value: 'text-green-700',  sub: 'text-green-500' },
+  slate:  { card: 'bg-slate-50 border-slate-100',   value: 'text-slate-700',  sub: 'text-slate-500' },
+  green:  { card: 'bg-green-50 border-green-100',   value: 'text-green-700',  sub: 'text-green-500' },
   yellow: { card: 'bg-yellow-50 border-yellow-100', value: 'text-yellow-700', sub: 'text-yellow-600' },
-  cyan:   { card: 'bg-cyan-50 border-cyan-100',    value: 'text-cyan-700',   sub: 'text-cyan-500' },
-  rose:   { card: 'bg-rose-50 border-rose-100',    value: 'text-rose-700',   sub: 'text-rose-500' },
+  cyan:   { card: 'bg-cyan-50 border-cyan-100',     value: 'text-cyan-700',   sub: 'text-cyan-500' },
+  rose:   { card: 'bg-rose-50 border-rose-100',     value: 'text-rose-700',   sub: 'text-rose-500' },
 }
 
 function KpiCard({
-  color,
-  label,
-  value,
-  sub,
-  href,
+  color, label, value, sub, href,
 }: {
-  color: string
-  label: string
-  value: string | number
-  sub?: React.ReactNode
-  href: string
+  color: string; label: string; value: string | number; sub?: React.ReactNode; href: string
 }) {
   const c = COLOR_MAP[color] ?? COLOR_MAP.slate!
   return (
@@ -261,6 +467,121 @@ function KpiCard({
       <p className={`text-2xl font-bold ${c.value}`}>{value}</p>
       <p className="text-xs font-medium text-gray-600 mt-0.5">{label}</p>
       {sub && <p className={`text-xs mt-0.5 ${c.sub}`}>{sub}</p>}
+    </Link>
+  )
+}
+
+// ─── CRM KpiCard ─────────────────────────────────────────────────
+
+const BADGE_COLORS: Record<string, string> = {
+  blue:  'bg-blue-100 text-blue-600',
+  green: 'bg-green-100 text-green-600',
+  cyan:  'bg-cyan-100 text-cyan-600',
+  gray:  'bg-gray-100 text-gray-500',
+}
+
+function CrmKpiCard({
+  label, value, badge, badgeColor = 'gray', icon, href,
+}: {
+  label: string; value: string | number; badge?: string; badgeColor?: string; icon: string; href: string
+}) {
+  return (
+    <Link href={href} className="block bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <span className="text-xl">{icon}</span>
+        {badge && (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium leading-tight ${BADGE_COLORS[badgeColor] ?? BADGE_COLORS.gray}`}>
+            {badge}
+          </span>
+        )}
+      </div>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+    </Link>
+  )
+}
+
+// ─── SVG Sparkline ───────────────────────────────────────────────
+
+function Sparkline({ data, max }: { data: number[]; max: number }) {
+  if (data.length < 2) return <div className="h-12 bg-gray-50 rounded-lg" />
+
+  const W = 600
+  const H = 48
+  const pad = 2
+
+  const pts = data.map((v, i) => [
+    pad + (i / (data.length - 1)) * (W - pad * 2),
+    H - pad - (v / max) * (H - pad * 2) * 0.92,
+  ] as [number, number])
+
+  const linePath = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
+  const areaPath = linePath + ` L${pts[pts.length - 1]![0].toFixed(1)},${H} L${pts[0]![0].toFixed(1)},${H} Z`
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="w-full"
+      style={{ height: 48 }}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.18" />
+          <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.01" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill="url(#sparkGrad)" />
+      <path d={linePath} fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      {/* Highlight dots for non-zero values */}
+      {pts.map(([x, y], i) =>
+        data[i]! > 0 ? (
+          <circle key={i} cx={x} cy={y} r="2.5" fill="#3B82F6" />
+        ) : null
+      )}
+    </svg>
+  )
+}
+
+// ─── Source Bar ──────────────────────────────────────────────────
+
+function SourceBar({
+  label, count, total, colorClass,
+}: {
+  label: string; count: number; total: number; colorClass: string
+}) {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="text-xs text-gray-500 w-28 shrink-0 truncate">{label}</span>
+      <div className="flex-1 bg-gray-100 rounded-full h-1.5 min-w-0">
+        <div
+          className={`h-1.5 rounded-full transition-all ${colorClass}`}
+          style={{ width: `${Math.max(pct, 2)}%` }}
+        />
+      </div>
+      <span className="text-xs font-semibold text-gray-700 w-6 text-right shrink-0">{count}</span>
+      <span className="text-[10px] text-gray-400 w-8 text-right shrink-0">{pct}%</span>
+    </div>
+  )
+}
+
+// ─── Activity Tile ───────────────────────────────────────────────
+
+function ActivityTile({
+  emoji, label, value, href, colorClass,
+}: {
+  emoji: string; label: string; value: number; href: string; colorClass: string
+}) {
+  return (
+    <Link
+      href={href}
+      className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-3 text-center shadow-sm hover:shadow-md transition-shadow ${colorClass}`}
+    >
+      <span className="text-xl">{emoji}</span>
+      <p className="text-xl font-bold leading-none">{value}</p>
+      <p className="text-[11px] font-medium leading-tight opacity-80">{label}</p>
     </Link>
   )
 }

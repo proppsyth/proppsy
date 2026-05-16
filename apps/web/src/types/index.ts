@@ -22,6 +22,7 @@ export type ContractStatus =
 export type SignerRole = 'tenant' | 'owner' | 'co_agent' | 'witness'
 export type SignerStatus = 'pending' | 'viewed' | 'signed' | 'declined'
 export type CustomerSource = 'line_oa' | 'referral' | 'walk_in' | 'online'
+export type LeadStatus = 'lead' | 'prospect' | 'viewing' | 'negotiating' | 'converted' | 'lost'
 export type CreditTransactionType = 'grant' | 'topup' | 'spend' | 'reset' | 'assign' | 'expire'
 
 export interface CreditTransaction {
@@ -167,6 +168,8 @@ export interface Customer {
   bank_account_no?: string
   bank_account_name?: string
   signature_url?: string
+  lead_status?: LeadStatus
+  converted_at?: string | null
   notes?: string
   created_at: string
   updated_at: string
