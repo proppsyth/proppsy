@@ -26,7 +26,6 @@ const NAV_ITEMS = [
   { href: '/calendar', icon: '📅', label: 'นัดหมาย & ปฏิทิน', permission: null },
   { href: '/commission', icon: '💰', label: 'คอมมิชชัน', permission: null },
   { href: '/credits', icon: '⚡', label: 'เครดิต', permission: null },
-  { href: '/news', icon: '📰', label: 'ข่าวสาร', permission: null },
 ]
 
 const ADMIN_ITEMS = [
@@ -41,11 +40,13 @@ const MORE_ITEMS_BASE = [
   { href: '/calendar', icon: Calendar, label: 'นัดหมาย' },
   { href: '/commission', icon: TrendingUp, label: 'คอมมิชชัน' },
   { href: '/credits', icon: Zap, label: 'เครดิต' },
-  { href: '/news', icon: Newspaper, label: 'ข่าวสาร' },
   { href: '/billing', icon: CreditCard, label: 'การชำระเงิน' },
 ]
 
-const MORE_ITEM_ADMIN = { href: '/admin/users', icon: ShieldCheck, label: 'จัดการผู้ใช้' }
+const MORE_ITEMS_ADMIN = [
+  { href: '/admin/users', icon: ShieldCheck, label: 'จัดการผู้ใช้' },
+  { href: '/admin/news', icon: Newspaper, label: 'จัดการข่าว' },
+]
 
 export default function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
@@ -197,7 +198,7 @@ export default function Sidebar({ profile }: SidebarProps) {
           </div>
 
           <div className="grid grid-cols-3 gap-2.5 mb-5">
-            {[...MORE_ITEMS_BASE, ...(profile.role === 'admin' ? [MORE_ITEM_ADMIN] : [])].map(item => {
+            {[...MORE_ITEMS_BASE, ...(profile.role === 'admin' ? MORE_ITEMS_ADMIN : [])].map(item => {
               const Icon = item.icon
               const active = isActive(item.href)
               return (
@@ -214,6 +215,26 @@ export default function Sidebar({ profile }: SidebarProps) {
                 </Link>
               )
             })}
+          </div>
+
+          {/* Public links */}
+          <div className="flex flex-wrap gap-2 mb-4 pt-4 border-t border-gray-100">
+            {[
+              { href: '/news', label: 'ข่าวสาร' },
+              { href: '/guide', label: 'คู่มือ' },
+              { href: '/faq', label: 'FAQ' },
+              { href: '/services', label: 'บริการ' },
+              { href: '/contact', label: 'ติดต่อเรา' },
+            ].map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMoreOpen(false)}
+                className="px-3 py-1.5 text-xs text-gray-500 bg-gray-50 rounded-full border border-gray-100 hover:bg-gray-100 transition"
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
 
           <button

@@ -9,8 +9,8 @@ import { DOC_TYPE_LABELS } from '@/types'
 import type { ContractDocType, PaymentMethod } from '@/types'
 import { createContract } from './actions'
 import {
-  searchStocks, searchOwners, searchCustomers,
-  type StockSearchResult, type OwnerSearchResult, type CustomerSearchResult,
+  searchStocks, searchOwners, searchCustomers, searchContracts,
+  type StockSearchResult, type OwnerSearchResult, type CustomerSearchResult, type ContractSearchResult,
 } from './search-actions'
 import EntityCombobox from '@/components/shared/EntityCombobox'
 import {
@@ -59,6 +59,8 @@ interface WizardState {
   commission_from_owner: string
   commission_from_customer: string
   extra_vars: Record<string, string>
+  parent_contract_id: string
+  parent_contract_label: string
 }
 
 const INIT: WizardState = {
@@ -77,6 +79,7 @@ const INIT: WizardState = {
   reservation_expire_date: '', payment_grace_days: '5', payment_day_of_month: '',
   commission_rate_pct: '', commission_from_owner: '', commission_from_customer: '',
   extra_vars: {},
+  parent_contract_id: '', parent_contract_label: '',
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -170,6 +173,7 @@ export default function ContractWizard() {
   const isPaymentDoc  = ['invoice_reservation','receipt_reservation','invoice_deposit','receipt_deposit'].includes(state.doc_type)
   const isCoAgent     = state.doc_type === 'co_agent'
   const extraFields   = EXTRA_VAR_FIELDS[state.doc_type as ContractDocType] ?? []
+  const isRelatedDoc  = ['cancellation', 'termination', 'notice', 'renewal'].includes(state.doc_type)
 
   const needsOwner    = isRental || isReservation || isPaymentDoc || isCommission || isCommissionConfirm || isCoAgent
   const needsCustomer = isRental || isReservation || isPaymentDoc || isReceipt
@@ -233,6 +237,22 @@ export default function ContractWizard() {
       }
       return next
     })
+  }
+
+  function handleParentContractSelect(r: ContractSearchResult | null) {
+    if (!r) {
+      setState(s => ({ ...s, parent_contract_id: '', parent_contract_label: '' }))
+      return
+    }
+    const label = [r.id, r.doc_type, r.move_in_date].filter(Boolean).join(' · ')
+    setState(s => ({
+      ...s,
+      parent_contract_id: r.id,
+      parent_contract_label: label,
+      stock_id: r.stock_id ?? s.stock_id,
+      owner_id: r.owner_id ?? s.owner_id,
+      customer_id: r.customer_id ?? s.customer_id,
+    }))
   }
 
   function handleOwnerSelect(r: OwnerSearchResult | null) {
@@ -354,6 +374,10 @@ export default function ContractWizard() {
         commission_from_owner: num(state.commission_from_owner),
         commission_from_customer: num(state.commission_from_customer),
         extra_vars: Object.keys(state.extra_vars).length > 0 ? state.extra_vars : null,
+        parent_contract_id: state.parent_contract_id || null,
+        contract_relation_type: state.parent_contract_id
+          ? (state.doc_type === 'renewal' ? 'renewal' : state.doc_type === 'cancellation' ? 'cancellation' : 'related')
+          : null,
       })
 
       if (res.error) { setError(res.error); return }
@@ -486,6 +510,19 @@ export default function ContractWizard() {
       {/* ── Step 2: owner + customer ── */}
       {step === 2 && (
         <div className="space-y-4">
+          {isRelatedDoc && (
+            <Section title="สัญญาต้นทาง (ถ้ามี)">
+              <EntityCombobox
+                kind="contract"
+                value={state.parent_contract_id}
+                selectedLabel={state.parent_contract_label}
+                onSelect={handleParentContractSelect}
+                searchFn={searchContracts}
+                placeholder="ค้นหาสัญญาเช่า / จอง (BK-XXXX)..."
+              />
+              <p className="text-xs text-gray-400 mt-1.5">เมื่อเลือกสัญญาต้นทาง ระบบจะดึงทรัพย์ / เจ้าของ / ผู้เช่าให้อัตโนมัติ</p>
+            </Section>
+          )}
           <Section title={`เจ้าของทรัพย์ / ผู้ให้เช่า${needsOwner ? ' *' : ''}`}>
             <div className={showErrors && needsOwner && !state.owner_id ? 'ring-2 ring-red-300 rounded-xl' : ''}>
               <EntityCombobox
@@ -561,7 +598,7 @@ export default function ContractWizard() {
                   <Field label="ค่าล้างแอร์ / เครื่อง (บาท)" value={state.ac_wash_per_unit} onChange={v => set('ac_wash_per_unit', v)} type="number" placeholder="0" />
                   <Field label="ค่าปรับผิดนัด (บาท)" value={state.penalty_amount} onChange={v => set('penalty_amount', v)} type="number" placeholder="0" />
                 </div>
-                <div className="flex gap-4 mt-4">
+                <div className="flex flex-wrap gap-3 mt-4">
                   <Toggle label="VAT 7%" checked={state.vat_7} onChange={v => set('vat_7', v)} />
                   <Toggle label="หัก ณ ที่จ่าย 3%" checked={state.wht_3} onChange={v => set('wht_3', v)} />
                 </div>
@@ -598,7 +635,7 @@ export default function ContractWizard() {
                   <Field label="วันที่ทำสัญญาจอง" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" required hasError={showErrors && !state.move_in_date} />
                   <Field label="วันหมดอายุการจอง" value={state.reservation_expire_date} onChange={v => set('reservation_expire_date', v)} type="date" />
                 </div>
-                <div className="flex gap-4 mt-4">
+                <div className="flex flex-wrap gap-3 mt-4">
                   <Toggle label="VAT 7%" checked={state.vat_7} onChange={v => set('vat_7', v)} />
                   <Toggle label="หัก ณ ที่จ่าย 3%" checked={state.wht_3} onChange={v => set('wht_3', v)} />
                 </div>
@@ -930,11 +967,11 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition ${
+      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition whitespace-nowrap ${
         checked ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600'
       }`}
     >
-      <div className={`relative w-9 h-5 rounded-full transition-colors ${checked ? 'bg-blue-600' : 'bg-gray-200'}`}>
+      <div className={`relative flex-shrink-0 w-9 h-5 rounded-full transition-colors ${checked ? 'bg-blue-600' : 'bg-gray-200'}`}>
         <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-4' : 'translate-x-0.5'}`} />
       </div>
       {label}

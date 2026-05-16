@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
+import { createClient } from '@/lib/supabase/server'
+import { getSavedCards } from '@/app/(protected)/billing/actions'
 import CheckoutForm from './CheckoutForm'
 
 export const metadata: Metadata = { title: 'ชำระเงิน — Proppsy' }
@@ -25,6 +27,11 @@ export default async function CheckoutPage({
 
   const info = PLAN_INFO[planKey]
   const amount = billing === 'yearly' ? info.yearly : info.monthly
+
+  // Fetch saved cards if user is logged in
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const savedCards = user ? ((await getSavedCards()).cards ?? []) : []
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -101,6 +108,7 @@ export default async function CheckoutPage({
             billing={billing}
             amount={amount}
             planName={info.name}
+            savedCards={savedCards}
           />
         </div>
       </div>

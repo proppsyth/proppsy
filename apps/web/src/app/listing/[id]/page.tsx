@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Building2, Maximize, Layers, Phone, MessageCircle, MapPin, Wind } from 'lucide-react'
 import type { Metadata } from 'next'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import type { Stock } from '@/types'
 import { formatRoomType } from '@/types'
 import PublicNav from '@/components/shared/PublicNav'
@@ -17,7 +17,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>
 }): Promise<Metadata> {
   const { id } = await params
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { data } = await supabase
     .from('stock')
     .select('project_name, room_type, unit_no')
@@ -37,7 +37,8 @@ export default async function PublicPropertyDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = await createClient()
+  // Use service client so unauthenticated visitors can read published listings (bypasses RLS)
+  const supabase = createServiceClient()
 
   const { data: stockRaw } = await supabase
     .from('stock')

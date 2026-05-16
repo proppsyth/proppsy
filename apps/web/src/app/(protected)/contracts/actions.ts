@@ -46,6 +46,9 @@ export type ContractInput = {
   commission_from_customer?: number | null
   // Extra template variables (unmapped DB fields)
   extra_vars?: Record<string, string> | null
+  // Contract relations
+  parent_contract_id?: string | null
+  contract_relation_type?: string | null
 }
 
 // ─── ID Generator ────────────────────────────────────────────

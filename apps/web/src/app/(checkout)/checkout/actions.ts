@@ -147,6 +147,66 @@ export async function createPromptPayCharge(params: {
   return { qr_url, chargeId: charge.id }
 }
 
+// ─── Charge with saved card (Omise Customer + card_id) ───────
+
+export async function chargeWithSavedCard(params: {
+  plan: 'standard' | 'ai_pro'
+  billing: Billing
+  cardId: string
+}): Promise<{ error?: string }> {
+  const secretKey = process.env.OMISE_SECRET_KEY
+  if (!secretKey) return { error: 'ระบบชำระเงินยังไม่พร้อมใช้งาน กรุณาติดต่อเรา' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'กรุณาเข้าสู่ระบบก่อน' }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('omise_customer_id')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.omise_customer_id) return { error: 'ไม่พบข้อมูลบัตรที่บันทึก' }
+
+  const { plan, billing, cardId } = params
+  const amount = PRICES[plan]?.[billing]
+  if (!amount) return { error: 'แพ็กเกจไม่ถูกต้อง' }
+  const description = `${PLAN_LABELS[plan]} (${billing === 'yearly' ? 'รายปี' : 'รายเดือน'})`
+
+  const resp = await fetch('https://api.omise.co/charges', {
+    method: 'POST',
+    headers: {
+      Authorization: authHeader(secretKey),
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      amount: String(amount * 100),
+      currency: 'thb',
+      customer: profile.omise_customer_id,
+      card: cardId,
+      description,
+      'metadata[userId]': user.id,
+      'metadata[plan]': plan,
+      'metadata[billing]': billing,
+    }).toString(),
+  })
+
+  const charge = await resp.json() as { status?: string; failure_message?: string }
+  if (!resp.ok || charge.status === 'failed') {
+    return { error: charge.failure_message ?? 'การชำระเงินล้มเหลว กรุณาลองใหม่หรือเปลี่ยนบัตร' }
+  }
+
+  await supabase
+    .from('profiles')
+    .update({ plan, plan_expires_at: planExpiry(billing).toISOString() })
+    .eq('id', user.id)
+
+  revalidatePath('/dashboard')
+  revalidatePath('/profile')
+  return {}
+}
+
 // ─── Poll charge status + activate plan on success ───────────
 
 export async function pollAndActivate(params: {

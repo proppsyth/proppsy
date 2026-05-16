@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation'
 import { ArrowLeft, Calendar } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
-import type { Stock, Customer } from '@/types'
 import AppointmentForm from '../AppointmentForm'
 
 export const metadata: Metadata = { title: 'เพิ่มนัดหมาย' }
@@ -12,11 +11,6 @@ export default async function NewAppointmentPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-
-  const [{ data: stocks }, { data: customers }] = await Promise.all([
-    supabase.from('stock').select('id, unit_no, room_type, project_name').eq('agent_uid', user.id).order('id'),
-    supabase.from('customers').select('id, prefix, first_name_th, last_name_th, nickname').eq('agent_uid', user.id).order('id'),
-  ])
 
   return (
     <div className="p-4 lg:p-8 pt-6 max-w-2xl">
@@ -33,10 +27,7 @@ export default async function NewAppointmentPage() {
         </div>
       </div>
 
-      <AppointmentForm
-        stocks={(stocks ?? []) as unknown as Stock[]}
-        customers={(customers ?? []) as unknown as Customer[]}
-      />
+      <AppointmentForm />
     </div>
   )
 }

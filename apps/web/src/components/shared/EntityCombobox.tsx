@@ -9,12 +9,12 @@ import {
   Building2, User, Home,
 } from 'lucide-react'
 import type {
-  StockSearchResult, OwnerSearchResult, CustomerSearchResult, EntitySearchResult,
+  StockSearchResult, OwnerSearchResult, CustomerSearchResult, ContractSearchResult, EntitySearchResult,
 } from '@/app/(protected)/contracts/search-actions'
 
 // ─── Types ───────────────────────────────────────────────────
 
-type EntityKind = 'stock' | 'owner' | 'customer'
+type EntityKind = 'stock' | 'owner' | 'customer' | 'contract'
 
 interface StockProps {
   kind: 'stock'
@@ -43,7 +43,16 @@ interface CustomerProps {
   placeholder?: string
 }
 
-type Props = StockProps | OwnerProps | CustomerProps
+interface ContractProps {
+  kind: 'contract'
+  value: string
+  selectedLabel?: string
+  onSelect: (result: ContractSearchResult | null) => void
+  searchFn: (q: string) => Promise<ContractSearchResult[]>
+  placeholder?: string
+}
+
+type Props = StockProps | OwnerProps | CustomerProps | ContractProps
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -195,6 +204,36 @@ function PersonRow({
   )
 }
 
+function ContractRow({
+  r, selected, onSelect,
+}: {
+  r: ContractSearchResult
+  selected: boolean
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onPointerDown={e => { e.preventDefault(); onSelect() }}
+      className={`w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-blue-50 transition cursor-pointer ${selected ? 'bg-blue-50' : ''}`}
+    >
+      <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+        <Building2 className="w-4 h-4 text-emerald-600" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <span className={`text-sm font-medium truncate block ${selected ? 'text-blue-700' : 'text-gray-900'}`}>
+          {r.id}
+        </span>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-xs text-gray-400">{r.doc_type}</span>
+          {r.move_in_date && <span className="text-xs text-gray-400">{r.move_in_date}</span>}
+          {r.end_date && <span className="text-xs text-gray-400">→ {r.end_date}</span>}
+        </div>
+      </div>
+    </button>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────
 
 export default function EntityCombobox(props: Props) {
@@ -305,9 +344,11 @@ export default function EntityCombobox(props: Props) {
   // Derive display label for selected item
   const displayLabel = selectedLabel || (value ? value : '')
 
-  const emptyIcon = kind === 'stock' ? <Building2 className="w-8 h-8 text-gray-200" /> : <User className="w-8 h-8 text-gray-200" />
+  const emptyIcon = kind === 'stock' ? <Building2 className="w-8 h-8 text-gray-200" /> : kind === 'contract' ? <Building2 className="w-8 h-8 text-gray-200" /> : <User className="w-8 h-8 text-gray-200" />
   const emptyHint = kind === 'stock'
     ? 'ค้นหาด้วยชื่อโครงการ, ห้อง, อาคาร'
+    : kind === 'contract'
+    ? 'ค้นหาด้วยรหัสสัญญา (BK-XXXX)'
     : 'ค้นหาด้วยชื่อ, เบอร์โทร'
 
   // ─── Dropdown content ───────────────────────────────────────
@@ -335,6 +376,7 @@ export default function EntityCombobox(props: Props) {
           placeholder={
             kind === 'stock' ? 'ค้นหาโครงการ, ห้อง, อาคาร...' :
             kind === 'owner' ? 'ค้นหาเจ้าของทรัพย์...' :
+            kind === 'contract' ? 'ค้นหาสัญญา (BK-XXXX)...' :
             'ค้นหาลูกค้า / ผู้เช่า...'
           }
           className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400"
@@ -387,6 +429,12 @@ export default function EntityCombobox(props: Props) {
           <div key={r.id} data-idx={i}>
             {r.kind === 'stock' ? (
               <StockRow
+                r={r}
+                selected={i === activeIdx || r.id === value}
+                onSelect={() => handleSelect(r)}
+              />
+            ) : r.kind === 'contract' ? (
+              <ContractRow
                 r={r}
                 selected={i === activeIdx || r.id === value}
                 onSelect={() => handleSelect(r)}

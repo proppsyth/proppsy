@@ -33,7 +33,41 @@ export interface CustomerSearchResult {
   phone?: string | null
 }
 
-export type EntitySearchResult = StockSearchResult | OwnerSearchResult | CustomerSearchResult
+export interface ContractSearchResult {
+  kind: 'contract'
+  id: string
+  doc_type: string
+  stock_id?: string | null
+  owner_id?: string | null
+  customer_id?: string | null
+  move_in_date?: string | null
+  end_date?: string | null
+}
+
+export type EntitySearchResult = StockSearchResult | OwnerSearchResult | CustomerSearchResult | ContractSearchResult
+
+export async function searchContracts(query: string): Promise<ContractSearchResult[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const q = query.trim()
+  let req = supabase
+    .from('contracts')
+    .select('id, doc_type, stock_id, owner_id, customer_id, move_in_date, end_date')
+    .eq('agent_uid', user.id)
+    .in('doc_type', ['rental', 'renewal', 'reservation'])
+    .not('status', 'in', '("cancelled","completed")')
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  if (q) {
+    req = req.or(`id.ilike.%${q}%,stock_id.ilike.%${q}%`)
+  }
+
+  const { data } = await req
+  return (data ?? []).map(r => ({ kind: 'contract' as const, ...r }))
+}
 
 export async function searchStocks(query: string): Promise<StockSearchResult[]> {
   const supabase = await createClient()

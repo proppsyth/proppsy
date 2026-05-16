@@ -8,8 +8,7 @@ export type AppointmentInput = {
   description?: string | null
   stock_id?: string | null
   customer_id?: string | null
-  start_time: string
-  end_time?: string | null
+  meeting_datetime: string
 }
 
 export async function createAppointment(
@@ -25,8 +24,7 @@ export async function createAppointment(
     description: input.description || null,
     stock_id: input.stock_id || null,
     customer_id: input.customer_id || null,
-    start_time: input.start_time,
-    end_time: input.end_time || null,
+    start_time: input.meeting_datetime,
     reminder_sent: false,
   })
 

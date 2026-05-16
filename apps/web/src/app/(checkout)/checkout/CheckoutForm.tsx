@@ -2,8 +2,9 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import Script from 'next/script'
-import { CreditCard, Check, ShieldCheck, QrCode, Loader2 } from 'lucide-react'
-import { createOmiseCharge, createPromptPayCharge, pollAndActivate } from './actions'
+import { CreditCard, Check, ShieldCheck, QrCode, Loader2, Star } from 'lucide-react'
+import { createOmiseCharge, createPromptPayCharge, pollAndActivate, chargeWithSavedCard } from './actions'
+import type { SavedCard } from '@/app/(protected)/billing/actions'
 
 declare global {
   interface Window {
@@ -31,15 +32,25 @@ interface Props {
   billing: 'monthly' | 'yearly'
   amount: number
   planName: string
+  savedCards?: SavedCard[]
 }
 
-export default function CheckoutForm({ plan, billing, amount, planName }: Props) {
+const BRAND_COLORS: Record<string, string> = {
+  Visa: 'text-blue-700',
+  Mastercard: 'text-red-600',
+  JCB: 'text-green-700',
+  'American Express': 'text-blue-500',
+}
+
+export default function CheckoutForm({ plan, billing, amount, planName, savedCards = [] }: Props) {
   const [pending, startTransition] = useTransition()
   const [qrPending, startQr] = useTransition()
+  const [savedPending, startSaved] = useTransition()
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [ready, setReady] = useState(false)
-  const [method, setMethod] = useState<'card' | 'promptpay'>('card')
+  const [method, setMethod] = useState<'saved' | 'card' | 'promptpay'>(savedCards.length > 0 ? 'saved' : 'card')
+  const [selectedCardId, setSelectedCardId] = useState(savedCards.find(c => c.is_default)?.id ?? savedCards[0]?.id ?? '')
 
   // PromptPay state
   const [qrUrl, setQrUrl] = useState<string | null>(null)
@@ -76,6 +87,16 @@ export default function CheckoutForm({ plan, billing, amount, planName }: Props)
     const t = setTimeout(check, 4000)
     return () => { cancelled = true; clearTimeout(t) }
   }, [chargeId, plan, billing])
+
+  function handleSavedCard() {
+    if (!selectedCardId) { setError('กรุณาเลือกบัตร'); return }
+    setError('')
+    startSaved(async () => {
+      const res = await chargeWithSavedCard({ plan, billing, cardId: selectedCardId })
+      if (res.error) setError(res.error)
+      else setSuccess(true)
+    })
+  }
 
   function handlePay() {
     const pubKey = process.env.NEXT_PUBLIC_OMISE_PUBLIC_KEY
@@ -168,6 +189,18 @@ export default function CheckoutForm({ plan, billing, amount, planName }: Props)
 
       {/* Payment method tabs */}
       <div className="flex gap-2 mb-4">
+        {savedCards.length > 0 && (
+          <button
+            type="button"
+            onClick={() => { setMethod('saved'); setQrUrl(null); setChargeId(null); setError('') }}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium rounded-xl border transition ${
+              method === 'saved' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
+            }`}
+          >
+            <Star className="w-4 h-4" />
+            บัตรที่บันทึก
+          </button>
+        )}
         <button
           type="button"
           onClick={() => { setMethod('card'); setQrUrl(null); setChargeId(null); setError('') }}
@@ -176,7 +209,7 @@ export default function CheckoutForm({ plan, billing, amount, planName }: Props)
           }`}
         >
           <CreditCard className="w-4 h-4" />
-          บัตรเครดิต
+          บัตรใหม่
         </button>
         <button
           type="button"
@@ -193,6 +226,48 @@ export default function CheckoutForm({ plan, billing, amount, planName }: Props)
       {error && (
         <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 mb-4">
           {error}
+        </div>
+      )}
+
+      {/* Saved cards */}
+      {method === 'saved' && (
+        <div className="space-y-3 mb-4">
+          {savedCards.map(card => (
+            <button
+              key={card.id}
+              type="button"
+              onClick={() => setSelectedCardId(card.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition text-left ${
+                selectedCardId === card.id
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 bg-white hover:border-blue-300'
+              }`}
+            >
+              <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                selectedCardId === card.id ? 'border-blue-600' : 'border-gray-300'
+              }`}>
+                {selectedCardId === card.id && <div className="w-2 h-2 rounded-full bg-blue-600" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-semibold ${BRAND_COLORS[card.brand] ?? 'text-gray-800'}`}>
+                  {card.brand} •••• {card.last_digits}
+                </p>
+                <p className="text-xs text-gray-400">{card.name} · หมดอายุ {card.expiration_month}/{card.expiration_year}</p>
+              </div>
+              {card.is_default && (
+                <span className="text-xs text-yellow-600 font-medium bg-yellow-50 px-2 py-0.5 rounded-full">หลัก</span>
+              )}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={handleSavedCard}
+            disabled={savedPending || !selectedCardId}
+            className="w-full flex items-center justify-center gap-2 py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold rounded-xl transition text-sm"
+          >
+            <CreditCard className="w-5 h-5" />
+            {savedPending ? 'กำลังดำเนินการ...' : `ชำระ ฿${amount.toLocaleString('th-TH')}`}
+          </button>
         </div>
       )}
 

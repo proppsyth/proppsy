@@ -2,41 +2,46 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Calendar, Clock } from 'lucide-react'
+import { Loader2, Calendar } from 'lucide-react'
 import { createAppointment } from './actions'
-import type { Stock, Customer } from '@/types'
-import { customerDisplayName, stockDisplayTitle } from '@/types'
-
-interface Props {
-  stocks: Stock[]
-  customers: Customer[]
-}
+import EntityCombobox from '@/components/shared/EntityCombobox'
+import {
+  searchStocks, searchCustomers,
+  type StockSearchResult, type CustomerSearchResult,
+} from '@/app/(protected)/contracts/search-actions'
 
 function Label({ children }: { children: React.ReactNode }) {
   return <label className="block text-xs font-medium text-gray-600 mb-1">{children}</label>
 }
 
-function Field({ children }: { children: React.ReactNode }) {
-  return <div>{children}</div>
-}
-
 const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
 
-export default function AppointmentForm({ stocks, customers }: Props) {
+export default function AppointmentForm() {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState('')
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [meetingDatetime, setMeetingDatetime] = useState('')
   const [stockId, setStockId] = useState('')
+  const [stockLabel, setStockLabel] = useState('')
   const [customerId, setCustomerId] = useState('')
-  const [startTime, setStartTime] = useState('')
-  const [endTime, setEndTime] = useState('')
+  const [customerLabel, setCustomerLabel] = useState('')
+
+  function handleStockSelect(r: StockSearchResult | null) {
+    setStockId(r?.id ?? '')
+    setStockLabel(r ? [r.project_name, r.unit_no, r.room_type].filter(Boolean).join(' · ') || r.id : '')
+  }
+
+  function handleCustomerSelect(r: CustomerSearchResult | null) {
+    setCustomerId(r?.id ?? '')
+    setCustomerLabel(r ? (r.nickname || [r.first_name_th, r.last_name_th].filter(Boolean).join(' ') || r.id) : '')
+  }
 
   function handleSubmit() {
     if (!title.trim()) { setError('กรุณาระบุชื่อนัดหมาย'); return }
-    if (!startTime) { setError('กรุณาระบุวันและเวลา'); return }
+    if (!meetingDatetime) { setError('กรุณาระบุวันและเวลานัดหมาย'); return }
     setError('')
     startTransition(async () => {
       const res = await createAppointment({
@@ -44,8 +49,7 @@ export default function AppointmentForm({ stocks, customers }: Props) {
         description: description.trim() || null,
         stock_id: stockId || null,
         customer_id: customerId || null,
-        start_time: new Date(startTime).toISOString(),
-        end_time: endTime ? new Date(endTime).toISOString() : null,
+        meeting_datetime: new Date(meetingDatetime).toISOString(),
       })
       if (res.error) { setError(res.error); return }
       router.push('/appointments')
@@ -54,7 +58,7 @@ export default function AppointmentForm({ stocks, customers }: Props) {
 
   return (
     <div className="max-w-xl space-y-4">
-      <Field>
+      <div>
         <Label>ชื่อนัดหมาย *</Label>
         <input
           value={title}
@@ -62,9 +66,46 @@ export default function AppointmentForm({ stocks, customers }: Props) {
           placeholder="เช่น พาชมห้อง, ลงนามสัญญา"
           className={inputCls}
         />
-      </Field>
+      </div>
 
-      <Field>
+      <div>
+        <Label>วัน-เวลานัดหมาย *</Label>
+        <div className="relative">
+          <Calendar className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+          <input
+            type="datetime-local"
+            value={meetingDatetime}
+            onChange={e => setMeetingDatetime(e.target.value)}
+            className={`${inputCls} pl-8`}
+          />
+        </div>
+      </div>
+
+      <div>
+        <Label>ทรัพย์ที่เกี่ยวข้อง</Label>
+        <EntityCombobox
+          kind="stock"
+          value={stockId}
+          selectedLabel={stockLabel}
+          onSelect={handleStockSelect}
+          searchFn={searchStocks}
+          placeholder="ค้นหาโครงการ, ห้อง, อาคาร..."
+        />
+      </div>
+
+      <div>
+        <Label>ลูกค้า</Label>
+        <EntityCombobox
+          kind="customer"
+          value={customerId}
+          selectedLabel={customerLabel}
+          onSelect={handleCustomerSelect}
+          searchFn={searchCustomers}
+          placeholder="ค้นหาลูกค้า / ผู้เช่า..."
+        />
+      </div>
+
+      <div>
         <Label>รายละเอียด</Label>
         <textarea
           value={description}
@@ -73,54 +114,7 @@ export default function AppointmentForm({ stocks, customers }: Props) {
           placeholder="รายละเอียดเพิ่มเติม..."
           className={`${inputCls} resize-none`}
         />
-      </Field>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Field>
-          <Label>วัน-เวลาเริ่ม *</Label>
-          <div className="relative">
-            <Calendar className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-gray-400" />
-            <input
-              type="datetime-local"
-              value={startTime}
-              onChange={e => setStartTime(e.target.value)}
-              className={`${inputCls} pl-8`}
-            />
-          </div>
-        </Field>
-        <Field>
-          <Label>วัน-เวลาสิ้นสุด</Label>
-          <div className="relative">
-            <Clock className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-gray-400" />
-            <input
-              type="datetime-local"
-              value={endTime}
-              onChange={e => setEndTime(e.target.value)}
-              className={`${inputCls} pl-8`}
-            />
-          </div>
-        </Field>
       </div>
-
-      <Field>
-        <Label>ทรัพย์ที่เกี่ยวข้อง</Label>
-        <select value={stockId} onChange={e => setStockId(e.target.value)} className={inputCls}>
-          <option value="">— ไม่ระบุ —</option>
-          {stocks.map(s => (
-            <option key={s.id} value={s.id}>{s.id} · {stockDisplayTitle(s)}</option>
-          ))}
-        </select>
-      </Field>
-
-      <Field>
-        <Label>ลูกค้า</Label>
-        <select value={customerId} onChange={e => setCustomerId(e.target.value)} className={inputCls}>
-          <option value="">— ไม่ระบุ —</option>
-          {customers.map(c => (
-            <option key={c.id} value={c.id}>{c.id} · {customerDisplayName(c)}</option>
-          ))}
-        </select>
-      </Field>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

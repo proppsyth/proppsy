@@ -264,6 +264,9 @@ export interface Contract {
   finalized_at?: string
   finalized_pdf_url?: string
   finalized_docx_url?: string
+  // Contract relations
+  parent_contract_id?: string | null
+  contract_relation_type?: string | null
   created_at: string
   updated_at: string
   // Joined

@@ -49,7 +49,12 @@ export default async function ContractsPage({
 
   let query = supabase
     .from('contracts')
-    .select('id, doc_type, status, created_at, stock_id, owner_id, customer_id')
+    .select(`
+      id, doc_type, status, created_at, move_in_date, is_finalized,
+      stock:stock(project_name, unit_no),
+      owner:owners(first_name_th, last_name_th, nickname),
+      customer:customers(first_name_th, last_name_th, nickname)
+    `)
     .eq('agent_uid', user.id)
     .order('created_at', { ascending: false })
 
@@ -105,31 +110,50 @@ export default async function ContractsPage({
         </div>
       ) : (
         <div className="space-y-2">
-          {list.map(c => (
-            <Link
-              key={c.id}
-              href={`/contracts/${c.id}`}
-              className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm p-3.5 hover:shadow-md hover:border-blue-200 transition-all"
-            >
-              <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                <FileText className="w-5 h-5 text-blue-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-gray-900">{c.id}</p>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[c.status as ContractStatus] ?? 'bg-gray-100 text-gray-600'}`}>
-                    {STATUS_LABELS_TH[c.status as ContractStatus] ?? c.status}
-                  </span>
+          {list.map(c => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const stock = c.stock as any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const owner = c.owner as any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const customer = c.customer as any
+            const propertyLabel = stock ? [stock.project_name, stock.unit_no].filter(Boolean).join(' · ') : null
+            const ownerName = owner ? (owner.nickname || [owner.first_name_th, owner.last_name_th].filter(Boolean).join(' ')) : null
+            const customerName = customer ? (customer.nickname || [customer.first_name_th, customer.last_name_th].filter(Boolean).join(' ')) : null
+            const parties = [ownerName, customerName].filter(Boolean).join(' / ')
+            return (
+              <Link
+                key={c.id}
+                href={`/contracts/${c.id}`}
+                className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm p-3.5 hover:shadow-md hover:border-blue-200 transition-all"
+              >
+                <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-5 h-5 text-blue-600" />
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {DOC_TYPE_LABELS[c.doc_type as ContractDocType] ?? c.doc_type}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-gray-900">{c.id}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[c.status as ContractStatus] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {STATUS_LABELS_TH[c.status as ContractStatus] ?? c.status}
+                    </span>
+                    {(c as unknown as { is_finalized?: boolean }).is_finalized && (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">ล็อก</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {DOC_TYPE_LABELS[c.doc_type as ContractDocType] ?? c.doc_type}
+                    {propertyLabel && <span className="text-gray-400"> · {propertyLabel}</span>}
+                  </p>
+                  {parties && (
+                    <p className="text-xs text-gray-400 mt-0.5 truncate">{parties}</p>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 flex-shrink-0 ml-2">
+                  {new Date(c.created_at).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
                 </p>
-              </div>
-              <p className="text-xs text-gray-400 flex-shrink-0">
-                {new Date(c.created_at).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
-              </p>
-            </Link>
-          ))}
+              </Link>
+            )
+          })}
         </div>
       )}
     </div>

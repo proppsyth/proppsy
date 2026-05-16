@@ -4,7 +4,7 @@ import StorageImage from '@/components/shared/StorageImage'
 import { Building2, Maximize, Layers, MapPin, Newspaper, Play } from 'lucide-react'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import type { Stock } from '@/types'
 import PublicNav from '@/components/shared/PublicNav'
 import FilterBar from './listing/FilterBar'
@@ -85,7 +85,7 @@ export default async function PublicListingPage({
 }) {
   const { listing_type, room_type, province, district, bts_mrt, price_bucket, q } = await searchParams
 
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   const [{ data: projectRows }, { data: latestNews }] = await Promise.all([
     supabase.from('projects').select('province, district, bts_mrt').not('province', 'is', null),
