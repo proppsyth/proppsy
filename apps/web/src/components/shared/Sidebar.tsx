@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Users, UserCheck, Building2, Calendar,
   TrendingUp, Settings, LogOut, ShieldCheck, Zap, CreditCard, Newspaper,
-  Menu, X,
+  Menu,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
@@ -53,7 +53,8 @@ export default function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [moreOpen, setMoreOpen] = useState(false)
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const detailsRef = useRef<HTMLDetailsElement>(null)
+  const closeDropdown = () => { if (detailsRef.current) detailsRef.current.open = false }
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -154,143 +155,46 @@ export default function Sidebar({ profile }: SidebarProps) {
         </div>
       </aside>
 
-      {/* ── Mobile: top bar ── */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur border-b border-gray-100 flex items-center justify-between px-4 z-30">
-        <button
-          onClick={() => setDrawerOpen(true)}
-          className="w-8 h-8 flex items-center justify-center text-gray-600 active:bg-gray-100 rounded-lg transition"
-          aria-label="เปิดเมนู"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-        <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={26} height={26} className="object-contain rounded-md flex-shrink-0" />
-          <span className="font-bold text-base text-gray-900 tracking-tight">Proppsy</span>
-        </Link>
-        <button
-          onClick={() => setMoreOpen(true)}
-          className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm active:bg-blue-200 transition"
-        >
-          {(profile.nickname || profile.name || 'U').charAt(0).toUpperCase()}
-        </button>
-      </div>
+      {/* ── Mobile: top bar (mirrors PublicNav exactly) ── */}
+      <nav className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-100 shadow-sm z-30">
+        <div className="px-4 h-14 flex items-center gap-2">
+
+          <details ref={detailsRef} className="relative flex-shrink-0">
+            <summary className="list-none cursor-pointer w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition select-none">
+              <Menu className="w-5 h-5 text-gray-600" />
+            </summary>
+            <div className="absolute left-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-50">
+              {[
+                { href: '/services', label: 'บริการ' },
+                { href: '/news', label: 'ข่าวสาร' },
+                { href: '/about', label: 'เกี่ยวกับเรา' },
+                { href: '/help', label: 'คู่มือ' },
+                { href: '/contact', label: 'ติดต่อเรา' },
+              ].map(l => (
+                <Link key={l.href} href={l.href} onClick={closeDropdown}
+                  className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+          </details>
+
+          <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={28} height={28} className="object-contain rounded-lg" />
+            <span className="font-bold text-lg text-gray-900">Proppsy</span>
+          </Link>
+
+          <button
+            onClick={() => setMoreOpen(true)}
+            className="ml-auto w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm active:bg-blue-200 transition"
+          >
+            {(profile.nickname || profile.name || 'U').charAt(0).toUpperCase()}
+          </button>
+        </div>
+      </nav>
 
       {/* ── Mobile Bottom Navigation ── */}
       <MobileBottomNav profile={profile} />
-
-      {/* ── Left Drawer Backdrop ── */}
-      {drawerOpen && (
-        <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-          onClick={() => setDrawerOpen(false)}
-        />
-      )}
-
-      {/* ── Left Drawer ── */}
-      <div className={`lg:hidden fixed top-0 left-0 bottom-0 w-72 bg-white z-50 shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
-        drawerOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
-        {/* Drawer header */}
-        <div className="flex items-center justify-between px-4 h-14 border-b border-gray-100 flex-shrink-0">
-          <Link href="/" className="flex items-center gap-2.5" onClick={() => setDrawerOpen(false)}>
-            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={28} height={28} className="object-contain rounded-md flex-shrink-0" />
-            <span className="font-bold text-base text-gray-900 tracking-tight">Proppsy</span>
-          </Link>
-          <button
-            onClick={() => setDrawerOpen(false)}
-            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 active:bg-gray-100 rounded-lg transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Nav items */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {NAV_ITEMS.filter(item => hasPermission(item.permission)).map(item => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setDrawerOpen(false)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-                isActive(item.href)
-                  ? 'bg-blue-600 text-white font-medium'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <span className="w-5 shrink-0 text-center leading-none">{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
-
-          {profile.role === 'admin' && (
-            <>
-              <div className="pt-4 pb-1 px-3">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">แอดมิน</p>
-              </div>
-              {ADMIN_ITEMS.map(item => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setDrawerOpen(false)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-                    isActive(item.href)
-                      ? 'bg-blue-600 text-white font-medium'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <span className="w-5 shrink-0 text-center leading-none">{item.icon}</span>
-                  {item.label}
-                </Link>
-              ))}
-            </>
-          )}
-
-          {/* Public links */}
-          <div className="pt-4 pb-1 px-3">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">ทั่วไป</p>
-          </div>
-          {[
-            { href: '/news', label: 'ข่าวสาร', icon: '📰' },
-            { href: '/guide', label: 'คู่มือ', icon: '📖' },
-            { href: '/faq', label: 'FAQ', icon: '❓' },
-            { href: '/services', label: 'บริการ', icon: '⚙️' },
-            { href: '/contact', label: 'ติดต่อเรา', icon: '📞' },
-          ].map(item => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setDrawerOpen(false)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-                isActive(item.href)
-                  ? 'bg-blue-600 text-white font-medium'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <span className="w-5 shrink-0 text-center leading-none">{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Bottom links */}
-        <div className="p-3 border-t border-gray-100 space-y-0.5 flex-shrink-0">
-          <Link href="/billing" onClick={() => setDrawerOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${isActive('/billing') ? 'bg-blue-600 text-white font-medium' : 'text-gray-600 hover:bg-gray-100'}`}>
-            <CreditCard className="w-4 h-4 flex-shrink-0" />
-            การชำระเงิน
-          </Link>
-          <Link href="/profile" onClick={() => setDrawerOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${isActive('/profile') ? 'bg-blue-600 text-white font-medium' : 'text-gray-600 hover:bg-gray-100'}`}>
-            <Settings className="w-4 h-4 flex-shrink-0" />
-            ตั้งค่า
-          </Link>
-          <button onClick={() => { setDrawerOpen(false); handleSignOut() }}
-            className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-50 transition">
-            <LogOut className="w-4 h-4 flex-shrink-0" />
-            ออกจากระบบ
-          </button>
-        </div>
-      </div>
 
       {/* ── More Backdrop ── */}
       {moreOpen && (

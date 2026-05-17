@@ -16,6 +16,8 @@ const STATUS_COLORS: Record<ContractStatus, string> = {
   signed:           'bg-green-100 text-green-700',
   completed:        'bg-emerald-100 text-emerald-700',
   cancelled:        'bg-red-100 text-red-600',
+  terminated:       'bg-rose-100 text-rose-700',
+  renewed:          'bg-purple-100 text-purple-700',
 }
 
 const STATUS_LABELS_TH: Record<ContractStatus, string> = {
@@ -26,6 +28,8 @@ const STATUS_LABELS_TH: Record<ContractStatus, string> = {
   signed:           'ลงนามครบแล้ว',
   completed:        'เสร็จสมบูรณ์',
   cancelled:        'ยกเลิก',
+  terminated:       'บอกเลิกแล้ว',
+  renewed:          'ต่อสัญญาแล้ว',
 }
 
 const TABS: { value: string; label: string }[] = [

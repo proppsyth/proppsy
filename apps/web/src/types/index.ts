@@ -19,6 +19,7 @@ export type PaymentMethod = 'cash' | 'transfer' | 'cheque'
 export type ContractStatus =
   | 'draft' | 'sent' | 'viewed' | 'partially_signed'
   | 'signed' | 'completed' | 'cancelled'
+  | 'terminated' | 'renewed'
 export type SignerRole = 'tenant' | 'owner' | 'co_agent' | 'witness'
 export type SignerStatus = 'pending' | 'viewed' | 'signed' | 'declined'
 export type CustomerSource = 'line_oa' | 'referral' | 'walk_in' | 'online' | 'facebook' | 'instagram' | 'tiktok' | 'website' | 'other' | 'public_listing'
@@ -274,6 +275,7 @@ export interface Contract {
   // Contract relations
   parent_contract_id?: string | null
   contract_relation_type?: string | null
+  effective_end_date?: string | null
   created_at: string
   updated_at: string
   // Joined

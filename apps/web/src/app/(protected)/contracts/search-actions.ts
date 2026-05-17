@@ -46,6 +46,109 @@ export interface ContractSearchResult {
 
 export type EntitySearchResult = StockSearchResult | OwnerSearchResult | CustomerSearchResult | ContractSearchResult
 
+export interface ParentContractData {
+  id: string
+  doc_type: string
+  stock_id?: string | null
+  owner_id?: string | null
+  customer_id?: string | null
+  rent_price?: number | null
+  deposit_months?: number | null
+  deposit_amount?: number | null
+  contract_months?: number | null
+  move_in_date?: string | null
+  end_date?: string | null
+  water_unit_price?: number | null
+  electric_unit_price?: number | null
+  internet_fee?: number | null
+  common_fee?: number | null
+  parking_fee?: number | null
+  payment_grace_days?: number | null
+  payment_day_of_month?: number | null
+  cleaning_fee?: number | null
+  ac_count?: number | null
+  ac_wash_per_unit?: number | null
+  penalty_amount?: number | null
+  commission_rate_pct?: number | null
+  commission_from_owner?: number | null
+  commission_from_customer?: number | null
+  vat_7: boolean
+  wht_3: boolean
+  stock_label: string
+  owner_label: string
+  customer_label: string
+  summary_label: string
+}
+
+export async function fetchContractById(id: string): Promise<ParentContractData | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data } = await supabase
+    .from('contracts')
+    .select(`
+      id, doc_type, stock_id, owner_id, customer_id,
+      rent_price, deposit_months, deposit_amount, contract_months,
+      move_in_date, end_date,
+      water_unit_price, electric_unit_price, internet_fee, common_fee, parking_fee,
+      payment_grace_days, payment_day_of_month,
+      cleaning_fee, ac_count, ac_wash_per_unit, penalty_amount,
+      commission_rate_pct, commission_from_owner, commission_from_customer,
+      vat_7, wht_3,
+      stock:stock(project_name, unit_no, room_type),
+      owner:owners(first_name_th, last_name_th, nickname),
+      customer:customers(first_name_th, last_name_th, nickname)
+    `)
+    .eq('id', id)
+    .eq('agent_uid', user.id)
+    .single()
+
+  if (!data) return null
+
+  const s = data.stock as { project_name?: string; unit_no?: string; room_type?: string } | null
+  const o = data.owner as { first_name_th?: string; last_name_th?: string; nickname?: string } | null
+  const c = data.customer as { first_name_th?: string; last_name_th?: string; nickname?: string } | null
+
+  const stockLabel = s ? [s.project_name, s.unit_no, s.room_type].filter(Boolean).join(' · ') || data.stock_id || '' : ''
+  const ownerLabel = o ? (o.nickname || [o.first_name_th, o.last_name_th].filter(Boolean).join(' ') || data.owner_id || '') : ''
+  const customerLabel = c ? (c.nickname || [c.first_name_th, c.last_name_th].filter(Boolean).join(' ') || data.customer_id || '') : ''
+
+  return {
+    id: data.id,
+    doc_type: data.doc_type,
+    stock_id: data.stock_id,
+    owner_id: data.owner_id,
+    customer_id: data.customer_id,
+    rent_price: data.rent_price,
+    deposit_months: data.deposit_months,
+    deposit_amount: data.deposit_amount,
+    contract_months: data.contract_months,
+    move_in_date: data.move_in_date,
+    end_date: data.end_date,
+    water_unit_price: data.water_unit_price,
+    electric_unit_price: data.electric_unit_price,
+    internet_fee: data.internet_fee,
+    common_fee: data.common_fee,
+    parking_fee: data.parking_fee,
+    payment_grace_days: data.payment_grace_days,
+    payment_day_of_month: data.payment_day_of_month,
+    cleaning_fee: data.cleaning_fee,
+    ac_count: data.ac_count,
+    ac_wash_per_unit: data.ac_wash_per_unit,
+    penalty_amount: data.penalty_amount,
+    commission_rate_pct: data.commission_rate_pct,
+    commission_from_owner: data.commission_from_owner,
+    commission_from_customer: data.commission_from_customer,
+    vat_7: data.vat_7 ?? false,
+    wht_3: data.wht_3 ?? false,
+    stock_label: stockLabel,
+    owner_label: ownerLabel,
+    customer_label: customerLabel,
+    summary_label: [data.id, stockLabel, data.move_in_date].filter(Boolean).join(' · '),
+  }
+}
+
 export async function searchContracts(query: string): Promise<ContractSearchResult[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

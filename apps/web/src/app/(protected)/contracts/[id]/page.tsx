@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, FileText, Eye } from 'lucide-react'
+import { ArrowLeft, FileText, Eye, GitBranch, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { DOC_TYPE_LABELS, ownerDisplayName, customerDisplayName, stockDisplayTitle } from '@/types'
@@ -20,6 +20,8 @@ const STATUS_COLORS: Record<ContractStatus, string> = {
   signed:           'bg-green-100 text-green-700',
   completed:        'bg-emerald-100 text-emerald-700',
   cancelled:        'bg-red-100 text-red-600',
+  terminated:       'bg-rose-100 text-rose-700',
+  renewed:          'bg-purple-100 text-purple-700',
 }
 
 const STATUS_LABELS_TH: Record<ContractStatus, string> = {
@@ -30,6 +32,8 @@ const STATUS_LABELS_TH: Record<ContractStatus, string> = {
   signed:           'ลงนามครบแล้ว',
   completed:        'เสร็จสมบูรณ์',
   cancelled:        'ยกเลิก',
+  terminated:       'บอกเลิกแล้ว',
+  renewed:          'ต่อสัญญาแล้ว',
 }
 
 function fmt(n: number): string {
@@ -51,7 +55,7 @@ export default async function ContractDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: contract }, { data: furnitureItems }, { data: signers }] = await Promise.all([
+  const [{ data: contract }, { data: furnitureItems }, { data: signers }, { data: relatedDocs }] = await Promise.all([
     supabase
       .from('contracts')
       .select('*, stock:stock(*), owner:owners(*), customer:customers(*)')
@@ -68,6 +72,12 @@ export default async function ContractDetailPage({
       .select('*')
       .eq('contract_id', id)
       .order('sort_order'),
+    supabase
+      .from('contracts')
+      .select('id, doc_type, status, created_at, end_date, effective_end_date')
+      .eq('parent_contract_id', id)
+      .eq('agent_uid', user.id)
+      .order('created_at', { ascending: true }),
   ])
 
   if (!contract) notFound()
@@ -83,6 +93,9 @@ export default async function ContractDetailPage({
   const isReservation   = contract.doc_type === 'reservation'
   const hasTemplate     = TEMPLATE_SUPPORTED_TYPES.has(contract.doc_type)
   const isFinalized     = !!(contract as { is_finalized?: boolean }).is_finalized
+  const isMasterLease   = ['rental', 'reservation', 'renewal'].includes(contract.doc_type)
+  const isActive        = !['cancelled', 'terminated', 'completed', 'renewed'].includes(contract.status)
+  const effectiveEndDate = (contract as { effective_end_date?: string | null }).effective_end_date
 
   return (
     <div className="w-full p-4 lg:p-8 pt-6 max-w-4xl overflow-x-hidden">
@@ -133,6 +146,14 @@ export default async function ContractDetailPage({
           )}
         </div>
       </div>
+
+      {/* ── Effective end date banner (when terminated early) ── */}
+      {effectiveEndDate && (
+        <div className="mb-4 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-sm text-rose-700 flex items-center gap-2">
+          <span className="font-medium">สิ้นสุดสัญญาก่อนกำหนด:</span>
+          <span>มีผลวันที่ {fmtDate(effectiveEndDate)}</span>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-4">
         {/* Left: main info */}
@@ -214,6 +235,70 @@ export default async function ContractDetailPage({
                   serial_no: item.serial_no ?? '',
                 }))}
               />
+            </Section>
+          )}
+
+          {/* ── Quick Actions: create child documents ── */}
+          {isMasterLease && isActive && !isFinalized && (
+            <Section title="สร้างเอกสารที่เกี่ยวข้อง">
+              <div className="flex items-start gap-2 mb-3 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
+                <GitBranch className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span>เอกสารด้านล่างจะอ้างอิงสัญญานี้เป็นต้นทาง และดึงข้อมูลทรัพย์ / เจ้าของ / ผู้เช่า ให้อัตโนมัติ</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { type: 'renewal', label: 'สร้างสัญญาต่อ', color: 'text-purple-700 border-purple-200 hover:bg-purple-50' },
+                  { type: 'termination', label: 'หนังสือบอกเลิก', color: 'text-rose-700 border-rose-200 hover:bg-rose-50' },
+                  { type: 'cancellation', label: 'หนังสือยกเลิก', color: 'text-orange-700 border-orange-200 hover:bg-orange-50' },
+                  { type: 'notice', label: 'หนังสือแจ้ง', color: 'text-gray-700 border-gray-200 hover:bg-gray-50' },
+                ].map(({ type, label, color }) => (
+                  <Link
+                    key={type}
+                    href={`/contracts/new?parent=${contract.id}&type=${type}`}
+                    className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg border text-xs font-medium transition ${color}`}
+                  >
+                    <Plus className="w-3.5 h-3.5 flex-shrink-0" />
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {/* ── Related Documents Timeline ── */}
+          {(relatedDocs ?? []).length > 0 && (
+            <Section title={`เอกสารที่เกี่ยวข้อง (${relatedDocs!.length})`}>
+              <div className="space-y-0">
+                {relatedDocs!.map((doc, i) => {
+                  const isLast = i === relatedDocs!.length - 1
+                  const docStatus = doc.status as ContractStatus
+                  const effectiveDate = (doc as { effective_end_date?: string | null }).effective_end_date
+                  return (
+                    <div key={doc.id} className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <div className="w-2 h-2 rounded-full bg-blue-400 mt-1.5 flex-shrink-0" />
+                        {!isLast && <div className="w-px flex-1 bg-gray-200 my-1" />}
+                      </div>
+                      <div className={`pb-3 ${isLast ? '' : ''} min-w-0 flex-1`}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Link href={`/contracts/${doc.id}`} className="text-sm font-medium text-blue-600 hover:underline">
+                            {doc.id}
+                          </Link>
+                          <span className="text-xs text-gray-500">{DOC_TYPE_LABELS[doc.doc_type as ContractDocType] ?? doc.doc_type}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[docStatus] ?? 'bg-gray-100 text-gray-600'}`}>
+                            {STATUS_LABELS_TH[docStatus] ?? docStatus}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {fmtDate(doc.created_at)}
+                          {effectiveDate && <span className="ml-2 text-rose-600">มีผลวันที่ {fmtDate(effectiveDate)}</span>}
+                          {!effectiveDate && doc.end_date && <span className="ml-2">ถึง {fmtDate(doc.end_date)}</span>}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </Section>
           )}
         </div>

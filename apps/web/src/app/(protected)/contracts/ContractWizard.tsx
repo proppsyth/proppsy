@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Loader2, ChevronRight, ChevronLeft, Check, FileText, X, Globe, Info, AlertCircle,
+  Loader2, ChevronRight, ChevronLeft, Check, FileText, X, Globe, Info, AlertCircle, GitBranch,
 } from 'lucide-react'
 import { DOC_TYPE_LABELS } from '@/types'
 import type { ContractDocType, PaymentMethod } from '@/types'
 import { createContract } from './actions'
 import {
   searchStocks, searchOwners, searchCustomers, searchContracts,
+  fetchContractById,
   type StockSearchResult, type OwnerSearchResult, type CustomerSearchResult, type ContractSearchResult,
 } from './search-actions'
 import EntityCombobox from '@/components/shared/EntityCombobox'
@@ -145,14 +146,63 @@ function personLabel(r: OwnerSearchResult | CustomerSearchResult): string {
 
 // ─── Component ───────────────────────────────────────────────
 
-export default function ContractWizard() {
+interface ContractWizardProps {
+  initialParentId?: string
+  initialDocType?: string
+}
+
+export default function ContractWizard({ initialParentId, initialDocType }: ContractWizardProps) {
   const router = useRouter()
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
-  const [state, setState] = useState<WizardState>(INIT)
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(initialParentId ? 2 : 1)
+  const [state, setState] = useState<WizardState>(() => ({
+    ...INIT,
+    doc_type: (initialDocType as ContractDocType) || '',
+  }))
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const [showErrors, setShowErrors] = useState(false)
   const [stepErrors, setStepErrors] = useState<string[]>([])
+
+  // ─── Pre-fill from parent contract (URL param flow) ──────────
+
+  useEffect(() => {
+    if (!initialParentId) return
+    fetchContractById(initialParentId).then(parent => {
+      if (!parent) return
+      setState(s => ({
+        ...s,
+        parent_contract_id: parent.id,
+        parent_contract_label: parent.summary_label,
+        stock_id: parent.stock_id ?? s.stock_id,
+        stock_label: parent.stock_label,
+        owner_id: parent.owner_id ?? s.owner_id,
+        owner_label: parent.owner_label,
+        customer_id: parent.customer_id ?? s.customer_id,
+        customer_label: parent.customer_label,
+        rent_price: parent.rent_price != null ? String(parent.rent_price) : s.rent_price,
+        deposit_months: parent.deposit_months != null ? String(parent.deposit_months) : s.deposit_months,
+        deposit_amount: parent.deposit_amount != null ? String(parent.deposit_amount) : s.deposit_amount,
+        contract_months: parent.contract_months != null ? String(parent.contract_months) : s.contract_months,
+        water_unit_price: parent.water_unit_price != null ? String(parent.water_unit_price) : s.water_unit_price,
+        electric_unit_price: parent.electric_unit_price != null ? String(parent.electric_unit_price) : s.electric_unit_price,
+        internet_fee: parent.internet_fee != null ? String(parent.internet_fee) : s.internet_fee,
+        common_fee: parent.common_fee != null ? String(parent.common_fee) : s.common_fee,
+        parking_fee: parent.parking_fee != null ? String(parent.parking_fee) : s.parking_fee,
+        payment_grace_days: parent.payment_grace_days != null ? String(parent.payment_grace_days) : s.payment_grace_days,
+        payment_day_of_month: parent.payment_day_of_month != null ? String(parent.payment_day_of_month) : s.payment_day_of_month,
+        cleaning_fee: parent.cleaning_fee != null ? String(parent.cleaning_fee) : s.cleaning_fee,
+        ac_count: parent.ac_count != null ? String(parent.ac_count) : s.ac_count,
+        ac_wash_per_unit: parent.ac_wash_per_unit != null ? String(parent.ac_wash_per_unit) : s.ac_wash_per_unit,
+        penalty_amount: parent.penalty_amount != null ? String(parent.penalty_amount) : s.penalty_amount,
+        commission_rate_pct: parent.commission_rate_pct != null ? String(parent.commission_rate_pct) : s.commission_rate_pct,
+        commission_from_owner: parent.commission_from_owner != null ? String(parent.commission_from_owner) : s.commission_from_owner,
+        commission_from_customer: parent.commission_from_customer != null ? String(parent.commission_from_customer) : s.commission_from_customer,
+        vat_7: parent.vat_7,
+        wht_3: parent.wht_3,
+      }))
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialParentId])
 
   const set = (k: keyof WizardState, v: string | boolean | Record<string, string>) =>
     setState(s => ({ ...s, [k]: v }))
@@ -172,6 +222,7 @@ export default function ContractWizard() {
   const isCommissionConfirm = state.doc_type === 'commission_confirm'
   const isPaymentDoc  = ['invoice_reservation','receipt_reservation','invoice_deposit','receipt_deposit'].includes(state.doc_type)
   const isCoAgent     = state.doc_type === 'co_agent'
+  const isEarlyEnd    = state.doc_type === 'termination' || state.doc_type === 'cancellation'
   const extraFields   = EXTRA_VAR_FIELDS[state.doc_type as ContractDocType] ?? []
   const isRelatedDoc  = ['cancellation', 'termination', 'notice', 'renewal'].includes(state.doc_type)
 
@@ -322,6 +373,9 @@ export default function ContractWizard() {
     if (isCoAgent) {
       if (!state.rent_price) errs.push('กรุณากรอกค่าเช่า')
       if (!state.move_in_date) errs.push('กรุณาระบุวันที่ทำสัญญา')
+    }
+    if (isEarlyEnd) {
+      if (!state.end_date) errs.push('กรุณาระบุวันที่มีผล (วันสิ้นสุดสัญญาจริง)')
     }
     extraFields.forEach(f => {
       if (f.required && !state.extra_vars[f.key]) errs.push(`กรุณากรอก${f.label}`)
@@ -510,6 +564,12 @@ export default function ContractWizard() {
       {/* ── Step 2: owner + customer ── */}
       {step === 2 && (
         <div className="space-y-4">
+          {initialParentId && state.parent_contract_id && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700">
+              <GitBranch className="w-4 h-4 flex-shrink-0" />
+              <span>อ้างอิงสัญญาต้นทาง: <strong>{state.parent_contract_id}</strong> — ข้อมูลถูกดึงมาให้อัตโนมัติ</span>
+            </div>
+          )}
           {isRelatedDoc && (
             <Section title="สัญญาต้นทาง (ถ้ามี)">
               <EntityCombobox
@@ -725,7 +785,28 @@ export default function ContractWizard() {
             </Section>
           )}
 
-          {!isRental && !isReservation && !isReceipt && !isCommission && !isCommissionConfirm && !isPaymentDoc && !isCoAgent && state.doc_type !== 'renewal' && (
+          {isEarlyEnd && (
+            <Section title={state.doc_type === 'termination' ? 'รายละเอียดการบอกเลิกสัญญา' : 'รายละเอียดการยกเลิกสัญญา'}>
+              <div className="flex items-start gap-2 mb-3 p-3 bg-rose-50 rounded-lg text-xs text-rose-700">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span>วันที่มีผลจะถูกบันทึกเป็นวันสิ้นสุดจริงของสัญญาต้นทาง ทรัพย์จะกลับเป็น &quot;ว่าง&quot; หลังวันนี้</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field
+                  label="วันที่มีผล (สิ้นสุดสัญญาจริง) *"
+                  value={state.end_date}
+                  onChange={v => set('end_date', v)}
+                  type="date"
+                  required
+                  hasError={showErrors && !state.end_date}
+                />
+                <Field label="ค่าปรับ (บาท)" value={state.penalty_amount} onChange={v => set('penalty_amount', v)} type="number" placeholder="0" />
+                <Field label="วันที่ทำหนังสือ" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" />
+              </div>
+            </Section>
+          )}
+
+          {!isRental && !isReservation && !isReceipt && !isCommission && !isCommissionConfirm && !isPaymentDoc && !isCoAgent && !isEarlyEnd && state.doc_type !== 'renewal' && (
             <Section title="รายละเอียด">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="ค่าปรับ (บาท)" value={state.penalty_amount} onChange={v => set('penalty_amount', v)} type="number" placeholder="0" />

@@ -88,15 +88,16 @@ export async function createContract(
   }
 
   // ── Overlap check: prevent duplicate active contracts for same property ──
+  // Uses effective_end_date (early termination date) when present, falling back to end_date.
   const rentingDocTypes = ['rental', 'renewal', 'reservation']
   if (input.stock_id && rentingDocTypes.includes(input.doc_type) && input.move_in_date) {
     const { data: conflicts } = await supabase
       .from('contracts')
-      .select('id, move_in_date, end_date, doc_type')
+      .select('id, move_in_date, end_date, effective_end_date, doc_type')
       .eq('agent_uid', user.id)
       .eq('stock_id', input.stock_id)
       .in('doc_type', rentingDocTypes)
-      .not('status', 'in', '("cancelled","completed")')
+      .not('status', 'in', '("cancelled","completed","terminated","renewed")')
 
     const newStart = new Date(input.move_in_date).getTime()
     const newEnd   = input.end_date ? new Date(input.end_date).getTime() : null
@@ -104,7 +105,9 @@ export async function createContract(
     for (const c of conflicts ?? []) {
       if (!c.move_in_date) continue
       const existStart = new Date(c.move_in_date).getTime()
-      const existEnd   = c.end_date ? new Date(c.end_date).getTime() : null
+      // Respect early termination: use effective_end_date if set, otherwise end_date
+      const effectiveEnd = (c as { effective_end_date?: string | null }).effective_end_date || c.end_date
+      const existEnd   = effectiveEnd ? new Date(effectiveEnd).getTime() : null
 
       const overlaps =
         (newEnd   === null || newEnd   >= existStart) &&
@@ -112,7 +115,7 @@ export async function createContract(
 
       if (overlaps) {
         return {
-          error: `ทรัพย์นี้มีสัญญาที่ทับซ้อนกันอยู่แล้ว (${c.id}) ช่วง ${c.move_in_date}${c.end_date ? ' – ' + c.end_date : ''}`,
+          error: `ทรัพย์นี้มีสัญญาที่ทับซ้อนกันอยู่แล้ว (${c.id}) ช่วง ${c.move_in_date}${effectiveEnd ? ' – ' + effectiveEnd : ''}`,
         }
       }
     }
@@ -133,6 +136,38 @@ export async function createContract(
 
   if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
 
+  // ── Propagate lifecycle changes to parent master contract ──
+  const earlyEndTypes = ['termination', 'cancellation']
+  if (input.parent_contract_id && earlyEndTypes.includes(input.doc_type) && input.end_date) {
+    // Shorten parent's effective blocking period + mark it as ended
+    await supabase
+      .from('contracts')
+      .update({
+        effective_end_date: input.end_date,
+        status: input.doc_type === 'termination' ? 'terminated' : 'cancelled',
+      })
+      .eq('id', input.parent_contract_id)
+      .eq('agent_uid', user.id)
+
+    // If effective date is today or past → restore stock to available
+    const today = new Date().toISOString().split('T')[0]!
+    if (input.end_date <= today && input.stock_id) {
+      await supabase
+        .from('stock')
+        .update({ status: 'available' })
+        .eq('id', input.stock_id)
+        .eq('agent_uid', user.id)
+    }
+  }
+
+  if (input.parent_contract_id && input.doc_type === 'renewal') {
+    await supabase
+      .from('contracts')
+      .update({ status: 'renewed' })
+      .eq('id', input.parent_contract_id)
+      .eq('agent_uid', user.id)
+  }
+
   revalidatePath('/contracts')
   return { id }
 }
@@ -141,7 +176,7 @@ export async function createContract(
 
 export async function updateContractStatus(
   contractId: string,
-  status: 'draft' | 'sent' | 'viewed' | 'partially_signed' | 'signed' | 'completed' | 'cancelled'
+  status: 'draft' | 'sent' | 'viewed' | 'partially_signed' | 'signed' | 'completed' | 'cancelled' | 'terminated' | 'renewed'
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
