@@ -3,6 +3,7 @@ import {
   MapPin, ExternalLink, Waves, Dumbbell, ShieldCheck,
   Trees, Flame, Monitor, Users, Baby, UtensilsCrossed,
   ShoppingBag, Sparkles, Wifi, ParkingCircle,
+  BookOpen, Cctv, KeyRound, Sailboat, Droplets,
 } from 'lucide-react'
 
 interface ProjectData {
@@ -39,6 +40,23 @@ const FACILITY_MAP: Record<string, { icon: React.ElementType; color: string; bg:
   'ร้านอาหาร':                  { icon: UtensilsCrossed, color: 'text-rose-700',    bg: 'bg-rose-50 border-rose-100' },
   'Wi-Fi':                    { icon: Wifi,             color: 'text-indigo-700',  bg: 'bg-indigo-50 border-indigo-100' },
   'WiFi':                     { icon: Wifi,             color: 'text-indigo-700',  bg: 'bg-indigo-50 border-indigo-100' },
+  'ห้องสมุด':                   { icon: BookOpen,         color: 'text-amber-700',   bg: 'bg-amber-50 border-amber-100' },
+  'Library':                  { icon: BookOpen,         color: 'text-amber-700',   bg: 'bg-amber-50 border-amber-100' },
+  'กล้องวงจรปิด':               { icon: Cctv,             color: 'text-slate-700',   bg: 'bg-slate-50 border-slate-200' },
+  'CCTV':                     { icon: Cctv,             color: 'text-slate-700',   bg: 'bg-slate-50 border-slate-200' },
+  'คีย์การ์ด':                   { icon: KeyRound,         color: 'text-gray-700',    bg: 'bg-gray-50 border-gray-200' },
+  'Key Card Access':          { icon: KeyRound,         color: 'text-gray-700',    bg: 'bg-gray-50 border-gray-200' },
+  'สวนหย่อม':                   { icon: Trees,             color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-100' },
+  'Garden':                   { icon: Trees,             color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-100' },
+  'Swimming Pool':            { icon: Waves,            color: 'text-cyan-700',    bg: 'bg-cyan-50 border-cyan-100' },
+  'Fitness':                  { icon: Dumbbell,         color: 'text-orange-700',  bg: 'bg-orange-50 border-orange-100' },
+  '24-hour Security':         { icon: ShieldCheck,      color: 'text-slate-700',   bg: 'bg-slate-50 border-slate-200' },
+  'ระบบรักษาความปลอดภัย 24 ชม.': { icon: ShieldCheck,   color: 'text-slate-700',   bg: 'bg-slate-50 border-slate-200' },
+  'Lobby':                    { icon: Building2,        color: 'text-amber-700',   bg: 'bg-amber-50 border-amber-100' },
+  'Parking':                  { icon: ParkingCircle,    color: 'text-gray-700',    bg: 'bg-gray-50 border-gray-200' },
+  'Co-working Space':         { icon: Monitor,          color: 'text-violet-700',  bg: 'bg-violet-50 border-violet-100' },
+  'ร้านซักรีด':                  { icon: Droplets,         color: 'text-blue-700',    bg: 'bg-blue-50 border-blue-100' },
+  'Shuttle Service':          { icon: Sailboat,         color: 'text-sky-700',     bg: 'bg-sky-50 border-sky-100' },
 }
 
 function FacilityChip({ name }: { name: string }) {
