@@ -11,6 +11,7 @@ import PhotoGallery from '@/app/(protected)/stock/[id]/PhotoGallery'
 import ContactCard from './ContactCard'
 import ShareButtons from './ShareButtons'
 import StickyActionBar from './StickyActionBar'
+import ProjectSection from './ProjectSection'
 
 export async function generateMetadata({
   params,
@@ -32,6 +33,25 @@ function fmt(n: number) {
   return new Intl.NumberFormat('th-TH').format(n)
 }
 
+interface ProjectData {
+  name_th: string
+  name_en?: string | null
+  developer?: string | null
+  built_year?: number | null
+  total_floors?: number | null
+  total_units?: number | null
+  parking_pct?: number | null
+  facilities: string[]
+  bts_mrt: string[]
+  address_no?: string | null
+  address_road?: string | null
+  province?: string | null
+  district?: string | null
+  subdistrict?: string | null
+  zip?: string | null
+  map_url?: string | null
+}
+
 export default async function PublicPropertyDetailPage({
   params,
 }: {
@@ -45,7 +65,13 @@ export default async function PublicPropertyDetailPage({
     .from('stock')
     .select(`
       *,
-      project:projects(name_th, name_en, developer, built_year, total_floors, facilities, bts_mrt, address_road, province, district),
+      project:projects(
+        name_th, name_en, developer, built_year,
+        total_floors, total_units, parking_pct,
+        facilities, bts_mrt,
+        address_no, address_road, province, district, subdistrict, zip,
+        map_url
+      ),
       agent:profiles(name, nickname, email, phone, line_id, logo_url, company_name, team_name, first_name_th, last_name_th, position)
     `)
     .eq('id', id)
@@ -56,13 +82,25 @@ export default async function PublicPropertyDetailPage({
   if (!stockRaw) notFound()
 
   const stock = stockRaw as unknown as Stock & {
-    project?: { name_th: string; name_en?: string; developer?: string; built_year?: number; total_floors?: number; facilities: string[]; bts_mrt: string[]; address_road?: string; province?: string; district?: string }
+    project?: ProjectData
     agent?: { name?: string; nickname?: string; email?: string; phone?: string; line_id?: string; logo_url?: string; company_name?: string; team_name?: string; first_name_th?: string; last_name_th?: string; position?: string }
   }
 
   const isRent = stock.listing_type !== 'sale'
   const isSale = stock.listing_type !== 'rent'
   const projectName = stock.project?.name_th ?? stock.project_name
+
+  const hasProject = !!stock.project && (
+    stock.project.developer ||
+    stock.project.built_year ||
+    stock.project.total_floors ||
+    stock.project.total_units ||
+    stock.project.parking_pct ||
+    (stock.project.facilities?.length ?? 0) > 0 ||
+    (stock.project.bts_mrt?.length ?? 0) > 0 ||
+    stock.project.address_road ||
+    stock.project.map_url
+  )
 
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden">
@@ -135,7 +173,7 @@ export default async function PublicPropertyDetailPage({
               </div>
             </div>
 
-            {/* Details */}
+            {/* Room Details */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/70">
                 <h2 className="text-sm font-semibold text-gray-700">รายละเอียดห้อง</h2>
@@ -178,11 +216,11 @@ export default async function PublicPropertyDetailPage({
               </div>
             )}
 
-            {/* Facilities */}
+            {/* Room Facilities */}
             {stock.facilities && stock.facilities.length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/70">
-                  <h2 className="text-sm font-semibold text-gray-700">สิ่งอำนวยความสะดวก</h2>
+                  <h2 className="text-sm font-semibold text-gray-700">สิ่งอำนวยความสะดวกในห้อง</h2>
                 </div>
                 <div className="p-5 flex flex-wrap gap-2">
                   {stock.facilities.map(f => (
@@ -194,48 +232,15 @@ export default async function PublicPropertyDetailPage({
               </div>
             )}
 
-            {/* Project BTS/MRT */}
-            {stock.project?.bts_mrt && stock.project.bts_mrt.length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/70">
-                  <h2 className="text-sm font-semibold text-gray-700">BTS / MRT ใกล้เคียง</h2>
-                </div>
-                <div className="p-5 flex flex-wrap gap-2">
-                  {stock.project.bts_mrt.map(s => (
-                    <span key={s} className="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-full border border-green-100">
-                      {s}
-                    </span>
-                  ))}
-                </div>
-              </div>
+            {/* Project Section */}
+            {hasProject && stock.project && (
+              <ProjectSection project={stock.project} />
             )}
           </div>
 
-          {/* Right: Contact */}
+          {/* Right: Contact only */}
           <div className="space-y-4 min-w-0">
             <ContactCard agent={stock.agent ?? null} stockId={stock.id} />
-
-            {/* Project info */}
-            {stock.project && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/70">
-                  <h2 className="text-sm font-semibold text-gray-700">ข้อมูลโครงการ</h2>
-                </div>
-                <div className="p-4 space-y-2 text-sm">
-                  <p className="font-medium text-gray-900 break-words">{stock.project.name_th}</p>
-                  {stock.project.name_en && <p className="text-xs text-gray-400">{stock.project.name_en}</p>}
-                  {stock.project.developer && (
-                    <p className="text-xs text-gray-500">ผู้พัฒนา: {stock.project.developer}</p>
-                  )}
-                  {stock.project.built_year && (
-                    <p className="text-xs text-gray-500">ปีที่สร้าง: {stock.project.built_year}</p>
-                  )}
-                  {stock.project.total_floors && (
-                    <p className="text-xs text-gray-500">จำนวนชั้น: {stock.project.total_floors} ชั้น</p>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
