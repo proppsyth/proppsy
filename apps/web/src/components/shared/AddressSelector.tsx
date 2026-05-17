@@ -123,7 +123,7 @@ function AddressCombobox<T extends PlaceRecord>({
     <div
       ref={dropRef}
       style={{ position: 'absolute', top: dropRect.top, left: dropRect.left, width: dropRect.width, zIndex: 9999 }}
-      className="bg-white border border-gray-200 rounded-xl shadow-2xl max-h-64 overflow-y-auto"
+      className="bg-white border border-gray-200 rounded-xl shadow-2xl max-h-64 overflow-y-auto overscroll-contain"
     >
       {filtered.length === 0 ? (
         <p className="px-4 py-3 text-sm text-gray-400 text-center">ไม่พบข้อมูล</p>
@@ -132,8 +132,8 @@ function AddressCombobox<T extends PlaceRecord>({
           <button
             key={r.th}
             type="button"
-            onMouseDown={e => { e.preventDefault(); handleSelect(r) }}
-            onTouchEnd={e => { e.preventDefault(); handleSelect(r) }}
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => handleSelect(r)}
             className="w-full text-left px-4 py-2.5 hover:bg-blue-50 active:bg-blue-100 transition text-sm text-gray-800 border-b border-gray-50 last:border-0"
           >
             {r.th}
