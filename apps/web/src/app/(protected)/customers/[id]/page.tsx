@@ -1,6 +1,7 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, Pencil, Phone, MessageCircle, CreditCard, Bell, ImageOff } from 'lucide-react'
+import { ArrowLeft, Pencil, Phone, MessageCircle, CreditCard, Bell, ImageOff, ExternalLink, Clock } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import StorageImage from '@/components/shared/StorageImage'
@@ -15,6 +16,36 @@ const SOURCE_LABELS: Record<string, string> = {
   referral: 'แนะนำ',
   walk_in: 'Walk-in',
   online: 'ออนไลน์',
+  public_listing: 'ประกาศสาธารณะ',
+}
+
+interface InquiryRow {
+  id: string
+  created_at: string
+  budget: string | null
+  move_in_date: string | null
+  notes: string | null
+  stock: {
+    id: string
+    project_name: string | null
+    unit_no: string | null
+    room_type: string | null
+    rent_price: number | null
+    sale_price: number | null
+    listing_type: string | null
+    photo_urls: string[] | null
+  } | null
+}
+
+function fmtPrice(n: number) {
+  return new Intl.NumberFormat('th-TH').format(n)
+}
+
+function fmtDateTime(iso: string) {
+  return new Date(iso).toLocaleString('th-TH', {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 
 export default async function CustomerDetailPage({
@@ -28,16 +59,42 @@ export default async function CustomerDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: customer } = await supabase
-    .from('customers')
-    .select('*')
-    .eq('id', id)
-    .eq('agent_uid', user.id)
-    .single()
+  const [{ data: customer }, { data: inquiryRows }] = await Promise.all([
+    supabase
+      .from('customers')
+      .select('*')
+      .eq('id', id)
+      .eq('agent_uid', user.id)
+      .single(),
+    supabase
+      .from('property_inquiries')
+      .select(`
+        id,
+        created_at,
+        budget,
+        move_in_date,
+        notes,
+        stock:stock_id (
+          id,
+          project_name,
+          unit_no,
+          room_type,
+          rent_price,
+          sale_price,
+          listing_type,
+          photo_urls
+        )
+      `)
+      .eq('customer_id', id)
+      .eq('agent_uid', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20),
+  ])
 
   if (!customer) notFound()
 
   const c = customer as unknown as Customer
+  const inquiries = (inquiryRows ?? []) as unknown as InquiryRow[]
   const name = customerDisplayName(c)
   const fullNameTh = [c.prefix, c.first_name_th, c.last_name_th].filter(Boolean).join(' ')
   const showFullName = c.nickname && fullNameTh && name !== fullNameTh
@@ -118,6 +175,12 @@ export default async function CustomerDetailPage({
                   {c.national_id.replace(/(\d)(\d{4})(\d{5})(\d{2})(\d)/, '$1-$2-$3-$4-$5')}
                 </InfoItem>
               )}
+              {c.gender && (
+                <InfoItem label="เพศ">{c.gender}</InfoItem>
+              )}
+              {c.occupation && (
+                <InfoItem label="อาชีพ">{c.occupation}</InfoItem>
+              )}
               {c.source && (
                 <InfoItem label="แหล่งที่มา">
                   {SOURCE_LABELS[c.source] ?? c.source}
@@ -130,6 +193,17 @@ export default async function CustomerDetailPage({
               )}
             </div>
           </Section>
+
+          {/* ทรัพย์ที่สนใจ */}
+          {inquiries.length > 0 && (
+            <Section title={`ทรัพย์ที่สนใจ (${inquiries.length})`}>
+              <div className="space-y-3">
+                {inquiries.map((inq, idx) => (
+                  <InquiryCard key={inq.id} inq={inq} isLatest={idx === 0} />
+                ))}
+              </div>
+            </Section>
+          )}
 
           {/* ที่อยู่ */}
           {address && (
@@ -216,6 +290,11 @@ export default async function CustomerDetailPage({
                   </span>
                 </div>
               )}
+              {c.preferred_move_in_date && (
+                <InfoItem label="ต้องการย้ายเข้า">
+                  {new Date(c.preferred_move_in_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}
+                </InfoItem>
+              )}
               {c.converted_at && (
                 <InfoItem label="วันที่ปิดดีล">
                   {new Date(c.converted_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}
@@ -224,6 +303,86 @@ export default async function CustomerDetailPage({
               <InfoItem label="บันทึกเมื่อ">{createdDate}</InfoItem>
             </div>
           </Section>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Inquiry card ─────────────────────────────────────────────
+
+function InquiryCard({ inq, isLatest }: { inq: InquiryRow; isLatest: boolean }) {
+  const s = inq.stock
+  const thumb = s?.photo_urls?.[0]
+  const propertyName = [s?.project_name, s?.unit_no].filter(Boolean).join(' · ') || 'ทรัพย์ที่สนใจ'
+
+  const isRent = s?.listing_type !== 'sale'
+  const isSale = s?.listing_type !== 'rent'
+  const priceParts: string[] = []
+  if (isRent && s?.rent_price) priceParts.push(`เช่า ฿${fmtPrice(s.rent_price)}/เดือน`)
+  if (isSale && s?.sale_price) priceParts.push(`ขาย ฿${fmtPrice(s.sale_price)}`)
+
+  return (
+    <div className={`flex gap-3 p-3 rounded-xl border transition-colors ${isLatest ? 'border-blue-100 bg-blue-50/50' : 'border-gray-100 bg-gray-50/40'}`}>
+      {/* Thumbnail */}
+      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 relative">
+        {thumb ? (
+          <Image
+            src={thumb}
+            alt={propertyName}
+            fill
+            className="object-cover"
+            sizes="64px"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-gray-300">
+            <ImageOff className="w-5 h-5" />
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-semibold text-gray-900 truncate">{propertyName}</p>
+          {isLatest && (
+            <span className="text-xs px-1.5 py-0.5 bg-blue-600 text-white rounded-full font-medium flex-shrink-0">ล่าสุด</span>
+          )}
+        </div>
+
+        {priceParts.length > 0 && (
+          <p className="text-xs text-gray-600 mt-0.5">{priceParts.join('  ·  ')}</p>
+        )}
+
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
+          {inq.budget && (
+            <span className="text-xs text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded-full border border-violet-100">
+              งบ {inq.budget}
+            </span>
+          )}
+          {inq.move_in_date && (
+            <span className="text-xs text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-100">
+              ย้ายเข้า {new Date(inq.move_in_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between mt-2 gap-2">
+          <p className="text-xs text-gray-400 flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            {fmtDateTime(inq.created_at)}
+          </p>
+          {s?.id && (
+            <Link
+              href={`/listing/${s.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-blue-600 hover:underline flex-shrink-0"
+            >
+              เปิดประกาศ
+              <ExternalLink className="w-3 h-3" />
+            </Link>
+          )}
         </div>
       </div>
     </div>

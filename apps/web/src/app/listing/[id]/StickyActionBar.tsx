@@ -1,11 +1,9 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { Phone, MessageCircle, X, CheckCircle2, Loader2, ChevronUp, CalendarX } from 'lucide-react'
 import { submitInquiry } from './actions'
 import type { InquiryInput } from './actions'
-
-// ─── Types ───────────────────────────────────────────────────
 
 interface Agent {
   phone?: string
@@ -19,35 +17,33 @@ interface Props {
   projectName?: string
   unitNo?: string
   rentPrice?: number
+  salePrice?: number
+  listingType?: string
 }
 
 interface FormState {
   nickname: string
   phone: string
   line_id: string
+  budget: string
+  move_in_date: string
   gender: string
   occupation: string
   occupation_other: string
-  budget: string
-  occupants: string
-  duration: string
-  move_in_date: string
 }
 
 const BLANK: FormState = {
   nickname: '',
   phone: '',
   line_id: '',
+  budget: '',
+  move_in_date: '',
   gender: '',
   occupation: '',
   occupation_other: '',
-  budget: '',
-  occupants: '',
-  duration: '',
-  move_in_date: '',
 }
 
-// ─── Option lists ─────────────────────────────────────────────
+const PROFILE_KEY = 'proppsy_quick_inquiry'
 
 const GENDER_OPTIONS = [
   { value: 'ชาย', label: 'ชาย' },
@@ -71,22 +67,6 @@ const BUDGET_OPTIONS = [
   { value: '20k–30k', label: '20k–30k' },
   { value: '30k+', label: '30k+' },
 ]
-
-const OCCUPANT_OPTIONS = [
-  { value: '1 คน', label: '1 คน' },
-  { value: '2 คน', label: '2 คน' },
-  { value: '3 คน', label: '3 คน' },
-  { value: '4+ คน', label: '4+ คน' },
-]
-
-const DURATION_OPTIONS = [
-  { value: '6 เดือน', label: '6 เดือน' },
-  { value: '1 ปี', label: '1 ปี' },
-  { value: '2 ปี', label: '2 ปี' },
-  { value: 'ยังไม่แน่ใจ', label: 'ยังไม่แน่ใจ' },
-]
-
-// ─── ChipGroup ────────────────────────────────────────────────
 
 function ChipGroup({
   label,
@@ -127,14 +107,35 @@ function ChipGroup({
   )
 }
 
-// ─── Main component ───────────────────────────────────────────
-
-export default function StickyActionBar({ agent, stockId, agentUid, projectName, unitNo }: Props) {
+export default function StickyActionBar({ agent, stockId, agentUid, projectName, unitNo, rentPrice, salePrice, listingType }: Props) {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<FormState>(BLANK)
+  const [prefilled, setPrefilled] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const [isReturning, setIsReturning] = useState(false)
   const [isPending, startTransition] = useTransition()
+
+  // Auto-prefill from last session
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(PROFILE_KEY)
+      if (saved) {
+        const p = JSON.parse(saved)
+        setForm(f => ({
+          ...f,
+          nickname: p.nickname || '',
+          phone: p.phone || '',
+          line_id: p.line_id || '',
+          budget: p.budget || '',
+          gender: p.gender || '',
+          occupation: p.occupation || '',
+          move_in_date: p.move_in_date || '',
+        }))
+        if (p.nickname || p.phone || p.line_id) setPrefilled(true)
+      }
+    } catch {}
+  }, [])
 
   const set = (k: keyof FormState, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -142,14 +143,15 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
     setOpen(false)
     setError('')
     if (done) {
-      setForm(BLANK)
+      // Preserve all profile fields — only clear the internal occupation_other UI state
+      setForm(f => ({ ...f, occupation_other: '' }))
       setDone(false)
     }
   }
 
   function handleSubmit() {
     if (!form.nickname.trim()) { setError('กรุณาระบุชื่อที่ต้องการให้เรียก'); return }
-    if (!form.phone.trim()) { setError('กรุณาระบุเบอร์โทรศัพท์'); return }
+    if (!form.phone.trim() && !form.line_id.trim()) { setError('กรุณาระบุเบอร์โทรหรือ LINE ID'); return }
 
     setError('')
     startTransition(async () => {
@@ -163,28 +165,43 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
         agent_uid: agentUid,
         project_name: projectName,
         unit_no: unitNo,
+        rent_price: rentPrice,
+        sale_price: salePrice,
+        listing_type: listingType,
         nickname: form.nickname,
         phone: form.phone,
         line_id: form.line_id || undefined,
         gender: form.gender || undefined,
         occupation: resolvedOccupation,
         budget: form.budget || undefined,
-        occupants: form.occupants || undefined,
-        duration: form.duration || undefined,
         move_in_date: form.move_in_date || undefined,
       }
       const result = await submitInquiry(input)
       if (result.error) {
         setError(result.error)
       } else {
+        // Save full profile for next visit — reduces typing on every new listing
+        try {
+          localStorage.setItem(PROFILE_KEY, JSON.stringify({
+            nickname: form.nickname,
+            phone: form.phone,
+            line_id: form.line_id,
+            budget: form.budget,
+            gender: form.gender,
+            occupation: resolvedOccupation ?? form.occupation,
+            move_in_date: form.move_in_date,
+          }))
+        } catch {}
+        setIsReturning(!!result.returning)
         setDone(true)
+        setPrefilled(false)
       }
     })
   }
 
   return (
     <>
-      {/* ── Sticky bottom action bar ─────────────────────── */}
+      {/* Sticky bottom action bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center gap-2">
           <div className="flex gap-2">
@@ -221,7 +238,7 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
         </div>
       </div>
 
-      {/* ── Backdrop ─────────────────────────────────────── */}
+      {/* Backdrop */}
       {open && (
         <div
           className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm"
@@ -229,7 +246,7 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
         />
       )}
 
-      {/* ── Bottom sheet ─────────────────────────────────── */}
+      {/* Bottom sheet */}
       <div
         className={`fixed left-0 right-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out flex flex-col max-h-[92dvh] ${
           open ? 'translate-y-0' : 'translate-y-full'
@@ -259,7 +276,7 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
           </button>
         </div>
 
-        {/* ── Success state ─────────────────────────────── */}
+        {/* Success state */}
         {done ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 py-12">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
@@ -267,7 +284,11 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
             </div>
             <div className="text-center">
               <h3 className="text-lg font-bold text-gray-900 mb-1">ส่งคำขอสำเร็จ!</h3>
-              <p className="text-sm text-gray-500">ตัวแทนจะติดต่อกลับโดยเร็ว<br />ขอบคุณที่สนใจทรัพย์สินนี้</p>
+              <p className="text-sm text-gray-500">
+                {isReturning
+                  ? 'ยินดีต้อนรับกลับ! ตัวแทนจะติดต่อกลับโดยเร็ว'
+                  : 'ตัวแทนจะติดต่อกลับโดยเร็ว\nขอบคุณที่สนใจทรัพย์สินนี้'}
+              </p>
             </div>
             {agent?.phone && (
               <a
@@ -281,14 +302,28 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
           </div>
         ) : (
           <>
-            {/* ── Form ──────────────────────────────────── */}
-            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-5">
+            {/* Prefill banner */}
+            {prefilled && (
+              <div className="mx-5 mt-3 px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between flex-shrink-0">
+                <p className="text-xs text-blue-700 font-medium">ยินดีต้อนรับกลับ! เราเติมข้อมูลให้คุณแล้ว ✨</p>
+                <button
+                  type="button"
+                  onClick={() => setPrefilled(false)}
+                  className="ml-2 text-blue-400 hover:text-blue-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
-              {/* ── Contact ──────────────────────────────── */}
+            {/* Form */}
+            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
+
+              {/* ── Contact fields ─── */}
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                    ชื่อที่ต้องการให้เรียก <span className="text-red-500">*</span>
+                    ชื่อเล่น / ชื่อที่ต้องการให้เรียก <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -302,6 +337,7 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                     เบอร์โทรศัพท์ <span className="text-red-500">*</span>
+                    <span className="ml-1 text-xs font-normal text-gray-400">(หรือ LINE ID)</span>
                   </label>
                   <input
                     type="tel"
@@ -327,41 +363,7 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
                 </div>
               </div>
 
-              <hr className="border-gray-100" />
-
-              {/* ── Gender ───────────────────────────────── */}
-              <ChipGroup
-                label="เพศ"
-                hint="(ถ้ามี)"
-                options={GENDER_OPTIONS}
-                value={form.gender}
-                onChange={v => set('gender', v)}
-              />
-
-              {/* ── Occupation ───────────────────────────── */}
-              <div>
-                <ChipGroup
-                  label="อาชีพ"
-                  hint="(ถ้ามี)"
-                  options={OCCUPATION_OPTIONS}
-                  value={form.occupation}
-                  onChange={v => { set('occupation', v); if (v !== 'other') set('occupation_other', '') }}
-                />
-                {form.occupation === 'other' && (
-                  <input
-                    type="text"
-                    value={form.occupation_other}
-                    onChange={e => set('occupation_other', e.target.value)}
-                    placeholder="ระบุอาชีพ..."
-                    autoFocus
-                    className="mt-2 w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                  />
-                )}
-              </div>
-
-              <hr className="border-gray-100" />
-
-              {/* ── Budget ───────────────────────────────── */}
+              {/* ── Budget chips ─── */}
               <ChipGroup
                 label="งบประมาณ / เดือน"
                 options={BUDGET_OPTIONS}
@@ -369,23 +371,7 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
                 onChange={v => set('budget', v)}
               />
 
-              {/* ── Occupants ────────────────────────────── */}
-              <ChipGroup
-                label="จำนวนผู้พัก"
-                options={OCCUPANT_OPTIONS}
-                value={form.occupants}
-                onChange={v => set('occupants', v)}
-              />
-
-              {/* ── Duration ─────────────────────────────── */}
-              <ChipGroup
-                label="ระยะเวลาเช่า"
-                options={DURATION_OPTIONS}
-                value={form.duration}
-                onChange={v => set('duration', v)}
-              />
-
-              {/* ── Move-in date ─────────────────────────── */}
+              {/* ── Move-in date ─── */}
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                   วันที่ต้องการย้ายเข้า
@@ -411,6 +397,37 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
                 </div>
               </div>
 
+              <hr className="border-gray-100" />
+
+              {/* ── Optional — gender + occupation ─── */}
+              <p className="text-xs text-gray-400 font-medium">ข้อมูลเพิ่มเติม (ถ้ามี)</p>
+
+              <ChipGroup
+                label="เพศ"
+                options={GENDER_OPTIONS}
+                value={form.gender}
+                onChange={v => set('gender', v)}
+              />
+
+              <div>
+                <ChipGroup
+                  label="อาชีพ"
+                  options={OCCUPATION_OPTIONS}
+                  value={form.occupation}
+                  onChange={v => { set('occupation', v); if (v !== 'other') set('occupation_other', '') }}
+                />
+                {form.occupation === 'other' && (
+                  <input
+                    type="text"
+                    value={form.occupation_other}
+                    onChange={e => set('occupation_other', e.target.value)}
+                    placeholder="ระบุอาชีพ..."
+                    autoFocus
+                    className="mt-2 w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                )}
+              </div>
+
               {/* Error */}
               {error && (
                 <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
@@ -423,7 +440,7 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
               </p>
             </div>
 
-            {/* ── Submit ────────────────────────────────── */}
+            {/* Submit */}
             <div className="px-5 pb-6 pt-3 border-t border-gray-100 flex-shrink-0">
               <button
                 type="button"
@@ -435,7 +452,7 @@ export default function StickyActionBar({ agent, stockId, agentUid, projectName,
                 {isPending ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  '🔥 ส่งคำขอสนใจ'
+                  'ส่งคำขอสนใจ'
                 )}
               </button>
             </div>

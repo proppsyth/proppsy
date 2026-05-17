@@ -173,6 +173,7 @@ export interface Customer {
   signature_url?: string
   lead_status?: LeadStatus
   converted_at?: string | null
+  preferred_move_in_date?: string | null
   notes?: string
   created_at: string
   updated_at: string

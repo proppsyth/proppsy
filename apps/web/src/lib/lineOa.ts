@@ -23,33 +23,56 @@ export async function pushLineMessage(lineUserId: string, text: string): Promise
   }
 }
 
+function fmtPrice(n: number) {
+  return new Intl.NumberFormat('th-TH').format(n)
+}
+
 export function buildInquiryNotification(args: {
   projectName?: string
   unitNo?: string
+  rentPrice?: number
+  salePrice?: number
+  listingType?: string
+  listingUrl?: string
   nickname: string
   budget?: string
   moveInDate?: string
-  occupants?: string
   gender?: string
   occupation?: string
-  phone: string
+  phone?: string
   lineId?: string
+  isReturning?: boolean
 }): string {
+  const now = new Date()
+  const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+  const dateStr = now.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })
+
+  const property = [args.projectName, args.unitNo].filter(Boolean).join(' · ')
+
+  // Price line — show rent, sale, or both depending on listing_type
+  const priceParts: string[] = []
+  const isRent = args.listingType !== 'sale'
+  const isSale = args.listingType !== 'rent'
+  if (isRent && args.rentPrice) priceParts.push(`เช่า ฿${fmtPrice(args.rentPrice)}/เดือน`)
+  if (isSale && args.salePrice) priceParts.push(`ขาย ฿${fmtPrice(args.salePrice)}`)
+
   const lines: string[] = [
-    '🔥 New Property Inquiry',
+    args.isReturning ? '🔄 ลูกค้าเดิม สนใจทรัพย์ใหม่!' : '🔥 มีคนสนใจทรัพย์สิน!',
+    '─────────────────',
+    ...(property ? [`🏠 ${property}`] : []),
+    ...(priceParts.length ? [`💵 ${priceParts.join('  |  ')}`] : []),
+    ...(args.listingUrl ? [`🔗 ${args.listingUrl}`] : []),
     '',
-    ...(args.projectName ? [`Project: ${args.projectName}`] : []),
-    ...(args.unitNo ? [`Unit: ${args.unitNo}`] : []),
+    `👤 ${args.nickname}`,
+    ...(args.gender ? [`   เพศ: ${args.gender}`] : []),
+    ...(args.occupation ? [`   อาชีพ: ${args.occupation}`] : []),
+    ...(args.budget ? [`💰 งบ: ${args.budget}/เดือน`] : []),
+    ...(args.moveInDate ? [`📅 ย้ายเข้า: ${args.moveInDate}`] : []),
     '',
-    `Name: ${args.nickname}`,
-    ...(args.gender ? [`Gender: ${args.gender}`] : []),
-    ...(args.occupation ? [`Occupation: ${args.occupation}`] : []),
-    ...(args.budget ? [`Budget: ${args.budget}`] : []),
-    ...(args.moveInDate ? [`Move-in: ${args.moveInDate}`] : []),
-    ...(args.occupants ? [`Occupants: ${args.occupants}`] : []),
-    '',
-    `Phone: ${args.phone}`,
-    ...(args.lineId ? [`LINE: ${args.lineId}`] : []),
+    '─────────────────',
+    ...(args.phone ? [`📞 ${args.phone}`] : []),
+    ...(args.lineId ? [`💬 LINE: ${args.lineId}`] : []),
+    `⏰ ${dateStr} ${timeStr}`,
   ]
   return lines.join('\n')
 }

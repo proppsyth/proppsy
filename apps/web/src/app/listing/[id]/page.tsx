@@ -253,6 +253,8 @@ export default async function PublicPropertyDetailPage({
         projectName={projectName}
         unitNo={stock.unit_no}
         rentPrice={stock.rent_price}
+        salePrice={stock.sale_price}
+        listingType={stock.listing_type}
       />
     </div>
   )
