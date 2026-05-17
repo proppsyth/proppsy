@@ -154,28 +154,26 @@ export default function Sidebar({ profile }: SidebarProps) {
       </aside>
 
       {/* ── Mobile: top bar ── */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur-sm border-b border-gray-100 z-30">
-        <div className="px-4 h-full flex items-center gap-3">
-          <button
-            onClick={() => setMoreOpen(true)}
-            className="w-8 h-8 flex items-center justify-center text-gray-600 active:bg-gray-100 rounded-lg transition"
-            aria-label="เปิดเมนู"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur border-b border-gray-100 z-30 flex items-center px-4 gap-3">
+        <button
+          onClick={() => setMoreOpen(true)}
+          className="w-8 h-8 flex items-center justify-center text-gray-600 active:bg-gray-100 rounded-lg transition"
+          aria-label="เปิดเมนู"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
 
-          <Link href="/" className="flex items-center gap-2 flex-1">
-            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={28} height={28} className="object-contain rounded-lg" />
-            <span className="font-bold text-lg text-gray-900">Proppsy</span>
-          </Link>
+        <Link href="/" className="flex items-center gap-2 flex-1">
+          <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={28} height={28} className="object-contain rounded-lg" />
+          <span className="font-bold text-lg text-gray-900">Proppsy</span>
+        </Link>
 
-          <button
-            onClick={() => setMoreOpen(true)}
-            className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm active:bg-blue-200 transition"
-          >
-            {(profile.nickname || profile.name || 'U').charAt(0).toUpperCase()}
-          </button>
-        </div>
+        <button
+          onClick={() => setMoreOpen(true)}
+          className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm active:bg-blue-200 transition"
+        >
+          {(profile.nickname || profile.name || 'U').charAt(0).toUpperCase()}
+        </button>
       </div>
 
       {/* ── Mobile Bottom Navigation ── */}
