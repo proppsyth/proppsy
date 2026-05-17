@@ -355,6 +355,14 @@ export default function StockForm({ projects, initialData, stockId, allowAI = tr
             <datalist id="projects-list">
               {localProjects.map(p => <option key={p.id} value={p.name_th} />)}
             </datalist>
+            {form.project_name && (
+              <p className={`mt-1.5 text-xs flex items-center gap-1 ${form.project_id ? 'text-green-600' : 'text-amber-600'}`}>
+                {form.project_id
+                  ? <>✓ ลิงก์กับโครงการในระบบแล้ว ({form.project_id}) — ข้อมูลโครงการจะแสดงบนหน้าประกาศ</>
+                  : <>⚠ ยังไม่ได้ลิงก์ — เลือกชื่อจากรายการเพื่อแสดงข้อมูลโครงการบนหน้าประกาศ</>
+                }
+              </p>
+            )}
           </div>
           <div>
             <Label text="ห้อง / ยูนิต" />
