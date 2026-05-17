@@ -155,8 +155,8 @@ export default function Sidebar({ profile }: SidebarProps) {
         </div>
       </aside>
 
-      {/* ── Mobile: top bar (mirrors PublicNav exactly) ── */}
-      <nav className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-100 shadow-sm z-30">
+      {/* ── Mobile: top bar ── */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-100 shadow-sm z-30">
         <div className="px-4 h-14 flex items-center gap-2">
 
           <details ref={detailsRef} className="relative flex-shrink-0">
@@ -191,7 +191,7 @@ export default function Sidebar({ profile }: SidebarProps) {
             {(profile.nickname || profile.name || 'U').charAt(0).toUpperCase()}
           </button>
         </div>
-      </nav>
+      </div>
 
       {/* ── Mobile Bottom Navigation ── */}
       <MobileBottomNav profile={profile} />

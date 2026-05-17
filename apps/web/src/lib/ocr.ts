@@ -1,4 +1,5 @@
 // Shared Gemini vision OCR — call only from server-side code
+import { normalizeAddressFields } from '@/lib/address'
 
 export type OcrDocumentResult = {
   doc_type?: 'id_card' | 'passport' | null
@@ -93,7 +94,24 @@ export async function geminiParseDocument(
   apiKey: string,
 ): Promise<OcrDocumentResult> {
   const cleaned = await callGemini(apiKey, base64, mimeType, DOCUMENT_PROMPT)
-  return JSON.parse(cleaned || '{}') as OcrDocumentResult
+  const raw = JSON.parse(cleaned || '{}') as OcrDocumentResult
+
+  // Normalize address fields from OCR to canonical Thai + derive zip
+  if (raw.province || raw.district || raw.subdistrict) {
+    const norm = normalizeAddressFields({
+      province: raw.province ?? undefined,
+      district: raw.district ?? undefined,
+      subdistrict: raw.subdistrict ?? undefined,
+    })
+    if (norm) {
+      raw.province = norm.province_th
+      raw.district = norm.district_th
+      raw.subdistrict = norm.subdistrict_th
+      if (!raw.zip) raw.zip = norm.zip
+    }
+  }
+
+  return raw
 }
 
 export async function geminiParseBankBook(

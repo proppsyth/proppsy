@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, X, Plus, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Sparkles, X, Plus, Loader2, ChevronDown, ChevronUp, UserPlus } from 'lucide-react'
 import { formatRoomType } from '@/types'
 import type { Stock, Project } from '@/types'
-import { createStock, updateStock, parseStockTextWithEntities } from './actions'
+import { createStock, updateStock, parseStockTextWithEntities, checkOwnerDuplicate } from './actions'
 import type { StockInput } from './actions'
 import { usePropertyImages } from '@/hooks/useUpload'
 import ImageUploader from '@/components/shared/ImageUploader'
@@ -15,6 +15,8 @@ import { AiLimitModal } from '@/components/shared/AiLimitModal'
 import EntityCombobox from '@/components/shared/EntityCombobox'
 import { searchOwners } from '@/app/(protected)/contracts/search-actions'
 import type { OwnerSearchResult } from '@/app/(protected)/contracts/search-actions'
+import QuickOwnerModal from './QuickOwnerModal'
+import QuickProjectModal from './QuickProjectModal'
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -163,7 +165,24 @@ export default function StockForm({ projects, initialData, stockId, allowAI = tr
   const [isSaving, startSave] = useTransition()
   const [isAIParsing, startAIParse] = useTransition()
   const [showLimitModal, setShowLimitModal] = useState(false)
+  const [showQuickOwner, setShowQuickOwner] = useState(false)
+  const [showQuickProject, setShowQuickProject] = useState(false)
+  const [dupWarning, setDupWarning] = useState<string | null>(null)
+  const dupCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { quota, refresh: refreshQuota, isExhausted } = useAiQuota()
+
+  useEffect(() => {
+    setDupWarning(null)
+    if (!form.owner_id || !form.project_id) return
+    if (dupCheckTimer.current) clearTimeout(dupCheckTimer.current)
+    dupCheckTimer.current = setTimeout(async () => {
+      const res = await checkOwnerDuplicate(form.owner_id, form.project_id, stockId)
+      if (res.isDuplicate) {
+        setDupWarning(`เจ้าของนี้ลิงก์กับห้อง ${res.conflictUnit ?? ''} ในโครงการนี้อยู่แล้ว — กรุณาตรวจสอบก่อนบันทึก`)
+      }
+    }, 600)
+    return () => { if (dupCheckTimer.current) clearTimeout(dupCheckTimer.current) }
+  }, [form.owner_id, form.project_id, stockId])
 
   const photoState = usePropertyImages({
     stockId,
@@ -198,6 +217,17 @@ export default function StockForm({ projects, initialData, stockId, allowAI = tr
       return
     }
     setForm(f => ({ ...f, owner_id: r.id, owner_label: ownerLabel(r) }))
+  }
+
+  function handleOwnerCreated(id: string, label: string) {
+    setForm(f => ({ ...f, owner_id: id, owner_label: label }))
+    setShowQuickOwner(false)
+  }
+
+  function handleProjectCreated(id: string, name: string) {
+    setLocalProjects(prev => [...prev, { id, name_th: name, name_en: undefined }])
+    setForm(f => ({ ...f, project_id: id, project_name: name }))
+    setShowQuickProject(false)
   }
 
   // ── AI parse with entity creation
@@ -251,6 +281,8 @@ export default function StockForm({ projects, initialData, stockId, allowAI = tr
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    if (!form.project_id) { setError('กรุณาเลือกโครงการจากรายการก่อนบันทึก'); return }
+    if (!form.owner_id) { setError('กรุณาเลือกเจ้าของทรัพย์ก่อนบันทึก'); return }
     const input: StockInput = {
       ...toInput(form),
       photo_urls: photoState.mainUrls,
@@ -270,6 +302,7 @@ export default function StockForm({ projects, initialData, stockId, allowAI = tr
   }
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-4 max-w-4xl">
 
       {/* ── AI Section ────────────────────────────────────── */}
@@ -355,13 +388,22 @@ export default function StockForm({ projects, initialData, stockId, allowAI = tr
             <datalist id="projects-list">
               {localProjects.map(p => <option key={p.id} value={p.name_th} />)}
             </datalist>
-            {form.project_name && (
-              <p className={`mt-1.5 text-xs flex items-center gap-1 ${form.project_id ? 'text-green-600' : 'text-amber-600'}`}>
-                {form.project_id
-                  ? <>✓ ลิงก์กับโครงการในระบบแล้ว ({form.project_id}) — ข้อมูลโครงการจะแสดงบนหน้าประกาศ</>
-                  : <>⚠ ยังไม่ได้ลิงก์ — เลือกชื่อจากรายการเพื่อแสดงข้อมูลโครงการบนหน้าประกาศ</>
-                }
+            {form.project_id ? (
+              <p className="mt-1.5 text-xs text-green-600">
+                ✓ ลิงก์กับโครงการในระบบแล้ว ({form.project_id}) — ข้อมูลโครงการจะแสดงบนหน้าประกาศ
               </p>
+            ) : (
+              <div className="mt-1.5 flex items-center justify-between">
+                <p className="text-xs text-amber-600">⚠ ต้องเลือกโครงการจากรายการก่อนบันทึก</p>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickProject(true)}
+                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  เพิ่มโครงการใหม่
+                </button>
+              </div>
             )}
           </div>
           <div>
@@ -441,15 +483,39 @@ export default function StockForm({ projects, initialData, stockId, allowAI = tr
 
       {/* ── Owner ────────────────────────────────────────────── */}
       <Section title="เจ้าของทรัพย์">
-        <Label text="เลือกเจ้าของ" />
-        <EntityCombobox
-          kind="owner"
-          value={form.owner_id}
-          selectedLabel={form.owner_label}
-          onSelect={handleOwnerSelect}
-          searchFn={searchOwners}
-          placeholder="ค้นหาเจ้าของทรัพย์..."
-        />
+        <div className="space-y-2">
+          <Label text="เจ้าของ" />
+          <EntityCombobox
+            kind="owner"
+            value={form.owner_id}
+            selectedLabel={form.owner_label}
+            onSelect={handleOwnerSelect}
+            searchFn={searchOwners}
+            placeholder="ค้นหาชื่อ, เบอร์โทร, ชื่อเล่น..."
+          />
+          {form.owner_id ? (
+            <p className="text-xs flex items-center gap-1 text-green-600">
+              ✓ ลิงก์กับเจ้าของในระบบแล้ว ({form.owner_id})
+            </p>
+          ) : (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-amber-600">⚠ ต้องเลือกเจ้าของทรัพย์ก่อนบันทึก</p>
+              <button
+                type="button"
+                onClick={() => setShowQuickOwner(true)}
+                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium transition"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                เพิ่มเจ้าของใหม่
+              </button>
+            </div>
+          )}
+          {dupWarning && (
+            <div className="flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg">
+              ⚠ {dupWarning}
+            </div>
+          )}
+        </div>
       </Section>
 
       {/* ── Furniture ────────────────────────────────────────── */}
@@ -534,6 +600,21 @@ export default function StockForm({ projects, initialData, stockId, allowAI = tr
         </button>
       </div>
     </form>
+
+    {showQuickOwner && (
+      <QuickOwnerModal
+        onCreated={handleOwnerCreated}
+        onClose={() => setShowQuickOwner(false)}
+      />
+    )}
+    {showQuickProject && (
+      <QuickProjectModal
+        initialName={form.project_name}
+        onCreated={handleProjectCreated}
+        onClose={() => setShowQuickProject(false)}
+      />
+    )}
+    </>
   )
 }
 

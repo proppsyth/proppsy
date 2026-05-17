@@ -130,6 +130,31 @@ export async function updateStock(
   return {}
 }
 
+// ─── Owner Duplicate Check ───────────────────────────────────
+
+export async function checkOwnerDuplicate(
+  ownerId: string,
+  projectId: string,
+  excludeStockId?: string,
+): Promise<{ isDuplicate: boolean; conflictUnit?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { isDuplicate: false }
+
+  let req = supabase
+    .from('stock')
+    .select('id, unit_no')
+    .eq('agent_uid', user.id)
+    .eq('owner_id', ownerId)
+    .eq('project_id', projectId)
+
+  if (excludeStockId) req = req.neq('id', excludeStockId)
+
+  const { data } = await req.limit(1).maybeSingle()
+  if (!data) return { isDuplicate: false }
+  return { isDuplicate: true, conflictUnit: data.unit_no ?? data.id }
+}
+
 // ─── Delete ──────────────────────────────────────────────────
 
 export async function deleteStock(stockId: string): Promise<{ error?: string }> {

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import type { PlacesData } from '@/app/api/places/route'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { ChevronDown, X } from 'lucide-react'
+import type { PlacesData, PlaceRecord, SubdistrictRecord } from '@/lib/address/types'
 
 let globalPlaces: PlacesData | null = null
 
@@ -14,8 +15,113 @@ interface Props {
   className?: string
 }
 
-const SELECT_CLS = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white transition'
-const INPUT_CLS = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition'
+const INPUT_CLS = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition bg-white'
+
+// Filter records matching query (Thai or English), case-insensitive
+function filterRecords<T extends PlaceRecord>(records: T[], query: string): T[] {
+  if (!query.trim()) return records
+  const q = query.toLowerCase()
+  return records.filter(r => r.th.toLowerCase().includes(q) || r.en.toLowerCase().includes(q))
+}
+
+interface ComboboxProps<T extends PlaceRecord> {
+  label: string
+  value: string       // stored Thai canonical name
+  options: T[]
+  placeholder: string
+  disabled?: boolean
+  onSelect: (record: T) => void
+  onClear: () => void
+}
+
+function AddressCombobox<T extends PlaceRecord>({ label, value, options, placeholder, disabled, onSelect, onClear }: ComboboxProps<T>) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const filtered = filterRecords(options, query)
+  const displayValue = value || ''
+
+  // Close on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+        setQuery('')
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  function handleFocus() {
+    if (!disabled) {
+      setOpen(true)
+      setQuery('')
+    }
+  }
+
+  function handleSelect(record: T) {
+    onSelect(record)
+    setOpen(false)
+    setQuery('')
+    inputRef.current?.blur()
+  }
+
+  function handleClear(e: React.MouseEvent) {
+    e.stopPropagation()
+    onClear()
+    setQuery('')
+    setOpen(false)
+  }
+
+  return (
+    <div>
+      <label className="block text-xs text-gray-500 mb-1.5 font-medium">{label}</label>
+      <div ref={ref} className="relative">
+        <input
+          ref={inputRef}
+          value={open ? query : displayValue}
+          onChange={e => setQuery(e.target.value)}
+          onFocus={handleFocus}
+          placeholder={disabled ? 'เลือกระดับก่อนหน้าก่อน' : placeholder}
+          disabled={disabled}
+          className={`${INPUT_CLS} pr-8 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          autoComplete="off"
+        />
+        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          {value && !disabled && (
+            <button type="button" onClick={handleClear} className="text-gray-400 hover:text-gray-600 p-0.5">
+              <X className="w-3 h-3" />
+            </button>
+          )}
+          {!value && <ChevronDown className="w-4 h-4 text-gray-400 pointer-events-none" />}
+        </div>
+
+        {open && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <p className="px-3 py-2.5 text-xs text-gray-400">ไม่พบข้อมูล</p>
+            ) : (
+              filtered.slice(0, 80).map(r => (
+                <button
+                  key={r.th}
+                  type="button"
+                  onMouseDown={() => handleSelect(r)}
+                  className="w-full text-left px-3 py-2 hover:bg-blue-50 transition"
+                >
+                  <span className="text-sm text-gray-800">{r.th}</span>
+                  {r.en && <span className="ml-1.5 text-xs text-gray-400">{r.en}</span>}
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function AddressSelector({ province, district, subdistrict, zip, onChange }: Props) {
   const [places, setPlaces] = useState<PlacesData | null>(globalPlaces)
@@ -28,38 +134,40 @@ export default function AddressSelector({ province, district, subdistrict, zip, 
         globalPlaces = data
         setPlaces(data)
       })
-      .catch(() => {/* silently fail, fields become plain text */})
+      .catch(() => {/* fall through to plain inputs */})
   }, [])
 
-  const provinces = places ? Object.keys(places).sort() : []
-  const districts = places && province ? Object.keys(places[province] ?? {}).sort() : []
-  const subdistricts = places && province && district ? Object.keys((places[province] ?? {})[district] ?? {}).sort() : []
+  const provinces: PlaceRecord[] = places?.provinces ?? []
+  const districts: PlaceRecord[] = places && province ? (places.districts[province] ?? []) : []
+  const subdistricts: SubdistrictRecord[] = places && province && district
+    ? (places.subdistricts[`${province}|${district}`] ?? [])
+    : []
 
-  function handleProvince(v: string) {
-    onChange('province', v)
+  const handleProvince = useCallback((r: PlaceRecord) => {
+    onChange('province', r.th)
     onChange('district', '')
     onChange('subdistrict', '')
     onChange('zip', '')
-  }
+  }, [onChange])
 
-  function handleDistrict(v: string) {
-    onChange('district', v)
+  const handleDistrict = useCallback((r: PlaceRecord) => {
+    onChange('district', r.th)
     onChange('subdistrict', '')
     onChange('zip', '')
-  }
+  }, [onChange])
 
-  function handleSubdistrict(v: string) {
-    onChange('subdistrict', v)
-    const z = places && province && district ? ((places[province] ?? {})[district] ?? {})[v] ?? '' : ''
-    onChange('zip', z)
-  }
+  const handleSubdistrict = useCallback((r: SubdistrictRecord) => {
+    onChange('subdistrict', r.th)
+    onChange('zip', r.zip)
+  }, [onChange])
 
+  // Plain text fallback while loading
   if (!places) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <PlainField label="จังหวัด" value={province} onChange={v => onChange('province', v)} placeholder="กรุงเทพมหานคร" />
-        <PlainField label="เขต / อำเภอ" value={district} onChange={v => onChange('district', v)} placeholder="เขต" />
-        <PlainField label="แขวง / ตำบล" value={subdistrict} onChange={v => onChange('subdistrict', v)} placeholder="แขวง" />
+        <PlainField label="เขต / อำเภอ" value={district} onChange={v => onChange('district', v)} placeholder="เขต / อำเภอ" />
+        <PlainField label="แขวง / ตำบล" value={subdistrict} onChange={v => onChange('subdistrict', v)} placeholder="แขวง / ตำบล" />
         <PlainField label="รหัสไปรษณีย์" value={zip} onChange={v => onChange('zip', v.replace(/\D/g, '').slice(0, 5))} placeholder="10110" />
       </div>
     )
@@ -67,37 +175,34 @@ export default function AddressSelector({ province, district, subdistrict, zip, 
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div>
-        <label className="block text-xs text-gray-500 mb-1.5 font-medium">จังหวัด</label>
-        <select value={province} onChange={e => handleProvince(e.target.value)} className={SELECT_CLS}>
-          <option value="">— เลือกจังหวัด —</option>
-          {provinces.map(p => <option key={p} value={p}>{p}</option>)}
-        </select>
-      </div>
+      <AddressCombobox
+        label="จังหวัด"
+        value={province}
+        options={provinces}
+        placeholder="ค้นหาจังหวัด / Province"
+        onSelect={handleProvince}
+        onClear={() => { onChange('province', ''); onChange('district', ''); onChange('subdistrict', ''); onChange('zip', '') }}
+      />
 
-      <div>
-        <label className="block text-xs text-gray-500 mb-1.5 font-medium">เขต / อำเภอ</label>
-        {districts.length > 0 ? (
-          <select value={district} onChange={e => handleDistrict(e.target.value)} className={SELECT_CLS}>
-            <option value="">— เลือกอำเภอ —</option>
-            {districts.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-        ) : (
-          <input value={district} onChange={e => onChange('district', e.target.value)} placeholder="เลือกจังหวัดก่อน" className={INPUT_CLS} readOnly={!!province && districts.length === 0} />
-        )}
-      </div>
+      <AddressCombobox
+        label="เขต / อำเภอ"
+        value={district}
+        options={districts}
+        placeholder="ค้นหาอำเภอ / District"
+        disabled={!province}
+        onSelect={handleDistrict}
+        onClear={() => { onChange('district', ''); onChange('subdistrict', ''); onChange('zip', '') }}
+      />
 
-      <div>
-        <label className="block text-xs text-gray-500 mb-1.5 font-medium">แขวง / ตำบล</label>
-        {subdistricts.length > 0 ? (
-          <select value={subdistrict} onChange={e => handleSubdistrict(e.target.value)} className={SELECT_CLS}>
-            <option value="">— เลือกตำบล —</option>
-            {subdistricts.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        ) : (
-          <input value={subdistrict} onChange={e => onChange('subdistrict', e.target.value)} placeholder="เลือกอำเภอก่อน" className={INPUT_CLS} readOnly={!!district && subdistricts.length === 0} />
-        )}
-      </div>
+      <AddressCombobox<SubdistrictRecord>
+        label="แขวง / ตำบล"
+        value={subdistrict}
+        options={subdistricts}
+        placeholder="ค้นหาตำบล / Subdistrict"
+        disabled={!district}
+        onSelect={handleSubdistrict}
+        onClear={() => { onChange('subdistrict', ''); onChange('zip', '') }}
+      />
 
       <div>
         <label className="block text-xs text-gray-500 mb-1.5 font-medium">รหัสไปรษณีย์</label>

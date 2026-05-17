@@ -8,6 +8,7 @@ import {
   withCommas, formatNationalId, bahtText, bahtTextEn,
 } from './formatters'
 import type { TemplateDefinition } from './templateRegistry'
+import { getEnglishAddress } from '@/lib/address'
 
 export interface VariableContext {
   contract: Contract & {
@@ -108,6 +109,12 @@ export function computeVariables(
     v['เขตอำเภอ เจ้าของ']        = owner.district ?? '-'
     v['จังหวัด เจ้าของ']         = owner.province ?? '-'
     v['รหัสไปรษณีย์ เจ้าของ']    = owner.zip ?? '-'
+    // English address for owner (from CSV, not AI)
+    const ownerEn = getEnglishAddress(owner.province ?? undefined, owner.district ?? undefined, owner.subdistrict ?? undefined)
+    v['enแขวงตำบล เจ้าของ']  = ownerEn.subdistrict_en ?? owner.subdistrict ?? '-'
+    v['enเขตอำเภอ เจ้าของ']  = ownerEn.district_en   ?? owner.district   ?? '-'
+    v['enจังหวัด เจ้าของ']   = ownerEn.province_en   ?? owner.province   ?? '-'
+
     // Bank info — prefer owner's then fall back to agent's
     v['บัญชีธนาคาร']             = owner.bank_name ?? agent?.bank_name ?? '-'
     v['บัญชีธนาคารภาษาอังกฤษ']  = extra['บัญชีธนาคารภาษาอังกฤษ'] ?? owner.bank_name ?? '-'
@@ -132,6 +139,11 @@ export function computeVariables(
     v['เขตอำเภอ ลูกค้า']         = customer.district ?? '-'
     v['จังหวัด ลูกค้า']          = customer.province ?? '-'
     v['รหัสไปรษณีย์ ลูกค้า']     = customer.zip ?? '-'
+    // English address for customer
+    const custEn = getEnglishAddress(customer.province ?? undefined, customer.district ?? undefined, customer.subdistrict ?? undefined)
+    v['enแขวงตำบล ลูกค้า']  = custEn.subdistrict_en ?? customer.subdistrict ?? '-'
+    v['enเขตอำเภอ ลูกค้า']  = custEn.district_en   ?? customer.district   ?? '-'
+    v['enจังหวัด ลูกค้า']   = custEn.province_en   ?? customer.province   ?? '-'
   }
 
   // ─── Stock / Unit ────────────────────────────────────────────
@@ -159,6 +171,11 @@ export function computeVariables(
     v['thจังหวัด']             = proj?.province ?? extra['thจังหวัด'] ?? '-'
     v['รหัสไปรษณีย์ห้องชุด']  = proj?.zip ?? extra['รหัสไปรษณีย์ห้องชุด'] ?? '-'
     v['postcode']              = proj?.zip ?? extra['postcode'] ?? '-'
+    // English address for stock's project (from CSV)
+    const projEn = getEnglishAddress(proj?.province, proj?.district, proj?.subdistrict)
+    v['enแขวงตำบล']  = projEn.subdistrict_en ?? proj?.subdistrict ?? '-'
+    v['enเขตอำเภอ']  = projEn.district_en   ?? proj?.district   ?? '-'
+    v['enจังหวัด']   = projEn.province_en   ?? proj?.province   ?? '-'
   }
 
   // ─── Agent ───────────────────────────────────────────────────
