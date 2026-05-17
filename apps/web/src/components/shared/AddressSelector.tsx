@@ -4,7 +4,19 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { ChevronDown, X } from 'lucide-react'
 import type { PlacesData, PlaceRecord, SubdistrictRecord } from '@/lib/address/types'
 
+// Versioned so old browser-cached responses (flat Thai-only format) are ignored
+const API_URL = '/api/places?v=2'
+
 let globalPlaces: PlacesData | null = null
+
+function isValidPlaces(d: unknown): d is PlacesData {
+  return (
+    d != null &&
+    typeof d === 'object' &&
+    Array.isArray((d as PlacesData).provinces) &&
+    (d as PlacesData).provinces.length > 0
+  )
+}
 
 interface Props {
   province: string
@@ -17,7 +29,6 @@ interface Props {
 
 const INPUT_CLS = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition bg-white'
 
-// Filter records matching query (Thai or English), case-insensitive
 function filterRecords<T extends PlaceRecord>(records: T[], query: string): T[] {
   if (!query.trim()) return records
   const q = query.toLowerCase()
@@ -26,7 +37,7 @@ function filterRecords<T extends PlaceRecord>(records: T[], query: string): T[] 
 
 interface ComboboxProps<T extends PlaceRecord> {
   label: string
-  value: string       // stored Thai canonical name
+  value: string
   options: T[]
   placeholder: string
   disabled?: boolean
@@ -34,32 +45,37 @@ interface ComboboxProps<T extends PlaceRecord> {
   onClear: () => void
 }
 
-function AddressCombobox<T extends PlaceRecord>({ label, value, options, placeholder, disabled, onSelect, onClear }: ComboboxProps<T>) {
+function AddressCombobox<T extends PlaceRecord>({
+  label, value, options, placeholder, disabled, onSelect, onClear,
+}: ComboboxProps<T>) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const filtered = filterRecords(options, query)
-  const displayValue = value || ''
 
-  // Close on outside click
+  // Close on click/touch outside
   useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+    function close(e: MouseEvent | TouchEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false)
         setQuery('')
       }
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('mousedown', close)
+    document.addEventListener('touchstart', close, { passive: true })
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('touchstart', close)
+    }
   }, [])
 
-  function handleFocus() {
-    if (!disabled) {
-      setOpen(true)
-      setQuery('')
-    }
+  function openDropdown() {
+    if (disabled) return
+    setOpen(true)
+    setQuery('')
+    inputRef.current?.focus()
   }
 
   function handleSelect(record: T) {
@@ -79,40 +95,51 @@ function AddressCombobox<T extends PlaceRecord>({ label, value, options, placeho
   return (
     <div>
       <label className="block text-xs text-gray-500 mb-1.5 font-medium">{label}</label>
-      <div ref={ref} className="relative">
+      <div ref={containerRef} className="relative">
+        {/* Invisible tap target to open — sits over the input */}
+        {!open && (
+          <div
+            className="absolute inset-0 z-10 cursor-pointer"
+            onClick={openDropdown}
+            onTouchEnd={e => { e.preventDefault(); openDropdown() }}
+          />
+        )}
         <input
           ref={inputRef}
-          value={open ? query : displayValue}
+          value={open ? query : (value || '')}
           onChange={e => setQuery(e.target.value)}
-          onFocus={handleFocus}
+          onFocus={() => { if (!disabled) { setOpen(true); setQuery('') } }}
           placeholder={disabled ? 'เลือกระดับก่อนหน้าก่อน' : placeholder}
           disabled={disabled}
-          className={`${INPUT_CLS} pr-8 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          className={`${INPUT_CLS} pr-8 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
           autoComplete="off"
+          readOnly={!open}
         />
-        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-          {value && !disabled && (
+        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 z-20">
+          {value && !disabled ? (
             <button type="button" onClick={handleClear} className="text-gray-400 hover:text-gray-600 p-0.5">
               <X className="w-3 h-3" />
             </button>
+          ) : (
+            <ChevronDown className="w-4 h-4 text-gray-400 pointer-events-none" />
           )}
-          {!value && <ChevronDown className="w-4 h-4 text-gray-400 pointer-events-none" />}
         </div>
 
         {open && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
             {filtered.length === 0 ? (
-              <p className="px-3 py-2.5 text-xs text-gray-400">ไม่พบข้อมูล</p>
+              <p className="px-3 py-3 text-sm text-gray-400 text-center">ไม่พบข้อมูล</p>
             ) : (
-              filtered.slice(0, 80).map(r => (
+              filtered.slice(0, 100).map(r => (
                 <button
                   key={r.th}
                   type="button"
-                  onMouseDown={() => handleSelect(r)}
-                  className="w-full text-left px-3 py-2 hover:bg-blue-50 transition"
+                  onMouseDown={e => { e.preventDefault(); handleSelect(r) }}
+                  onTouchEnd={e => { e.preventDefault(); handleSelect(r) }}
+                  className="w-full text-left px-4 py-2.5 hover:bg-blue-50 active:bg-blue-100 transition border-b border-gray-50 last:border-0"
                 >
                   <span className="text-sm text-gray-800">{r.th}</span>
-                  {r.en && <span className="ml-1.5 text-xs text-gray-400">{r.en}</span>}
+                  {r.en && <span className="ml-2 text-xs text-gray-400">{r.en}</span>}
                 </button>
               ))
             )}
@@ -124,17 +151,22 @@ function AddressCombobox<T extends PlaceRecord>({ label, value, options, placeho
 }
 
 export default function AddressSelector({ province, district, subdistrict, zip, onChange }: Props) {
-  const [places, setPlaces] = useState<PlacesData | null>(globalPlaces)
+  const [places, setPlaces] = useState<PlacesData | null>(
+    isValidPlaces(globalPlaces) ? globalPlaces : null
+  )
 
   useEffect(() => {
-    if (globalPlaces) return
-    fetch('/api/places')
+    if (isValidPlaces(globalPlaces)) { setPlaces(globalPlaces); return }
+    globalPlaces = null // clear stale cache (old format)
+    fetch(API_URL)
       .then(r => r.json())
-      .then((data: PlacesData) => {
-        globalPlaces = data
-        setPlaces(data)
+      .then((data: unknown) => {
+        if (isValidPlaces(data)) {
+          globalPlaces = data
+          setPlaces(data)
+        }
       })
-      .catch(() => {/* fall through to plain inputs */})
+      .catch(err => console.error('[AddressSelector] fetch failed:', err))
   }, [])
 
   const provinces: PlaceRecord[] = places?.provinces ?? []
@@ -179,7 +211,7 @@ export default function AddressSelector({ province, district, subdistrict, zip, 
         label="จังหวัด"
         value={province}
         options={provinces}
-        placeholder="ค้นหาจังหวัด / Province"
+        placeholder="ค้นหาจังหวัด..."
         onSelect={handleProvince}
         onClear={() => { onChange('province', ''); onChange('district', ''); onChange('subdistrict', ''); onChange('zip', '') }}
       />
@@ -188,7 +220,7 @@ export default function AddressSelector({ province, district, subdistrict, zip, 
         label="เขต / อำเภอ"
         value={district}
         options={districts}
-        placeholder="ค้นหาอำเภอ / District"
+        placeholder="ค้นหาอำเภอ..."
         disabled={!province}
         onSelect={handleDistrict}
         onClear={() => { onChange('district', ''); onChange('subdistrict', ''); onChange('zip', '') }}
@@ -198,7 +230,7 @@ export default function AddressSelector({ province, district, subdistrict, zip, 
         label="แขวง / ตำบล"
         value={subdistrict}
         options={subdistricts}
-        placeholder="ค้นหาตำบล / Subdistrict"
+        placeholder="ค้นหาตำบล..."
         disabled={!district}
         onSelect={handleSubdistrict}
         onClear={() => { onChange('subdistrict', ''); onChange('zip', '') }}
