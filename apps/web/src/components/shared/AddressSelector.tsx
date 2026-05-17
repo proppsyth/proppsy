@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, X } from 'lucide-react'
 import type { PlacesData, PlaceRecord, SubdistrictRecord } from '@/lib/address/types'
 
-// Versioned so old browser-cached responses (flat Thai-only format) are ignored
 const API_URL = '/api/places?v=2'
 
 let globalPlaces: PlacesData | null = null
@@ -35,6 +35,8 @@ function filterRecords<T extends PlaceRecord>(records: T[], query: string): T[] 
   return records.filter(r => r.th.toLowerCase().includes(q) || r.en.toLowerCase().includes(q))
 }
 
+interface DropdownRect { top: number; left: number; width: number }
+
 interface ComboboxProps<T extends PlaceRecord> {
   label: string
   value: string
@@ -50,18 +52,29 @@ function AddressCombobox<T extends PlaceRecord>({
 }: ComboboxProps<T>) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
+  const [dropRect, setDropRect] = useState<DropdownRect | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
 
   const filtered = filterRecords(options, query)
 
-  // Close on click/touch outside
+  // Measure input position so the portal dropdown aligns with it
+  function measureRect(): DropdownRect | null {
+    const el = containerRef.current
+    if (!el) return null
+    const r = el.getBoundingClientRect()
+    return { top: r.bottom + window.scrollY + 4, left: r.left + window.scrollX, width: r.width }
+  }
+
+  // Close on outside click/touch
   useEffect(() => {
+    if (!open) return
     function close(e: MouseEvent | TouchEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-        setQuery('')
-      }
+      const target = e.target as Node
+      if (containerRef.current?.contains(target) || dropRef.current?.contains(target)) return
+      setOpen(false)
+      setQuery('')
     }
     document.addEventListener('mousedown', close)
     document.addEventListener('touchstart', close, { passive: true })
@@ -69,10 +82,24 @@ function AddressCombobox<T extends PlaceRecord>({
       document.removeEventListener('mousedown', close)
       document.removeEventListener('touchstart', close)
     }
-  }, [])
+  }, [open])
+
+  // Reposition on scroll/resize while open
+  useEffect(() => {
+    if (!open) return
+    function reposition() { setDropRect(measureRect()) }
+    window.addEventListener('scroll', reposition, { passive: true, capture: true })
+    window.addEventListener('resize', reposition, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   function openDropdown() {
     if (disabled) return
+    setDropRect(measureRect())
     setOpen(true)
     setQuery('')
     inputRef.current?.focus()
@@ -92,12 +119,37 @@ function AddressCombobox<T extends PlaceRecord>({
     setOpen(false)
   }
 
+  const dropdown = open && dropRect ? createPortal(
+    <div
+      ref={dropRef}
+      style={{ position: 'absolute', top: dropRect.top, left: dropRect.left, width: dropRect.width, zIndex: 9999 }}
+      className="bg-white border border-gray-200 rounded-xl shadow-2xl max-h-64 overflow-y-auto"
+    >
+      {filtered.length === 0 ? (
+        <p className="px-4 py-3 text-sm text-gray-400 text-center">ไม่พบข้อมูล</p>
+      ) : (
+        filtered.slice(0, 100).map(r => (
+          <button
+            key={r.th}
+            type="button"
+            onMouseDown={e => { e.preventDefault(); handleSelect(r) }}
+            onTouchEnd={e => { e.preventDefault(); handleSelect(r) }}
+            className="w-full text-left px-4 py-2.5 hover:bg-blue-50 active:bg-blue-100 transition text-sm text-gray-800 border-b border-gray-50 last:border-0"
+          >
+            {r.th}
+            {r.en && <span className="ml-2 text-xs text-gray-400">{r.en}</span>}
+          </button>
+        ))
+      )}
+    </div>,
+    document.body
+  ) : null
+
   return (
     <div>
       <label className="block text-xs text-gray-500 mb-1.5 font-medium">{label}</label>
       <div ref={containerRef} className="relative">
-        {/* Invisible tap target to open — sits over the input */}
-        {!open && (
+        {!open && !disabled && (
           <div
             className="absolute inset-0 z-10 cursor-pointer"
             onClick={openDropdown}
@@ -108,7 +160,7 @@ function AddressCombobox<T extends PlaceRecord>({
           ref={inputRef}
           value={open ? query : (value || '')}
           onChange={e => setQuery(e.target.value)}
-          onFocus={() => { if (!disabled) { setOpen(true); setQuery('') } }}
+          onFocus={() => { if (!disabled && !open) openDropdown() }}
           placeholder={disabled ? 'เลือกระดับก่อนหน้าก่อน' : placeholder}
           disabled={disabled}
           className={`${INPUT_CLS} pr-8 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -124,28 +176,8 @@ function AddressCombobox<T extends PlaceRecord>({
             <ChevronDown className="w-4 h-4 text-gray-400 pointer-events-none" />
           )}
         </div>
-
-        {open && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
-            {filtered.length === 0 ? (
-              <p className="px-3 py-3 text-sm text-gray-400 text-center">ไม่พบข้อมูล</p>
-            ) : (
-              filtered.slice(0, 100).map(r => (
-                <button
-                  key={r.th}
-                  type="button"
-                  onMouseDown={e => { e.preventDefault(); handleSelect(r) }}
-                  onTouchEnd={e => { e.preventDefault(); handleSelect(r) }}
-                  className="w-full text-left px-4 py-2.5 hover:bg-blue-50 active:bg-blue-100 transition border-b border-gray-50 last:border-0"
-                >
-                  <span className="text-sm text-gray-800">{r.th}</span>
-                  {r.en && <span className="ml-2 text-xs text-gray-400">{r.en}</span>}
-                </button>
-              ))
-            )}
-          </div>
-        )}
       </div>
+      {dropdown}
     </div>
   )
 }
@@ -157,7 +189,7 @@ export default function AddressSelector({ province, district, subdistrict, zip, 
 
   useEffect(() => {
     if (isValidPlaces(globalPlaces)) { setPlaces(globalPlaces); return }
-    globalPlaces = null // clear stale cache (old format)
+    globalPlaces = null
     fetch(API_URL)
       .then(r => r.json())
       .then((data: unknown) => {
@@ -193,7 +225,6 @@ export default function AddressSelector({ province, district, subdistrict, zip, 
     onChange('zip', r.zip)
   }, [onChange])
 
-  // Plain text fallback while loading
   if (!places) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -215,7 +246,6 @@ export default function AddressSelector({ province, district, subdistrict, zip, 
         onSelect={handleProvince}
         onClear={() => { onChange('province', ''); onChange('district', ''); onChange('subdistrict', ''); onChange('zip', '') }}
       />
-
       <AddressCombobox
         label="เขต / อำเภอ"
         value={district}
@@ -225,7 +255,6 @@ export default function AddressSelector({ province, district, subdistrict, zip, 
         onSelect={handleDistrict}
         onClear={() => { onChange('district', ''); onChange('subdistrict', ''); onChange('zip', '') }}
       />
-
       <AddressCombobox<SubdistrictRecord>
         label="แขวง / ตำบล"
         value={subdistrict}
@@ -235,7 +264,6 @@ export default function AddressSelector({ province, district, subdistrict, zip, 
         onSelect={handleSubdistrict}
         onClear={() => { onChange('subdistrict', ''); onChange('zip', '') }}
       />
-
       <div>
         <label className="block text-xs text-gray-500 mb-1.5 font-medium">รหัสไปรษณีย์</label>
         <input
