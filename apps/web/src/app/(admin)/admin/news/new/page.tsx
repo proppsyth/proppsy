@@ -14,7 +14,6 @@ export default function NewNewsPage() {
   const [error, setError] = useState('')
   const [form, setForm] = useState({ title: '', summary: '', content: '', published: false })
   const coverRef = useRef<HTMLInputElement>(null)
-
   const coverState = useDocumentUpload({ category: 'news-covers' })
 
   function set(key: keyof typeof form, value: string | boolean) {
@@ -27,9 +26,9 @@ export default function NewNewsPage() {
     setError('')
     startTransition(async () => {
       const res = await createNews({
-        title: form.title.trim(),
-        summary: form.summary.trim() || undefined,
-        content: form.content.trim() || undefined,
+        title:     form.title.trim(),
+        summary:   form.summary.trim() || undefined,
+        content:   form.content.trim() || undefined,
         cover_url: coverState.url || undefined,
         published: form.published,
       })
@@ -46,13 +45,9 @@ export default function NewNewsPage() {
         <ArrowLeft className="w-4 h-4" />
         กลับจัดการข่าว
       </Link>
-
       <h1 className="text-xl font-bold text-gray-900 mb-6">เพิ่มข่าวสาร</h1>
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
-
-          {/* Cover image */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">รูปหน้าปก</label>
             {coverState.url ? (
@@ -73,19 +68,9 @@ export default function NewNewsPage() {
                 )}
               </button>
             )}
-            <input
-              ref={coverRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={e => {
-                const file = e.target.files?.[0]
-                if (file) coverState.upload(file)
-                e.target.value = ''
-              }}
-            />
+            <input ref={coverRef} type="file" accept="image/*" className="hidden"
+              onChange={e => { const file = e.target.files?.[0]; if (file) coverState.upload(file); e.target.value = '' }} />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">หัวข้อข่าว *</label>
             <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="หัวข้อข่าว"
@@ -114,9 +99,7 @@ export default function NewNewsPage() {
             </div>
           </div>
         </div>
-
         {error && <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>}
-
         <div className="flex gap-3">
           <Link href="/admin/news" className="flex-1 py-3 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition text-center">
             ยกเลิก

@@ -5,9 +5,9 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  Users, UserCheck, Building2, Calendar,
-  TrendingUp, Settings, LogOut, ShieldCheck, Zap, CreditCard, Newspaper,
-  Menu,
+  LayoutDashboard, Home as HomeIcon, FileText, UserCheck, Users, Building2,
+  Calendar, TrendingUp, Zap, CreditCard, Settings, LogOut, ShieldAlert,
+  Menu, ChevronRight,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
@@ -29,30 +29,56 @@ const NAV_ITEMS = [
   { href: '/credits', icon: '⚡', label: 'เครดิต', permission: null },
 ]
 
-const ADMIN_ITEMS = [
-  { href: '/admin/users', icon: '👑', label: 'จัดการผู้ใช้' },
-  { href: '/admin/news', icon: '📰', label: 'จัดการข่าว' },
+// Quick action grid for the mobile bottom sheet
+const SHEET_GRID = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'หน้าหลัก', permission: null },
+  { href: '/stock',     icon: HomeIcon,        label: 'ทรัพย์',   permission: 'stock' },
+  { href: '/contracts', icon: FileText,         label: 'สัญญา',   permission: 'contract' },
+  { href: '/owners',    icon: UserCheck,        label: 'เจ้าของ',  permission: 'owner' },
+  { href: '/customers', icon: Users,            label: 'ลูกค้า',   permission: 'customer' },
+  { href: '/projects',  icon: Building2,        label: 'โครงการ',  permission: 'project' },
+  { href: '/calendar',  icon: Calendar,         label: 'นัดหมาย', permission: null },
+  { href: '/commission',icon: TrendingUp,       label: 'คอมมิชชัน', permission: null },
+  { href: '/credits',   icon: Zap,             label: 'เครดิต',   permission: null },
 ]
 
-const MORE_ITEMS_BASE = [
-  { href: '/owners', icon: UserCheck, label: 'เจ้าของทรัพย์' },
-  { href: '/customers', icon: Users, label: 'ลูกค้า' },
-  { href: '/projects', icon: Building2, label: 'โครงการ' },
-  { href: '/calendar', icon: Calendar, label: 'นัดหมาย' },
-  { href: '/commission', icon: TrendingUp, label: 'คอมมิชชัน' },
-  { href: '/credits', icon: Zap, label: 'เครดิต' },
-  { href: '/billing', icon: CreditCard, label: 'การชำระเงิน' },
-]
+// Reusable avatar: shows actual image if available, else initials
+function ProfileAvatar({
+  profile,
+  className,
+  textClassName,
+}: {
+  profile: Profile
+  className: string
+  textClassName: string
+}) {
+  const initials = (profile.nickname || profile.name || 'U').charAt(0).toUpperCase()
 
-const MORE_ITEMS_ADMIN = [
-  { href: '/admin/users', icon: ShieldCheck, label: 'จัดการผู้ใช้' },
-  { href: '/admin/news', icon: Newspaper, label: 'จัดการข่าว' },
-]
+  if (profile.avatar_url) {
+    return (
+      <div className={`${className} rounded-full overflow-hidden flex-shrink-0 relative bg-gray-100`}>
+        <Image
+          src={profile.avatar_url}
+          alt={initials}
+          fill
+          className="object-cover"
+          sizes="64px"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className={`${className} bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold flex-shrink-0 ${textClassName}`}>
+      {initials}
+    </div>
+  )
+}
 
 export default function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const [moreOpen, setMoreOpen] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -75,7 +101,9 @@ export default function Sidebar({ profile }: SidebarProps) {
 
   return (
     <>
-      {/* ── Desktop Sidebar ── */}
+      {/* ════════════════════════════════════════
+          DESKTOP SIDEBAR (unchanged)
+      ════════════════════════════════════════ */}
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 flex-col z-30">
         <div className="p-4 border-b border-gray-100">
           <Link href="/" className="flex items-center gap-2.5">
@@ -86,9 +114,7 @@ export default function Sidebar({ profile }: SidebarProps) {
 
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-semibold text-sm">
-              {(profile.nickname || profile.name || 'U').charAt(0)}
-            </div>
+            <ProfileAvatar profile={profile} className="w-9 h-9" textClassName="text-sm" />
             <div className="min-w-0">
               <p className="text-sm font-medium text-gray-800 truncate">{profile.nickname || profile.name}</p>
               <p className="text-xs text-gray-400 truncate">{profile.position || profile.company_name || profile.email}</p>
@@ -113,25 +139,13 @@ export default function Sidebar({ profile }: SidebarProps) {
           ))}
 
           {profile.role === 'admin' && (
-            <>
-              <div className="pt-4 pb-1 px-3">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">แอดมิน</p>
-              </div>
-              {ADMIN_ITEMS.map(item => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-                    isActive(item.href)
-                      ? 'bg-blue-600 text-white font-medium'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <span className="w-5 shrink-0 text-center leading-none">{item.icon}</span>
-                  {item.label}
-                </Link>
-              ))}
-            </>
+            <Link
+              href="/admin"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all mt-2 bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 font-medium"
+            >
+              <ShieldAlert className="w-4 h-4 flex-shrink-0 text-indigo-600" />
+              Admin Panel
+            </Link>
           )}
         </nav>
 
@@ -153,103 +167,169 @@ export default function Sidebar({ profile }: SidebarProps) {
         </div>
       </aside>
 
-      {/* ── Mobile: top bar ── */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur border-b border-gray-100 z-30 flex items-center px-4 gap-3">
+      {/* ════════════════════════════════════════
+          MOBILE: Top Bar
+          hamburger (far left) · logo · avatar (far right)
+      ════════════════════════════════════════ */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur-md border-b border-gray-100 z-30 flex items-center px-4">
+        {/* Hamburger — far left */}
         <button
-          onClick={() => setMoreOpen(true)}
-          className="w-8 h-8 flex items-center justify-center text-gray-600 active:bg-gray-100 rounded-lg transition"
+          onClick={() => setSheetOpen(true)}
+          className="w-9 h-9 flex items-center justify-center text-gray-600 active:bg-gray-100 rounded-xl transition"
           aria-label="เปิดเมนู"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <Link href="/" className="flex items-center gap-2">
+        {/* Logo — left-center */}
+        <Link href="/dashboard" className="flex items-center gap-2 ml-2 flex-1 min-w-0">
           <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={26} height={26} className="object-contain rounded-md flex-shrink-0" />
           <span className="font-bold text-base text-gray-900 tracking-tight">Proppsy</span>
         </Link>
 
+        {/* Avatar — far right, tapping opens bottom sheet */}
         <button
-          onClick={() => setMoreOpen(true)}
-          className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm active:bg-blue-200 transition"
+          onClick={() => setSheetOpen(true)}
+          aria-label="เปิดโปรไฟล์"
+          className="ml-auto active:opacity-70 transition flex-shrink-0"
         >
-          {(profile.nickname || profile.name || 'U').charAt(0).toUpperCase()}
+          <ProfileAvatar profile={profile} className="w-8 h-8" textClassName="text-sm" />
         </button>
       </div>
 
       {/* ── Mobile Bottom Navigation ── */}
       <MobileBottomNav profile={profile} />
 
-      {/* ── More Backdrop ── */}
-      {moreOpen && (
+      {/* ════════════════════════════════════════
+          MOBILE: Bottom Sheet Backdrop
+      ════════════════════════════════════════ */}
+      {sheetOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
-          onClick={() => setMoreOpen(false)}
+          className="lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          onClick={() => setSheetOpen(false)}
         />
       )}
 
-      {/* ── More Panel (left slide-in) ── */}
-      <div className={`lg:hidden fixed top-0 left-0 bottom-0 w-72 bg-white z-50 shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
-        moreOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
-        {/* Panel header */}
-        <div className="flex items-center justify-between px-4 h-14 border-b border-gray-100 flex-shrink-0">
-          <Link href="/" className="flex items-center gap-2.5" onClick={() => setMoreOpen(false)}>
-            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={26} height={26} className="object-contain rounded-md flex-shrink-0" />
-            <span className="font-bold text-base text-gray-900 tracking-tight">Proppsy</span>
-          </Link>
-          <button
-            onClick={() => setMoreOpen(false)}
-            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-lg transition"
-            aria-label="ปิดเมนู"
-          >
-            ✕
-          </button>
+      {/* ════════════════════════════════════════
+          MOBILE: Profile Bottom Sheet
+          slides up from bottom, rounded top corners
+      ════════════════════════════════════════ */}
+      <div
+        className={`lg:hidden fixed left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl transition-all duration-300 ease-out overflow-hidden ${
+          sheetOpen ? 'bottom-0' : '-bottom-[100%]'
+        }`}
+        style={{ maxHeight: '88dvh' }}
+      >
+        {/* Pull handle */}
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-10 h-1 bg-gray-200 rounded-full" />
         </div>
 
-        {/* Profile row */}
-        <div className="flex items-center gap-3 mx-4 mt-4 mb-3 p-3 bg-gray-50 rounded-xl">
-          <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm flex-shrink-0">
-            {(profile.nickname || profile.name || 'U').charAt(0).toUpperCase()}
+        <div className="overflow-y-auto" style={{ maxHeight: 'calc(88dvh - 28px)' }}>
+          {/* ── Profile card ── */}
+          <div className="flex items-center gap-4 px-5 py-3">
+            <ProfileAvatar profile={profile} className="w-14 h-14" textClassName="text-xl" />
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-gray-900 text-base leading-tight truncate">
+                {profile.nickname || profile.name}
+              </p>
+              <p className="text-sm text-gray-400 truncate mt-0.5">
+                {profile.position || profile.company_name || profile.email}
+              </p>
+              {profile.role === 'admin' && (
+                <span className="inline-block mt-1.5 text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+                  Admin
+                </span>
+              )}
+            </div>
+            <Link
+              href="/profile"
+              onClick={() => setSheetOpen(false)}
+              className="w-9 h-9 flex items-center justify-center text-gray-400 bg-gray-50 active:bg-gray-100 rounded-xl transition flex-shrink-0"
+              aria-label="ไปหน้าตั้งค่า"
+            >
+              <Settings className="w-4.5 h-4.5 w-[18px] h-[18px]" />
+            </Link>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-gray-900 truncate">{profile.nickname || profile.name}</p>
-            <p className="text-xs text-gray-400 truncate">{profile.position || profile.company_name || profile.email}</p>
-          </div>
-          <Link href="/profile" onClick={() => setMoreOpen(false)}>
-            <Settings className="w-4 h-4 text-gray-400" />
-          </Link>
-        </div>
 
-        {/* Nav items */}
-        <nav className="flex-1 px-3 overflow-y-auto space-y-0.5 pb-4">
-          {[...MORE_ITEMS_BASE, ...(profile.role === 'admin' ? MORE_ITEMS_ADMIN : [])].map(item => {
-            const Icon = item.icon
-            const active = isActive(item.href)
-            return (
+          <div className="h-px bg-gray-100 mx-5 mb-4 mt-1" />
+
+          {/* ── Quick nav grid (3 columns) ── */}
+          <div className="px-4 mb-4">
+            <div className="grid grid-cols-3 gap-2">
+              {SHEET_GRID.filter(item => hasPermission(item.permission)).map(item => {
+                const Icon = item.icon
+                const active = isActive(item.href)
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setSheetOpen(false)}
+                    className={`flex flex-col items-center gap-1.5 py-3.5 rounded-2xl transition active:scale-95 ${
+                      active
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'bg-gray-50 text-gray-600 active:bg-gray-100'
+                    }`}
+                  >
+                    <Icon className={`w-[22px] h-[22px] ${active ? 'text-blue-600' : 'text-gray-500'}`} />
+                    <span className={`text-[11px] font-medium leading-none ${active ? 'text-blue-600' : 'text-gray-600'}`}>
+                      {item.label}
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* ── Account shortcuts (2 columns) ── */}
+          <div className="px-4 mb-3 grid grid-cols-2 gap-2">
+            <Link
+              href="/billing"
+              onClick={() => setSheetOpen(false)}
+              className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl transition active:scale-95 ${
+                isActive('/billing') ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-700 active:bg-gray-100'
+              }`}
+            >
+              <CreditCard className="w-4 h-4 flex-shrink-0 text-gray-400" />
+              <span className="text-sm font-medium">ชำระเงิน</span>
+            </Link>
+            <Link
+              href="/profile"
+              onClick={() => setSheetOpen(false)}
+              className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl transition active:scale-95 ${
+                isActive('/profile') ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-700 active:bg-gray-100'
+              }`}
+            >
+              <Settings className="w-4 h-4 flex-shrink-0 text-gray-400" />
+              <span className="text-sm font-medium">ตั้งค่า</span>
+            </Link>
+          </div>
+
+          {/* ── Admin Panel link (admin only) ── */}
+          {profile.role === 'admin' && (
+            <div className="px-4 mb-3">
               <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMoreOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
-                  active ? 'bg-blue-600 text-white font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`}
+                href="/admin"
+                onClick={() => setSheetOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 active:bg-slate-100 transition active:scale-95"
               >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                {item.label}
+                <ShieldAlert className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                <span className="text-sm font-semibold flex-1">Admin Panel</span>
+                <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
               </Link>
-            )
-          })}
-        </nav>
+            </div>
+          )}
 
-        {/* Sign out */}
-        <div className="p-4 border-t border-gray-100 flex-shrink-0">
-          <button
-            onClick={handleSignOut}
-            className="w-full flex items-center justify-center gap-2 py-3 text-red-500 bg-red-50 rounded-xl text-sm font-semibold active:bg-red-100 transition"
-          >
-            <LogOut className="w-4 h-4" />
-            ออกจากระบบ
-          </button>
+          {/* ── Logout ── */}
+          <div className="px-4 pb-10">
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center justify-center gap-2.5 py-3.5 bg-red-50 text-red-500 rounded-2xl text-sm font-semibold active:bg-red-100 transition active:scale-95"
+            >
+              <LogOut className="w-4 h-4" />
+              ออกจากระบบ
+            </button>
+          </div>
         </div>
       </div>
     </>

@@ -22,11 +22,11 @@ export async function createNews(data: {
   try {
     const { supabase, user } = await assertAdmin()
     const { error } = await supabase.from('news').insert({
-      title: data.title,
-      summary: data.summary || null,
-      content: data.content || null,
-      cover_url: data.cover_url || null,
-      published: data.published,
+      title:      data.title,
+      summary:    data.summary || null,
+      content:    data.content || null,
+      cover_url:  data.cover_url || null,
+      published:  data.published,
       created_by: user.id,
     })
     if (error) return { error: error.message }

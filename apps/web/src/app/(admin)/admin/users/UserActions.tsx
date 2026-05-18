@@ -22,7 +22,7 @@ const STATUS_OPTS: { value: AccountStatus; label: string }[] = [
 ]
 
 const PLAN_OPTS: { value: Plan; label: string; desc: string }[] = [
-  { value: 'starter', label: 'Starter (ฟรี)', desc: 'ทรัพย์ 10 / สัญญา 5/เดือน / ไม่มี AI' },
+  { value: 'starter', label: 'Starter (ฟรี)', desc: 'ทรัพย์ 10 / สัญญา 5/เดือน' },
   { value: 'professional', label: 'Professional', desc: 'ไม่จำกัด + AI + Marketplace' },
   { value: 'business', label: 'Business', desc: 'ทุกอย่าง + ทีมสูงสุด 5 คน' },
 ]
@@ -45,39 +45,6 @@ export default function UserActions({ user }: Props) {
   })
 
   const busy = approvePending || rejectPending || deletePending || editPending
-
-  function handleApprove() {
-    startApprove(async () => { await approveUser(user.id) })
-  }
-
-  function handleReject() {
-    if (!confirm(`ยืนยันปฏิเสธบัญชีของ "${user.name || user.email}"?`)) return
-    startReject(async () => { await rejectUser(user.id) })
-  }
-
-  function handleDelete() {
-    if (!confirm(`ลบบัญชี "${user.name || user.email}" ออกจากระบบถาวร?\nการกระทำนี้ไม่สามารถย้อนกลับได้`)) return
-    startDelete(async () => {
-      const res = await deleteUser(user.id)
-      if (res.error) setError(res.error)
-    })
-  }
-
-  function handleEditSave() {
-    setError('')
-    startEdit(async () => {
-      const res = await updateUser(user.id, {
-        name: form.name || undefined,
-        nickname: form.nickname || undefined,
-        phone: form.phone || undefined,
-        role: form.role,
-        account_status: form.account_status,
-        plan: form.plan,
-      })
-      if (res.error) { setError(res.error); return }
-      setEditing(false)
-    })
-  }
 
   if (editing) {
     return (
@@ -143,7 +110,23 @@ export default function UserActions({ user }: Props) {
             className="flex-1 py-2 border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition disabled:opacity-50">
             ยกเลิก
           </button>
-          <button onClick={handleEditSave} disabled={busy}
+          <button
+            onClick={() => {
+              setError('')
+              startEdit(async () => {
+                const res = await updateUser(user.id, {
+                  name: form.name || undefined,
+                  nickname: form.nickname || undefined,
+                  phone: form.phone || undefined,
+                  role: form.role,
+                  account_status: form.account_status,
+                  plan: form.plan,
+                })
+                if (res.error) { setError(res.error); return }
+                setEditing(false)
+              })
+            }}
+            disabled={busy}
             className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition disabled:bg-blue-300">
             {editPending ? 'กำลังบันทึก...' : 'บันทึก'}
           </button>
@@ -152,39 +135,41 @@ export default function UserActions({ user }: Props) {
     )
   }
 
-  const planMeta = PLAN_META[resolvePlan(user.plan)]
-
   return (
     <div className="pt-3 border-t border-gray-100 space-y-2">
-      {/* Plan badge */}
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-400">แพ็กเกจ</span>
-        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${planMeta.badge}`}>
-          {planMeta.label}
-        </span>
-      </div>
-
-      {/* Approve / Reject for pending */}
       {user.account_status === 'pending' && (
         <div className="flex gap-2">
-          <button onClick={handleApprove} disabled={busy}
+          <button
+            onClick={() => startApprove(async () => { await approveUser(user.id) })}
+            disabled={busy}
             className="flex-1 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white text-sm font-medium rounded-lg transition">
             {approvePending ? 'กำลังอนุมัติ...' : 'อนุมัติ'}
           </button>
-          <button onClick={handleReject} disabled={busy}
+          <button
+            onClick={() => {
+              if (!confirm(`ยืนยันปฏิเสธบัญชีของ "${user.name || user.email}"?`)) return
+              startReject(async () => { await rejectUser(user.id) })
+            }}
+            disabled={busy}
             className="flex-1 py-2 border border-red-200 bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 text-sm font-medium rounded-lg transition">
             {rejectPending ? 'กำลังปฏิเสธ...' : 'ปฏิเสธ'}
           </button>
         </div>
       )}
-
-      {/* Edit / Delete for all */}
       <div className="flex gap-2">
         <button onClick={() => setEditing(true)} disabled={busy}
           className="flex-1 py-2 border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition disabled:opacity-50">
           ✏️ แก้ไข
         </button>
-        <button onClick={handleDelete} disabled={busy}
+        <button
+          onClick={() => {
+            if (!confirm(`ลบบัญชี "${user.name || user.email}" ออกจากระบบถาวร?\nการกระทำนี้ไม่สามารถย้อนกลับได้`)) return
+            startDelete(async () => {
+              const res = await deleteUser(user.id)
+              if (res.error) setError(res.error)
+            })
+          }}
+          disabled={busy}
           className="py-2 px-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-sm rounded-lg transition disabled:opacity-50">
           {deletePending ? '...' : '🗑️'}
         </button>

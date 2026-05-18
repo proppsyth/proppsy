@@ -1,19 +1,16 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Newspaper } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import NewsCard from './NewsCard'
 
-export const metadata: Metadata = { title: 'จัดการข่าว' }
+export const metadata: Metadata = { title: 'จัดการข่าว — Admin' }
 
 export default async function AdminNewsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') redirect('/dashboard')
 
   const { data: news } = await supabase
     .from('news')
