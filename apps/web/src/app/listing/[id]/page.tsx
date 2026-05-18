@@ -22,11 +22,55 @@ export async function generateMetadata({
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('stock')
-    .select('project_name, room_type, unit_no')
+    .select('project_name, room_type, unit_no, listing_type, rent_price, sale_price, size_sqm, photo_urls, project:projects(district, province)')
     .eq('id', id)
     .single()
-  const title = [data?.project_name, data?.room_type, data?.unit_no].filter(Boolean).join(' · ')
-  return { title: title ? `${title} — Proppsy` : 'รายละเอียดทรัพย์ — Proppsy' }
+
+  if (!data) return { title: 'รายละเอียดทรัพย์ — Proppsy' }
+
+  const d = data as {
+    project_name?: string | null; room_type?: string | null; unit_no?: string | null
+    listing_type?: string | null; rent_price?: number | null; sale_price?: number | null
+    size_sqm?: number | null; photo_urls?: string[] | null
+    project?: { district?: string | null; province?: string | null } | null
+  }
+  const fmtN = (n: number) => new Intl.NumberFormat('th-TH').format(n)
+  const isRent = d.listing_type !== 'sale'
+  const isSale = d.listing_type !== 'rent'
+  const nameParts = [d.project_name, d.unit_no].filter(Boolean).join(' · ')
+  const priceStr = isRent && d.rent_price
+    ? `เช่า ฿${fmtN(d.rent_price)}/เดือน`
+    : isSale && d.sale_price
+      ? `ขาย ฿${fmtN(d.sale_price)}`
+      : null
+  const location = [d.project?.district, d.project?.province].filter(Boolean).join(', ')
+  const roomLabel = d.room_type ? formatRoomType(d.room_type) : null
+
+  const title = [nameParts || 'ทรัพย์', roomLabel, priceStr].filter(Boolean).join(' · ')
+  const description = [
+    roomLabel && d.project_name ? `${roomLabel}ใน${d.project_name}` : roomLabel,
+    location && `ย่าน${location}`,
+    d.size_sqm && `ขนาด ${d.size_sqm} ตร.ม.`,
+    priceStr,
+  ].filter(Boolean).join(' | ')
+  const firstPhoto = d.photo_urls?.[0] ?? null
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      ...(firstPhoto && { images: [{ url: firstPhoto, width: 1200, height: 628, alt: title }] }),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(firstPhoto && { images: [firstPhoto] }),
+    },
+  }
 }
 
 function fmt(n: number) {
@@ -249,6 +293,41 @@ export default async function PublicPropertyDetailPage({
       <footer className="border-t border-gray-100 mt-12 py-8 text-center text-xs text-gray-400">
         © {new Date().getFullYear()} Proppsy · Real Estate Management Platform
       </footer>
+
+      {/* JSON-LD structured data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Apartment',
+            name: [projectName, stock.unit_no].filter(Boolean).join(' · ') || 'ทรัพย์',
+            url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app'}/listing/${stock.id}`,
+            image: (stock.photo_urls ?? []).slice(0, 5),
+            ...(stock.project && {
+              address: {
+                '@type': 'PostalAddress',
+                streetAddress: stock.project.address_road ?? undefined,
+                addressLocality: stock.project.district ?? undefined,
+                addressRegion: stock.project.province ?? undefined,
+                addressCountry: 'TH',
+              },
+            }),
+            ...(stock.size_sqm && {
+              floorSize: { '@type': 'QuantitativeValue', value: stock.size_sqm, unitCode: 'MTK' },
+            }),
+            ...(stock.floor && { floorLevel: String(stock.floor) }),
+            offers: [
+              ...(isRent && stock.rent_price != null
+                ? [{ '@type': 'Offer', price: stock.rent_price, priceCurrency: 'THB', availability: 'https://schema.org/InStock' }]
+                : []),
+              ...(isSale && stock.sale_price != null
+                ? [{ '@type': 'Offer', price: stock.sale_price, priceCurrency: 'THB', availability: 'https://schema.org/InStock' }]
+                : []),
+            ],
+          }),
+        }}
+      />
 
       {/* Sticky bottom inquiry bar */}
       <StickyActionBar

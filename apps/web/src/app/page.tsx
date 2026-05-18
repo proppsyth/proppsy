@@ -11,7 +11,20 @@ import FilterBar from './listing/FilterBar'
 import HeroBanner from './listing/HeroBanner'
 import StatsCounter from './listing/StatsCounter'
 
-export const metadata: Metadata = { title: 'Proppsy — ค้นหาที่พัก' }
+export const metadata: Metadata = {
+  title: 'Proppsy — ค้นหาที่พัก เช่า ขาย คอนโด บ้าน',
+  description: 'ค้นหาคอนโด บ้าน และทรัพย์สินให้เช่า-ขายในประเทศไทย ดูประกาศจากเอเจนต์มืออาชีพ ราคาตรงจากเจ้าของ',
+  openGraph: {
+    title: 'Proppsy — ค้นหาที่พัก เช่า ขาย คอนโด บ้าน',
+    description: 'ค้นหาคอนโด บ้าน และทรัพย์สินให้เช่า-ขายในประเทศไทย ดูประกาศจากเอเจนต์มืออาชีพ',
+    url: '/',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Proppsy — ค้นหาที่พัก เช่า ขาย คอนโด บ้าน',
+    description: 'ค้นหาคอนโด บ้าน และทรัพย์สินให้เช่า-ขายในประเทศไทย',
+  },
+}
 
 // ── เปลี่ยน YouTube Video ID ที่นี่ ──────────────────────────
 const YOUTUBE_ID = '16IweHfUBa4'

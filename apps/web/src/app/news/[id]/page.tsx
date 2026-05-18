@@ -3,14 +3,41 @@ import { notFound } from 'next/navigation'
 import StorageImage from '@/components/shared/StorageImage'
 import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import PublicNav from '@/components/shared/PublicNav'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
-  const supabase = await createClient()
-  const { data } = await supabase.from('news').select('title').eq('id', id).eq('published', true).single()
-  return { title: data?.title ? `${data.title} — Proppsy` : 'ข่าวสาร — Proppsy' }
+  const supabase = createServiceClient()
+  const { data } = await supabase
+    .from('news')
+    .select('title, summary, cover_url, created_at')
+    .eq('id', id)
+    .eq('published', true)
+    .single()
+
+  if (!data?.title) return { title: 'ข่าวสาร — Proppsy' }
+
+  const title = `${data.title} — Proppsy`
+  const description = data.summary ?? 'อ่านข่าวสารอสังหาริมทรัพย์จาก Proppsy'
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      ...(data.cover_url && { images: [{ url: data.cover_url, width: 1200, height: 628, alt: data.title }] }),
+      ...(data.created_at && { publishedTime: data.created_at }),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(data.cover_url && { images: [data.cover_url] }),
+    },
+  }
 }
 
 export default async function NewsDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -57,6 +84,26 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ id:
       <footer className="border-t border-gray-100 mt-8 py-6 text-center text-xs text-gray-400">
         © {new Date().getFullYear()} Proppsy
       </footer>
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'NewsArticle',
+            headline: news.title,
+            ...(news.summary && { description: news.summary }),
+            ...(news.cover_url && { image: [news.cover_url] }),
+            datePublished: news.created_at,
+            url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app'}/news/${news.id}`,
+            publisher: {
+              '@type': 'Organization',
+              name: 'Proppsy',
+              url: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app',
+            },
+          }),
+        }}
+      />
     </div>
   )
 }

@@ -55,12 +55,22 @@ export async function generateMetadata({
     || 'เอเจนต์'
   const imageUrl = data.avatar_url || data.logo_url
 
+  const description = data.bio || `ดูประกาศทรัพย์สินจาก ${name} บน Proppsy`
   return {
     title: `${name} — เอเจนต์อสังหาฯ · Proppsy`,
-    description: data.bio || `ดูประกาศทรัพย์สินจาก ${name} บน Proppsy`,
-    openGraph: imageUrl
-      ? { images: [{ url: imageUrl }] }
-      : undefined,
+    description,
+    openGraph: {
+      title: `${name} — เอเจนต์อสังหาฯ`,
+      description,
+      type: 'profile',
+      ...(imageUrl && { images: [{ url: imageUrl, width: 400, height: 400, alt: name }] }),
+    },
+    twitter: {
+      card: imageUrl ? 'summary' : 'summary',
+      title: `${name} — เอเจนต์อสังหาฯ`,
+      description,
+      ...(imageUrl && { images: [imageUrl] }),
+    },
   }
 }
 
@@ -222,6 +232,24 @@ export default async function AgentProfilePage({
       <footer className="border-t border-gray-100 py-8 text-center text-xs text-gray-400">
         © {new Date().getFullYear()} Proppsy · Real Estate Management Platform
       </footer>
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'RealEstateAgent',
+            name: displayName,
+            ...(agent.bio && { description: agent.bio }),
+            ...(avatarUrl && { image: avatarUrl }),
+            url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app'}/agent/${slug}`,
+            ...(agent.show_phone && agent.phone && { telephone: agent.phone }),
+            ...(agent.company_name && {
+              worksFor: { '@type': 'Organization', name: agent.company_name },
+            }),
+          }),
+        }}
+      />
     </div>
   )
 }

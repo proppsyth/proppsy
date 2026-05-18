@@ -20,11 +20,12 @@ const ibmPlexSans = IBM_Plex_Sans({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app'),
   title: {
-    default: 'Proppsy — Real Estate Agent Management',
+    default: 'Proppsy — ค้นหาที่พักและทรัพย์สิน',
     template: '%s | Proppsy',
   },
-  description: 'แพลตฟอร์มจัดการเอเจนต์อสังหาริมทรัพย์สำหรับตลาดไทย',
+  description: 'ค้นหาคอนโด บ้าน และทรัพย์สินให้เช่า-ขายในประเทศไทย ดูประกาศจากเอเจนต์มืออาชีพบน Proppsy',
   manifest: '/manifest.json',
   icons: {
     icon: '/logo/logo.png',
@@ -34,6 +35,19 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'default',
     title: 'Proppsy',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'th_TH',
+    siteName: 'Proppsy',
+    title: 'Proppsy — ค้นหาที่พักและทรัพย์สิน',
+    description: 'ค้นหาคอนโด บ้าน และทรัพย์สินให้เช่า-ขายในประเทศไทย ดูประกาศจากเอเจนต์มืออาชีพบน Proppsy',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    site: '@proppsy',
+    title: 'Proppsy — ค้นหาที่พักและทรัพย์สิน',
+    description: 'ค้นหาคอนโด บ้าน และทรัพย์สินให้เช่า-ขายในประเทศไทย',
   },
 }
 
