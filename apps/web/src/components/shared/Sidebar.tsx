@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Home as HomeIcon, FileText, UserCheck, Users, Building2,
   Calendar, TrendingUp, Zap, CreditCard, Settings, LogOut, ShieldAlert,
-  Menu, ChevronRight,
+  Menu, ChevronRight, Layers, Newspaper, Info, HelpCircle, Phone,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
@@ -27,6 +27,15 @@ const NAV_ITEMS = [
   { href: '/calendar', icon: '📅', label: 'นัดหมาย & ปฏิทิน', permission: null },
   { href: '/commission', icon: '💰', label: 'คอมมิชชัน', permission: null },
   { href: '/credits', icon: '⚡', label: 'เครดิต', permission: null },
+]
+
+// Public nav items for the hamburger dropdown
+const DROPDOWN_NAV = [
+  { href: '/services', icon: Layers,       label: 'บริการ' },
+  { href: '/news',     icon: Newspaper,    label: 'ข่าวสาร' },
+  { href: '/about',    icon: Info,         label: 'เกี่ยวกับเรา' },
+  { href: '/faq',      icon: HelpCircle,   label: 'คู่มือ & FAQ' },
+  { href: '/contact',  icon: Phone,        label: 'ติดต่อเรา' },
 ]
 
 // Quick action grid for the mobile bottom sheet
@@ -79,6 +88,7 @@ export default function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -169,25 +179,28 @@ export default function Sidebar({ profile }: SidebarProps) {
 
       {/* ════════════════════════════════════════
           MOBILE: Top Bar
-          hamburger (far left) · logo · avatar (far right)
+          hamburger (far left) · logo → "/" · avatar (far right)
       ════════════════════════════════════════ */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur-md border-b border-gray-100 z-30 flex items-center px-4">
-        {/* Hamburger — far left */}
+        {/* Hamburger — toggles small floating dropdown */}
         <button
-          onClick={() => setSheetOpen(true)}
-          className="w-9 h-9 flex items-center justify-center text-gray-600 active:bg-gray-100 rounded-xl transition"
-          aria-label="เปิดเมนู"
+          onClick={() => setDropdownOpen(o => !o)}
+          className={`w-9 h-9 flex items-center justify-center rounded-xl transition ${
+            dropdownOpen ? 'bg-gray-100 text-gray-900' : 'text-gray-600 active:bg-gray-100'
+          }`}
+          aria-label="เมนู"
+          aria-expanded={dropdownOpen}
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Logo — left-center */}
-        <Link href="/dashboard" className="flex items-center gap-2 ml-2 flex-1 min-w-0">
+        {/* Logo → homepage */}
+        <Link href="/" className="flex items-center gap-2 ml-2 flex-1 min-w-0">
           <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={26} height={26} className="object-contain rounded-md flex-shrink-0" />
           <span className="font-bold text-base text-gray-900 tracking-tight">Proppsy</span>
         </Link>
 
-        {/* Avatar — far right, tapping opens bottom sheet */}
+        {/* Avatar — opens bottom sheet */}
         <button
           onClick={() => setSheetOpen(true)}
           aria-label="เปิดโปรไฟล์"
@@ -199,6 +212,45 @@ export default function Sidebar({ profile }: SidebarProps) {
 
       {/* ── Mobile Bottom Navigation ── */}
       <MobileBottomNav profile={profile} />
+
+      {/* ════════════════════════════════════════
+          MOBILE: Hamburger dropdown backdrop (transparent)
+      ════════════════════════════════════════ */}
+      {dropdownOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40"
+          onClick={() => setDropdownOpen(false)}
+        />
+      )}
+
+      {/* ════════════════════════════════════════
+          MOBILE: Floating nav dropdown
+          anchored top-left below hamburger
+      ════════════════════════════════════════ */}
+      <div
+        className={`lg:hidden fixed top-[58px] left-4 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden min-w-[190px] transition-all duration-200 origin-top-left ${
+          dropdownOpen
+            ? 'opacity-100 scale-100 pointer-events-auto'
+            : 'opacity-0 scale-95 pointer-events-none'
+        }`}
+      >
+        {DROPDOWN_NAV.map((item, i) => {
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setDropdownOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 text-sm text-gray-700 active:bg-gray-100 transition ${
+                i < DROPDOWN_NAV.length - 1 ? 'border-b border-gray-50' : ''
+              } hover:bg-gray-50`}
+            >
+              <Icon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              {item.label}
+            </Link>
+          )
+        })}
+      </div>
 
       {/* ════════════════════════════════════════
           MOBILE: Bottom Sheet Backdrop
