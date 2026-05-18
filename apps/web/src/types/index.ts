@@ -88,6 +88,12 @@ export interface Profile {
   omise_customer_id?: string
   team_name?: string
   line_user_id?: string
+  // Public profile fields
+  public_slug?: string
+  bio?: string
+  avatar_url?: string
+  show_phone?: boolean
+  social_links?: Record<string, string>
   created_at: string
   updated_at: string
 }

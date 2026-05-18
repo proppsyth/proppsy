@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
-import { Upload, Loader2, PenLine, ScanLine, BookOpen } from 'lucide-react'
-import { updateProfile, updateSignatureUrl, updateIdCardUrl, parseDocument, parseBankBook } from './actions'
+import { Upload, Loader2, PenLine, ScanLine, BookOpen, Globe } from 'lucide-react'
+import { updateProfile, updateSignatureUrl, updateIdCardUrl, parseDocument, parseBankBook, updatePublicProfile, updateAvatarUrl } from './actions'
 import type { Profile } from '@/types'
 import SignaturePad from '@/components/shared/SignaturePad'
 import AddressSelector from '@/components/shared/AddressSelector'
@@ -12,6 +12,7 @@ import { compressForOcr } from '@/lib/compressForOcr'
 import { useAiQuota } from '@/hooks/useAiQuota'
 import { AiQuotaBadge } from '@/components/shared/AiQuotaBadge'
 import { AiLimitModal } from '@/components/shared/AiLimitModal'
+import { createClient } from '@/lib/supabase/client'
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -68,6 +69,29 @@ function profileToForm(p: Profile): FormState {
   }
 }
 
+// ─── Avatar compression ───────────────────────────────────────
+
+function compressImageToWebP(file: File, maxPx: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image()
+    img.onload = () => {
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height))
+      const w = Math.round(img.width * scale)
+      const h = Math.round(img.height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
+      canvas.toBlob(
+        b => b ? resolve(b) : reject(new Error('canvas toBlob failed')),
+        'image/webp', 0.85,
+      )
+    }
+    img.onerror = reject
+    img.src = URL.createObjectURL(file)
+  })
+}
+
 // ─── Component ───────────────────────────────────────────────
 
 export default function ProfileForm({ profile }: { profile: Profile }) {
@@ -85,6 +109,18 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
 
   const ocrInputRef = useRef<HTMLInputElement>(null)
   const bankOcrInputRef = useRef<HTMLInputElement>(null)
+
+  // ── Public profile state ──
+  const [publicSlug, setPublicSlug] = useState(profile.public_slug ?? '')
+  const [bio, setBio] = useState(profile.bio ?? '')
+  const [showPhone, setShowPhone] = useState(profile.show_phone ?? false)
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? '')
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
+  const [publicSaving, setPublicSaving] = useState(false)
+  const [publicError, setPublicError] = useState('')
+  const [publicSuccess, setPublicSuccess] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   const set = (k: keyof FormState, v: string) =>
     setForm(f => ({ ...f, [k]: v }))
@@ -201,6 +237,50 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
     setForm(profileToForm(profile))
     setEditing(false)
     setError('')
+  }
+
+  // ── Avatar upload ────────────────────────────────────────────
+
+  async function handleAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setAvatarError('')
+    setAvatarUploading(true)
+    try {
+      const blob = await compressImageToWebP(file, 400)
+      const supabase = createClient()
+      const path = `${profile.id}/avatar.webp`
+      const { error: upErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, blob, { upsert: true, contentType: 'image/webp' })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+      const url = `${publicUrl}?v=${Date.now()}`
+      const result = await updateAvatarUrl(url)
+      if (result.error) { setAvatarError(result.error); return }
+      setAvatarUrl(url)
+    } catch {
+      setAvatarError('อัพโหลดรูปไม่สำเร็จ')
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
+  // ── Public profile save ──────────────────────────────────────
+
+  async function handleSavePublicProfile() {
+    setPublicError('')
+    setPublicSuccess(false)
+    setPublicSaving(true)
+    const result = await updatePublicProfile({
+      public_slug: publicSlug.trim() || null,
+      bio: bio.trim() || null,
+      show_phone: showPhone,
+    })
+    setPublicSaving(false)
+    if (result.error) setPublicError(result.error)
+    else setPublicSuccess(true)
   }
 
   const createdDate = profile.created_at
@@ -588,6 +668,131 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
             )}
           </div>
         )}
+      </Section>
+
+      {/* ── โปรไฟล์สาธารณะ ── */}
+      <Section title="โปรไฟล์สาธารณะ">
+        <div className="space-y-5">
+          {/* Avatar */}
+          <div>
+            <Label>รูปโปรไฟล์</Label>
+            <div className="flex items-center gap-4">
+              <div className="relative flex-shrink-0">
+                {avatarUrl ? (
+                  <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-blue-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-2xl">
+                    {(profile.nickname ?? profile.first_name_th ?? profile.name ?? 'A').charAt(0).toUpperCase()}
+                  </div>
+                )}
+                {avatarUploading && (
+                  <div className="absolute inset-0 bg-white/70 rounded-full flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                  </div>
+                )}
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="flex items-center gap-1.5 text-sm px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  เปลี่ยนรูปโปรไฟล์
+                </button>
+                <p className="text-xs text-gray-400 mt-1">JPG, PNG หรือ WebP · สูงสุด 2 MB</p>
+                {avatarError && <p className="text-xs text-red-500 mt-1">{avatarError}</p>}
+              </div>
+            </div>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarFile}
+            />
+          </div>
+
+          {/* URL Slug */}
+          <div>
+            <Label>ชื่อโปรไฟล์ (URL)</Label>
+            <div className="flex items-center gap-0 border border-gray-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
+              <span className="text-sm text-gray-400 bg-gray-50 px-3 py-2 border-r border-gray-200 shrink-0 select-none">
+                proppsy.com/agent/
+              </span>
+              <input
+                type="text"
+                value={publicSlug}
+                onChange={e => setPublicSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                placeholder="earth-property"
+                maxLength={50}
+                className="flex-1 px-3 py-2 text-sm outline-none bg-white"
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">ตัวพิมพ์เล็ก a-z, ตัวเลข 0-9, ขีด (-) เท่านั้น · 3-50 ตัวอักษร</p>
+          </div>
+
+          {/* Bio */}
+          <div>
+            <Label>แนะนำตัว / Bio</Label>
+            <textarea
+              value={bio}
+              onChange={e => setBio(e.target.value)}
+              placeholder="แนะนำตัวสั้นๆ เช่น ประสบการณ์ ความเชี่ยวชาญ ย่านที่ดูแล..."
+              maxLength={300}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none"
+            />
+            <p className="text-xs text-gray-400 text-right -mt-1">{bio.length}/300</p>
+          </div>
+
+          {/* Show phone toggle */}
+          <div className="flex items-center justify-between gap-4 py-1">
+            <div>
+              <p className="text-sm font-medium text-gray-700">แสดงเบอร์โทรในโปรไฟล์สาธารณะ</p>
+              <p className="text-xs text-gray-400 mt-0.5">เบอร์โทรจะมองเห็นได้บนหน้าโปรไฟล์</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowPhone(v => !v)}
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${showPhone ? 'bg-blue-600' : 'bg-gray-200'}`}
+              aria-label="toggle show phone"
+            >
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${showPhone ? 'left-6' : 'left-1'}`} />
+            </button>
+          </div>
+
+          {/* Profile link preview */}
+          {publicSlug.length >= 3 && (
+            <a
+              href={`/agent/${publicSlug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              ดูโปรไฟล์สาธารณะ →
+            </a>
+          )}
+
+          {publicError && <p className="text-sm text-red-500">{publicError}</p>}
+          {publicSuccess && !publicError && (
+            <p className="text-sm text-green-600">บันทึกสำเร็จ</p>
+          )}
+
+          <button
+            type="button"
+            onClick={handleSavePublicProfile}
+            disabled={publicSaving}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-medium rounded-lg transition"
+          >
+            {publicSaving ? 'กำลังบันทึก...' : 'บันทึกโปรไฟล์สาธารณะ'}
+          </button>
+        </div>
       </Section>
 
       {/* ข้อมูลบัญชี (read-only) */}

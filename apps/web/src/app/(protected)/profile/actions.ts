@@ -74,6 +74,54 @@ export async function updateSignatureUrl(
   return {}
 }
 
+export async function updatePublicProfile({
+  public_slug,
+  bio,
+  show_phone,
+}: {
+  public_slug: string | null
+  bio: string | null
+  show_phone: boolean
+}): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  if (public_slug && !/^[a-z0-9-]{3,50}$/.test(public_slug)) {
+    return { error: 'Slug ต้องมี 3-50 ตัวอักษร (ตัวพิมพ์เล็ก a-z, ตัวเลข 0-9, ขีด -)' }
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ public_slug: public_slug || null, bio: bio || null, show_phone })
+    .eq('id', user.id)
+
+  if (error) {
+    if (error.code === '23505') return { error: 'ชื่อ URL นี้ถูกใช้แล้ว กรุณาเลือกชื่ออื่น' }
+    return { error: 'บันทึกไม่สำเร็จ กรุณาลองใหม่' }
+  }
+
+  revalidatePath('/profile')
+  return {}
+}
+
+export async function updateAvatarUrl(
+  url: string | null
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ avatar_url: url || null })
+    .eq('id', user.id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/profile')
+  return {}
+}
+
 export async function updateIdCardUrl(
   url: string | null
 ): Promise<{ error?: string }> {
