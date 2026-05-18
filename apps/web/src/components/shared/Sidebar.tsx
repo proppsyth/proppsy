@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Home as HomeIcon, FileText, UserCheck, Users, Building2,
   Calendar, TrendingUp, Zap, CreditCard, Settings, LogOut, ShieldAlert,
-  Menu, ChevronRight, Layers, Newspaper, Info, HelpCircle, Phone,
+  Menu, ChevronRight,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
@@ -31,11 +31,11 @@ const NAV_ITEMS = [
 
 // Public nav items for the hamburger dropdown
 const DROPDOWN_NAV = [
-  { href: '/services', icon: Layers,       label: 'บริการ' },
-  { href: '/news',     icon: Newspaper,    label: 'ข่าวสาร' },
-  { href: '/about',    icon: Info,         label: 'เกี่ยวกับเรา' },
-  { href: '/faq',      icon: HelpCircle,   label: 'คู่มือ & FAQ' },
-  { href: '/contact',  icon: Phone,        label: 'ติดต่อเรา' },
+  { href: '/services', label: 'บริการ' },
+  { href: '/news',     label: 'ข่าวสาร' },
+  { href: '/about',    label: 'เกี่ยวกับเรา' },
+  { href: '/faq',      label: 'คู่มือ & FAQ' },
+  { href: '/contact',  label: 'ติดต่อเรา' },
 ]
 
 // Quick action grid for the mobile bottom sheet
@@ -234,22 +234,18 @@ export default function Sidebar({ profile }: SidebarProps) {
             : 'opacity-0 scale-95 pointer-events-none'
         }`}
       >
-        {DROPDOWN_NAV.map((item, i) => {
-          const Icon = item.icon
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setDropdownOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 text-sm text-gray-700 active:bg-gray-100 transition ${
-                i < DROPDOWN_NAV.length - 1 ? 'border-b border-gray-50' : ''
-              } hover:bg-gray-50`}
-            >
-              <Icon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              {item.label}
-            </Link>
-          )
-        })}
+        {DROPDOWN_NAV.map((item, i) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={() => setDropdownOpen(false)}
+            className={`block px-5 py-3 text-sm text-gray-700 active:bg-gray-100 transition ${
+              i < DROPDOWN_NAV.length - 1 ? 'border-b border-gray-50' : ''
+            } hover:bg-gray-50`}
+          >
+            {item.label}
+          </Link>
+        ))}
       </div>
 
       {/* ════════════════════════════════════════
