@@ -14,6 +14,7 @@ export interface TemplateDefinition {
   languageLabel: string         // language display name
   hasFurniture: boolean         // show furniture checklist only for rental
   hasPaymentSchedule: boolean   // 12-month payment table
+  hasBuiltInSignatures: boolean // template already has signature blocks — skip auto-inject
   // Variables that MUST be present before generation
   requiredVars: string[]
   // Image placeholder names — replaced with empty in docx (not embedded)
@@ -31,6 +32,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     languageLabel: 'ภาษาไทย',
     hasFurniture: true,
     hasPaymentSchedule: true,
+    hasBuiltInSignatures: true,
     requiredVars: [
       'ชื่อผู้ให้เช่า', 'ชื่อผู้เช่า',
       'view', 'เลขที่ห้องชุด',
@@ -48,6 +50,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     languageLabel: 'ไทย + อังกฤษ',
     hasFurniture: true,
     hasPaymentSchedule: true,
+    hasBuiltInSignatures: true,
     requiredVars: [
       'ชื่อผู้ให้เช่า', 'ชื่อผู้เช่า',
       'view', 'เลขที่ห้องชุด',
@@ -65,6 +68,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     languageLabel: 'ไทย + อังกฤษ + จีน',
     hasFurniture: true,
     hasPaymentSchedule: true,
+    hasBuiltInSignatures: true,
     requiredVars: [
       'ชื่อผู้ให้เช่า', 'ชื่อผู้เช่า',
       'view', 'เลขที่ห้องชุด',
@@ -83,6 +87,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     languageLabel: 'ภาษาไทย',
     hasFurniture: false,
     hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
     requiredVars: [
       'ชื่อผู้ให้เช่า', 'ชื่อผู้เช่า',
       'view', 'เลขที่ห้องชุด',
@@ -99,6 +104,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     languageLabel: 'ไทย + อังกฤษ',
     hasFurniture: false,
     hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
     requiredVars: [
       'ชื่อผู้ให้เช่า', 'ชื่อผู้เช่า',
       'view', 'เลขที่ห้องชุด',
@@ -115,6 +121,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     languageLabel: 'ไทย + อังกฤษ + จีน',
     hasFurniture: false,
     hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
     requiredVars: [
       'ชื่อผู้ให้เช่า', 'ชื่อผู้เช่า',
       'view', 'เลขที่ห้องชุด',
@@ -133,6 +140,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     languageLabel: 'ภาษาไทย',
     hasFurniture: false,
     hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
     requiredVars: [
       'ชื่อ - สกุล เจ้าของ', 'ชื่อ - สกุล ลูกค้า',
       'project', 'เลขที่ห้อง',
@@ -150,6 +158,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     languageLabel: 'ไทย + อังกฤษ',
     hasFurniture: false,
     hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
     requiredVars: [
       'ชื่อ - สกุล เจ้าของ', 'ชื่อ - สกุล ลูกค้า',
       'project', 'เลขที่ห้อง',
@@ -169,6 +178,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     languageLabel: 'ไทย + อังกฤษ',
     hasFurniture: false,
     hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
     requiredVars: [
       'agent', 'ชื่อ', 'เลขที่ห้อง', 'ชื่อผู้เช่า', 'ค่าเช่า',
     ],

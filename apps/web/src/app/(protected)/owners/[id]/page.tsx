@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import StorageImage from '@/components/shared/StorageImage'
 import { ownerDisplayName } from '@/types'
 import type { Owner } from '@/types'
+import ArchiveOwnerButton from './ArchiveOwnerButton'
 
 export const metadata: Metadata = { title: 'รายละเอียดเจ้าของทรัพย์' }
 
@@ -207,6 +208,10 @@ export default async function OwnerDetailPage({
 
         {/* Right: stocks */}
         <div>
+          <div className="mb-4">
+            <ArchiveOwnerButton ownerId={o.id} isArchived={o.is_archived ?? false} />
+          </div>
+
           <Section title={`ทรัพย์ที่ดูแล (${stockList.length})`}>
             {stockList.length > 0 ? (
               <div className="space-y-2">

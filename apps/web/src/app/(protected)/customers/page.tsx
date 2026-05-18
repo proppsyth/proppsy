@@ -8,7 +8,14 @@ import CustomerList from './CustomerList'
 
 export const metadata: Metadata = { title: 'ลูกค้า' }
 
-export default async function CustomersPage() {
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ show_archived?: string }>
+}) {
+  const { show_archived } = await searchParams
+  const showArchived = show_archived === '1'
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -17,11 +24,12 @@ export default async function CustomersPage() {
     .from('customers')
     .select('*')
     .eq('agent_uid', user.id)
+    .eq('is_archived', showArchived)
     .order('created_at', { ascending: false })
 
   return (
     <div className="p-4 lg:p-8 pt-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-gray-900">ลูกค้า</h1>
           <p className="text-sm text-gray-500 mt-0.5">{(customers ?? []).length} รายการ</p>
@@ -34,7 +42,28 @@ export default async function CustomersPage() {
           เพิ่มลูกค้า
         </Link>
       </div>
-      <CustomerList customers={(customers ?? []) as unknown as Customer[]} />
+
+      {/* Archive tabs */}
+      <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
+        <Link
+          href="/customers"
+          className={`px-4 py-1.5 rounded-lg text-xs font-medium transition ${
+            !showArchived ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          ใช้งาน
+        </Link>
+        <Link
+          href="/customers?show_archived=1"
+          className={`px-4 py-1.5 rounded-lg text-xs font-medium transition ${
+            showArchived ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          เก็บถาวร
+        </Link>
+      </div>
+
+      <CustomerList customers={(customers ?? []) as unknown as Customer[]} showArchived={showArchived} />
     </div>
   )
 }

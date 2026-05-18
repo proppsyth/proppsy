@@ -26,9 +26,10 @@ const LEAD_STATUS_ORDER: LeadStatus[] = ['lead', 'prospect', 'viewing', 'negotia
 
 interface Props {
   customers: Customer[]
+  showArchived?: boolean
 }
 
-export default function CustomerList({ customers }: Props) {
+export default function CustomerList({ customers, showArchived }: Props) {
   const [search, setSearch] = useState('')
   const [followUpOnly, setFollowUpOnly] = useState(false)
   const [leadFilter, setLeadFilter] = useState<LeadStatus | null>(null)
@@ -114,10 +115,10 @@ export default function CustomerList({ customers }: Props) {
             <Users className="w-6 h-6 text-gray-400" />
           </div>
           <p className="text-gray-500 font-medium mb-1">
-            {hasFilter ? 'ไม่พบลูกค้าที่ค้นหา' : 'ยังไม่มีลูกค้า'}
+            {hasFilter ? 'ไม่พบลูกค้าที่ค้นหา' : showArchived ? 'ไม่มีลูกค้าที่เก็บถาวร' : 'ยังไม่มีลูกค้า'}
           </p>
           <p className="text-gray-400 text-sm">
-            {hasFilter ? 'ลองปรับตัวกรอง' : 'กดปุ่ม "เพิ่มลูกค้า" เพื่อเริ่มต้น'}
+            {hasFilter ? 'ลองปรับตัวกรอง' : showArchived ? '' : 'กดปุ่ม "เพิ่มลูกค้า" เพื่อเริ่มต้น'}
           </p>
         </div>
       )}

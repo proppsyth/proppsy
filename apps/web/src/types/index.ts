@@ -148,6 +148,9 @@ export interface Owner {
   bank_account_name?: string
   signature_url?: string
   notes?: string
+  is_archived?: boolean
+  archived_at?: string | null
+  archived_by?: string | null
   created_at: string
   updated_at: string
 }
@@ -184,6 +187,9 @@ export interface Customer {
   converted_at?: string | null
   preferred_move_in_date?: string | null
   notes?: string
+  is_archived?: boolean
+  archived_at?: string | null
+  archived_by?: string | null
   created_at: string
   updated_at: string
 }

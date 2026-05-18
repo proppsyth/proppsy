@@ -257,6 +257,48 @@ export async function addTimelineEvent(
   return {}
 }
 
+// ─── Manual Finalization ──────────────────────────────────────
+
+export async function finalizeManually(
+  contractId: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { data: contract } = await supabase
+    .from('contracts')
+    .select('is_finalized, status, docx_url, pdf_url')
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+    .single()
+
+  if (!contract) return { error: 'ไม่พบสัญญา' }
+  if (contract.is_finalized) return { error: 'สัญญานี้ถูกล็อกแล้ว' }
+
+  const now = new Date().toISOString()
+
+  const { error } = await supabase
+    .from('contracts')
+    .update({
+      is_finalized: true,
+      finalized_at: now,
+      status: 'signed',
+      finalized_docx_url: contract.docx_url ?? null,
+      finalized_pdf_url: contract.pdf_url ?? null,
+    })
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+
+  if (error) return { error: 'ล็อกสัญญาไม่สำเร็จ: ' + error.message }
+
+  await addTimelineEvent(contractId, 'finalized_manually', 'ล็อกสัญญาด้วยตนเอง (ลงนามกระดาษ/ออฟไลน์)')
+
+  revalidatePath(`/contracts/${contractId}`)
+  revalidatePath('/contracts')
+  return {}
+}
+
 // ─── Update Status ────────────────────────────────────────────
 
 export async function updateContractStatus(
@@ -379,7 +421,11 @@ export async function generateContractDocx(
       showAgent:    isAgentDoc,
     }
 
-    const docxBuffer = await generateDocx(template.filename, variables, signatures)
+    const docxBuffer = await generateDocx(
+      template.filename,
+      variables,
+      template.hasBuiltInSignatures ? undefined : signatures,
+    )
 
     const path = `${user.id}/${contractId}.docx`
     const { error: uploadError } = await supabase.storage
@@ -494,62 +540,90 @@ export async function generateContractPdf(
   }
 
   try {
-    const { renderToBuffer } = await import('@react-pdf/renderer')
-    const { ContractDocument } = await import('@/lib/pdf/ContractDocument')
-    const { createElement } = await import('react')
+    let buffer: Buffer
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const element = createElement(ContractDocument as any, {
-      contract: {
-        id: contract.id,
-        doc_type: contract.doc_type,
-        created_at: contract.created_at,
-        rent_price: contract.rent_price,
-        deposit_months: contract.deposit_months,
-        deposit_amount: contract.deposit_amount,
-        contract_months: contract.contract_months,
-        move_in_date: contract.move_in_date,
-        end_date: contract.end_date,
-        cleaning_fee: contract.cleaning_fee,
-        ac_count: contract.ac_count,
-        ac_wash_per_unit: contract.ac_wash_per_unit,
-        penalty_amount: contract.penalty_amount,
-        commission_net: contract.commission_net,
-        vat_7: contract.vat_7 ?? false,
-        wht_3: contract.wht_3 ?? false,
-        water_unit_price: contract.water_unit_price,
-        electric_unit_price: contract.electric_unit_price,
-        internet_fee: contract.internet_fee,
-        common_fee: contract.common_fee,
-        parking_fee: contract.parking_fee,
-        payment_date: contract.payment_date,
-        payment_method: contract.payment_method,
-        bank_ref: contract.bank_ref,
-        reservation_expire_date: contract.reservation_expire_date,
-        payment_grace_days: contract.payment_grace_days,
-        payment_day_of_month: contract.payment_day_of_month,
-        commission_rate_pct: contract.commission_rate_pct,
-        commission_from_owner: contract.commission_from_owner,
-        commission_from_customer: contract.commission_from_customer,
-      },
-      stock: contract.stock ?? null,
-      owner: contract.owner ?? null,
-      customer: contract.customer ?? null,
-      agent: {
-        name: profile?.name,
-        company_name: profile?.company_name,
-        phone: profile?.phone,
-        logo_url: profile?.logo_url,
-        signature_url: profile?.signature_url,
-        bank_name: profile?.bank_name,
-        bank_account_no: profile?.bank_account_no,
-        bank_account_name: profile?.bank_account_name,
-        tax_id: profile?.tax_id,
-      },
-    })
+    const templateSlugForPdf = (contract as { template_slug?: string | null }).template_slug
+    if (templateSlugForPdf) {
+      // DOCX→HTML→PDF pipeline: full content from the template
+      const { getTemplateBySlug } = await import('@/lib/contracts/templateRegistry')
+      const { computeVariables } = await import('@/lib/contracts/variableCompute')
+      const { generateDocx } = await import('@/lib/contracts/docxGenerator')
+      const mammoth = await import('mammoth')
+      const { renderMammothHtmlAsPdf } = await import('@/lib/pdf/mammothToPdf')
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const buffer = await renderToBuffer(element as any)
+      const template = getTemplateBySlug(templateSlugForPdf)
+      if (!template) return { error: `ไม่พบ template: ${templateSlugForPdf}` }
+
+      const variables = computeVariables({
+        contract: contract as Parameters<typeof computeVariables>[0]['contract'],
+        stock:    contract.stock ?? null,
+        owner:    contract.owner ?? null,
+        customer: contract.customer ?? null,
+        agent:    profile ?? null,
+      }, template)
+
+      const docxBuffer = await generateDocx(template.filename, variables)
+      const { value: html } = await mammoth.convertToHtml({ buffer: docxBuffer })
+      buffer = await renderMammothHtmlAsPdf(html)
+    } else {
+      // Legacy layout for contracts without a template
+      const { renderToBuffer } = await import('@react-pdf/renderer')
+      const { ContractDocument } = await import('@/lib/pdf/ContractDocument')
+      const { createElement } = await import('react')
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const element = createElement(ContractDocument as any, {
+        contract: {
+          id: contract.id,
+          doc_type: contract.doc_type,
+          created_at: contract.created_at,
+          rent_price: contract.rent_price,
+          deposit_months: contract.deposit_months,
+          deposit_amount: contract.deposit_amount,
+          contract_months: contract.contract_months,
+          move_in_date: contract.move_in_date,
+          end_date: contract.end_date,
+          cleaning_fee: contract.cleaning_fee,
+          ac_count: contract.ac_count,
+          ac_wash_per_unit: contract.ac_wash_per_unit,
+          penalty_amount: contract.penalty_amount,
+          commission_net: contract.commission_net,
+          vat_7: contract.vat_7 ?? false,
+          wht_3: contract.wht_3 ?? false,
+          water_unit_price: contract.water_unit_price,
+          electric_unit_price: contract.electric_unit_price,
+          internet_fee: contract.internet_fee,
+          common_fee: contract.common_fee,
+          parking_fee: contract.parking_fee,
+          payment_date: contract.payment_date,
+          payment_method: contract.payment_method,
+          bank_ref: contract.bank_ref,
+          reservation_expire_date: contract.reservation_expire_date,
+          payment_grace_days: contract.payment_grace_days,
+          payment_day_of_month: contract.payment_day_of_month,
+          commission_rate_pct: contract.commission_rate_pct,
+          commission_from_owner: contract.commission_from_owner,
+          commission_from_customer: contract.commission_from_customer,
+        },
+        stock: contract.stock ?? null,
+        owner: contract.owner ?? null,
+        customer: contract.customer ?? null,
+        agent: {
+          name: profile?.name,
+          company_name: profile?.company_name,
+          phone: profile?.phone,
+          logo_url: profile?.logo_url,
+          signature_url: profile?.signature_url,
+          bank_name: profile?.bank_name,
+          bank_account_no: profile?.bank_account_no,
+          bank_account_name: profile?.bank_account_name,
+          tax_id: profile?.tax_id,
+        },
+      })
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      buffer = await renderToBuffer(element as any)
+    }
 
     const path = `${user.id}/${contractId}.pdf`
     const { data: uploadData, error: uploadError } = await supabase.storage

@@ -2,11 +2,11 @@
 
 import { useTransition, useState } from 'react'
 import {
-  Loader2, Send, X, FileDown, ExternalLink, Eye, Lock, CheckCircle2,
+  Loader2, Send, X, FileDown, ExternalLink, Eye, Lock, CheckCircle2, ClipboardCheck,
 } from 'lucide-react'
 import type { ContractStatus } from '@/types'
 import {
-  updateContractStatus, generateContractDocx, generateContractPdf,
+  updateContractStatus, generateContractDocx, generateContractPdf, finalizeManually,
 } from '../actions'
 import Link from 'next/link'
 
@@ -29,10 +29,13 @@ export default function ContractActions({
   const [isStatusPending, startStatus] = useTransition()
   const [isDocxPending, startDocx] = useTransition()
   const [isPdfPending, startPdf] = useTransition()
+  const [isFinalizePending, startFinalize] = useTransition()
 
   const [statusError, setStatusError] = useState('')
   const [docxError, setDocxError] = useState('')
   const [pdfError, setPdfError] = useState('')
+  const [finalizeError, setFinalizeError] = useState('')
+  const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false)
 
   const [currentDocxUrl, setCurrentDocxUrl] = useState(docxUrl ?? '')
   const [currentPdfUrl, setCurrentPdfUrl] = useState(pdfUrl ?? '')
@@ -270,6 +273,61 @@ export default function ContractActions({
           </div>
         </div>
       )}
+
+      {/* Manual Finalization */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
+          <h2 className="text-sm font-semibold text-gray-700">ล็อกสัญญาด้วยตนเอง</h2>
+        </div>
+        <div className="p-4">
+          {showFinalizeConfirm ? (
+            <div className="space-y-3">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <p className="text-xs font-semibold text-amber-800 mb-1">ยืนยันการล็อกสัญญา?</p>
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  ใช้สำหรับสัญญาที่ลงนามกระดาษหรือออฟไลน์แล้ว เมื่อล็อกแล้วจะไม่สามารถแก้ไขได้อีก
+                  เวอร์ชัน .docx และ PDF ปัจจุบันจะถูกบันทึกเป็นเอกสารสุดท้าย
+                </p>
+              </div>
+              {finalizeError && <p className="text-xs text-red-600">{finalizeError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFinalizeError('')
+                    startFinalize(async () => {
+                      const res = await finalizeManually(contractId)
+                      if (res.error) { setFinalizeError(res.error); return }
+                      setShowFinalizeConfirm(false)
+                    })
+                  }}
+                  disabled={isFinalizePending}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
+                >
+                  {isFinalizePending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+                  {isFinalizePending ? 'กำลังล็อก...' : 'ยืนยัน'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFinalizeConfirm(false)}
+                  className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-sm rounded-xl hover:bg-gray-50 transition"
+                >
+                  ยกเลิก
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowFinalizeConfirm(true)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 text-sm font-medium rounded-xl transition"
+            >
+              <ClipboardCheck className="w-4 h-4" />
+              ล็อกสัญญา (ลงนามออฟไลน์แล้ว)
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

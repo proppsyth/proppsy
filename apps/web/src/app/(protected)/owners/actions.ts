@@ -95,6 +95,55 @@ export async function updateOwner(
   return {}
 }
 
+// ─── Archive / Restore ───────────────────────────────────────
+
+export async function archiveOwner(ownerId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { data: active } = await supabase
+    .from('contracts')
+    .select('id')
+    .eq('owner_id', ownerId)
+    .eq('agent_uid', user.id)
+    .not('status', 'in', '("cancelled","completed","terminated")')
+    .limit(1)
+
+  if (active && active.length > 0)
+    return { error: 'ไม่สามารถเก็บถาวรได้ เนื่องจากยังมีสัญญาที่ยังไม่สิ้นสุด' }
+
+  const { error } = await supabase
+    .from('owners')
+    .update({ is_archived: true, archived_at: new Date().toISOString(), archived_by: user.id })
+    .eq('id', ownerId)
+    .eq('agent_uid', user.id)
+
+  if (error) return { error: 'เก็บถาวรไม่สำเร็จ: ' + error.message }
+
+  revalidatePath('/owners')
+  revalidatePath(`/owners/${ownerId}`)
+  return {}
+}
+
+export async function restoreOwner(ownerId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { error } = await supabase
+    .from('owners')
+    .update({ is_archived: false, archived_at: null, archived_by: null })
+    .eq('id', ownerId)
+    .eq('agent_uid', user.id)
+
+  if (error) return { error: 'กู้คืนไม่สำเร็จ: ' + error.message }
+
+  revalidatePath('/owners')
+  revalidatePath(`/owners/${ownerId}`)
+  return {}
+}
+
 // ─── OCR Document (ID card or Passport) ──────────────────────
 
 export async function parseDocument(

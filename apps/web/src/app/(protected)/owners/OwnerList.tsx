@@ -8,9 +8,10 @@ import type { Owner } from '@/types'
 
 interface Props {
   owners: Owner[]
+  showArchived?: boolean
 }
 
-export default function OwnerList({ owners }: Props) {
+export default function OwnerList({ owners, showArchived }: Props) {
   const [search, setSearch] = useState('')
 
   const filtered = search.trim()
@@ -48,10 +49,10 @@ export default function OwnerList({ owners }: Props) {
             <User className="w-6 h-6 text-gray-400" />
           </div>
           <p className="text-gray-500 font-medium mb-1">
-            {search ? 'ไม่พบเจ้าของที่ค้นหา' : 'ยังไม่มีเจ้าของทรัพย์'}
+            {search ? 'ไม่พบเจ้าของที่ค้นหา' : showArchived ? 'ไม่มีเจ้าของที่เก็บถาวร' : 'ยังไม่มีเจ้าของทรัพย์'}
           </p>
           <p className="text-gray-400 text-sm">
-            {search ? 'ลองค้นหาด้วยคำอื่น' : 'กดปุ่ม "เพิ่มเจ้าของ" เพื่อเริ่มต้น'}
+            {search ? 'ลองค้นหาด้วยคำอื่น' : showArchived ? '' : 'กดปุ่ม "เพิ่มเจ้าของ" เพื่อเริ่มต้น'}
           </p>
         </div>
       )}

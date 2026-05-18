@@ -8,6 +8,7 @@ import StorageImage from '@/components/shared/StorageImage'
 import { customerDisplayName } from '@/types'
 import type { Customer, LeadStatus } from '@/types'
 import { LEAD_STATUS_CONFIG } from '../CustomerList'
+import ArchiveCustomerButton from './ArchiveCustomerButton'
 
 export const metadata: Metadata = { title: 'รายละเอียดลูกค้า' }
 
@@ -303,6 +304,10 @@ export default async function CustomerDetailPage({
               <InfoItem label="บันทึกเมื่อ">{createdDate}</InfoItem>
             </div>
           </Section>
+
+          <div className="mt-4">
+            <ArchiveCustomerButton customerId={c.id} isArchived={c.is_archived ?? false} />
+          </div>
         </div>
       </div>
     </div>
