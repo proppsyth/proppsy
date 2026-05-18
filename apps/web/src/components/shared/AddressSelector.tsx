@@ -56,6 +56,7 @@ function AddressCombobox<T extends PlaceRecord>({
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
 
   const filtered = filterRecords(options, query)
 
@@ -153,14 +154,33 @@ function AddressCombobox<T extends PlaceRecord>({
           <div
             className="absolute inset-0 z-10 cursor-pointer"
             onClick={openDropdown}
-            onTouchEnd={e => { e.preventDefault(); openDropdown() }}
+            onTouchStart={e => {
+              const t = e.touches.item(0)
+              if (t) touchStartRef.current = { x: t.clientX, y: t.clientY }
+            }}
+            onTouchEnd={e => {
+              const start = touchStartRef.current
+              touchStartRef.current = null
+              if (!start) return
+              const t = e.changedTouches.item(0)
+              if (!t) return
+              const dy = Math.abs(t.clientY - start.y)
+              const dx = Math.abs(t.clientX - start.x)
+              if (dy > 8 || dx > 8) return
+              e.preventDefault()
+              openDropdown()
+            }}
           />
         )}
         <input
           ref={inputRef}
           value={open ? query : (value || '')}
           onChange={e => setQuery(e.target.value)}
-          onFocus={() => { if (!disabled && !open) openDropdown() }}
+          onFocus={() => {
+            // Only open on focus when it's a keyboard/mouse focus, not a touch scroll artifact.
+            // If a touch is in progress (touchStartRef set), the touch handler owns the open logic.
+            if (!disabled && !open && !touchStartRef.current) openDropdown()
+          }}
           placeholder={disabled ? 'เลือกระดับก่อนหน้าก่อน' : placeholder}
           disabled={disabled}
           className={`${INPUT_CLS} pr-8 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
