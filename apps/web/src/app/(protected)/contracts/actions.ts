@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { resolvePlan, PLAN_LIMITS, type ContractDocType } from '@/types'
+import { resolvePlan, PLAN_LIMITS, type ContractDocType, type ContractCategory } from '@/types'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -51,6 +51,14 @@ export type ContractInput = {
   contract_relation_type?: string | null
 }
 
+// ─── Helpers ─────────────────────────────────────────────────
+
+function getContractCategory(docType: ContractDocType): ContractCategory {
+  if (docType === 'reservation') return 'reservation'
+  if (docType === 'rental') return 'lease'
+  return 'child'
+}
+
 // ─── ID Generator ────────────────────────────────────────────
 
 async function nextContractId(): Promise<string> {
@@ -87,16 +95,17 @@ export async function createContract(
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }
 
-  // ── Overlap check: prevent duplicate active contracts for same property ──
-  // Uses effective_end_date (early termination date) when present, falling back to end_date.
-  const rentingDocTypes = ['rental', 'renewal', 'reservation']
-  if (input.stock_id && rentingDocTypes.includes(input.doc_type) && input.move_in_date) {
+  const contract_category = getContractCategory(input.doc_type)
+
+  // ── Overlap check: LEASES ONLY ───────────────────────────────
+  // Reservations never block occupancy. Only active lease contracts overlap-check.
+  if (contract_category === 'lease' && input.stock_id && input.move_in_date) {
     const { data: conflicts } = await supabase
       .from('contracts')
-      .select('id, move_in_date, end_date, effective_end_date, doc_type')
+      .select('id, move_in_date, end_date, effective_end_date')
       .eq('agent_uid', user.id)
       .eq('stock_id', input.stock_id)
-      .in('doc_type', rentingDocTypes)
+      .eq('contract_category', 'lease')
       .not('status', 'in', '("cancelled","completed","terminated","renewed")')
 
     const newStart = new Date(input.move_in_date).getTime()
@@ -104,10 +113,9 @@ export async function createContract(
 
     for (const c of conflicts ?? []) {
       if (!c.move_in_date) continue
-      const existStart = new Date(c.move_in_date).getTime()
-      // Respect early termination: use effective_end_date if set, otherwise end_date
+      const existStart  = new Date(c.move_in_date).getTime()
       const effectiveEnd = (c as { effective_end_date?: string | null }).effective_end_date || c.end_date
-      const existEnd   = effectiveEnd ? new Date(effectiveEnd).getTime() : null
+      const existEnd    = effectiveEnd ? new Date(effectiveEnd).getTime() : null
 
       const overlaps =
         (newEnd   === null || newEnd   >= existStart) &&
@@ -115,10 +123,24 @@ export async function createContract(
 
       if (overlaps) {
         return {
-          error: `ทรัพย์นี้มีสัญญาที่ทับซ้อนกันอยู่แล้ว (${c.id}) ช่วง ${c.move_in_date}${effectiveEnd ? ' – ' + effectiveEnd : ''}`,
+          error: `ทรัพย์นี้มีสัญญาเช่าที่ทับซ้อนกันอยู่แล้ว (${c.id}) ช่วง ${c.move_in_date}${effectiveEnd ? ' – ' + effectiveEnd : ''}`,
         }
       }
     }
+  }
+
+  // ── For child docs: resolve master_contract_id ───────────────
+  let master_contract_id: string | null = null
+  if (contract_category === 'child' && input.parent_contract_id) {
+    const { data: parent } = await supabase
+      .from('contracts')
+      .select('master_contract_id, contract_category')
+      .eq('id', input.parent_contract_id)
+      .single()
+
+    // master = parent's master if it has one, otherwise parent is the master
+    master_contract_id = (parent as { master_contract_id?: string | null } | null)?.master_contract_id
+      ?? input.parent_contract_id
   }
 
   const id = await nextContractId()
@@ -127,49 +149,112 @@ export async function createContract(
     id,
     agent_uid: user.id,
     status: 'draft',
+    contract_category,
+    master_contract_id,
     ...input,
-    stock_id:   input.stock_id   || null,
-    owner_id:   input.owner_id   || null,
+    stock_id:    input.stock_id    || null,
+    owner_id:    input.owner_id    || null,
     customer_id: input.customer_id || null,
     extra_vars:  input.extra_vars  || {},
   })
 
   if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
 
-  // ── Propagate lifecycle changes to parent master contract ──
-  const earlyEndTypes = ['termination', 'cancellation']
-  if (input.parent_contract_id && earlyEndTypes.includes(input.doc_type) && input.end_date) {
-    // Shorten parent's effective blocking period + mark it as ended
+  // ── Auto-occupancy: lease creation → stock becomes 'rented' ──
+  if (contract_category === 'lease' && input.stock_id) {
     await supabase
-      .from('contracts')
-      .update({
-        effective_end_date: input.end_date,
-        status: input.doc_type === 'termination' ? 'terminated' : 'cancelled',
-      })
-      .eq('id', input.parent_contract_id)
+      .from('stock')
+      .update({ status: 'rented' })
+      .eq('id', input.stock_id)
       .eq('agent_uid', user.id)
 
-    // If effective date is today or past → restore stock to available
-    const today = new Date().toISOString().split('T')[0]!
-    if (input.end_date <= today && input.stock_id) {
-      await supabase
-        .from('stock')
-        .update({ status: 'available' })
-        .eq('id', input.stock_id)
-        .eq('agent_uid', user.id)
-    }
+    // Timeline event
+    await supabase.from('contract_timeline_events').insert({
+      contract_id: id,
+      master_contract_id: id,
+      agent_uid: user.id,
+      event_type: 'lease_created',
+      description: input.parent_contract_id
+        ? `สัญญาเช่าสร้างจากใบจอง ${input.parent_contract_id}`
+        : 'สร้างสัญญาเช่า',
+      related_contract_id: input.parent_contract_id ?? null,
+    })
   }
 
-  if (input.parent_contract_id && input.doc_type === 'renewal') {
-    await supabase
-      .from('contracts')
-      .update({ status: 'renewed' })
-      .eq('id', input.parent_contract_id)
-      .eq('agent_uid', user.id)
+  // ── Child doc lifecycle effects on the MASTER lease ──────────
+  if (contract_category === 'child' && master_contract_id) {
+    const endingTypes = ['termination', 'cancellation', 'end_contract']
+    if (endingTypes.includes(input.doc_type) && input.end_date) {
+      const newStatus = input.doc_type === 'cancellation' ? 'cancelled' : 'terminated'
+      await supabase
+        .from('contracts')
+        .update({
+          effective_end_date: input.end_date,
+          terminated_at: new Date().toISOString(),
+          status: newStatus,
+        })
+        .eq('id', master_contract_id)
+        .eq('agent_uid', user.id)
+
+      const today = new Date().toISOString().split('T')[0]!
+      if (input.end_date <= today && input.stock_id) {
+        await supabase
+          .from('stock')
+          .update({ status: 'available' })
+          .eq('id', input.stock_id)
+          .eq('agent_uid', user.id)
+      }
+
+      await supabase.from('contract_timeline_events').insert({
+        contract_id: id,
+        master_contract_id,
+        agent_uid: user.id,
+        event_type: input.doc_type,
+        description: `${input.doc_type === 'cancellation' ? 'ยกเลิก' : 'บอกเลิก/สิ้นสุด'}สัญญา มีผลวันที่ ${input.end_date}`,
+        related_contract_id: id,
+      })
+    }
   }
 
   revalidatePath('/contracts')
   return { id }
+}
+
+// ─── Add Timeline Event ───────────────────────────────────────
+
+export async function addTimelineEvent(
+  contractId: string,
+  eventType: string,
+  description?: string,
+  relatedContractId?: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { data: contract } = await supabase
+    .from('contracts')
+    .select('master_contract_id, contract_category')
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+    .single()
+
+  if (!contract) return { error: 'ไม่พบสัญญา' }
+
+  const masterId = (contract as { master_contract_id?: string | null; contract_category?: string }).master_contract_id
+    ?? (contract.contract_category === 'lease' ? contractId : null)
+
+  const { error } = await supabase.from('contract_timeline_events').insert({
+    contract_id: contractId,
+    master_contract_id: masterId,
+    agent_uid: user.id,
+    event_type: eventType,
+    description: description ?? null,
+    related_contract_id: relatedContractId ?? null,
+  })
+
+  if (error) return { error: error.message }
+  return {}
 }
 
 // ─── Update Status ────────────────────────────────────────────
@@ -202,10 +287,10 @@ export async function updateContractStatus(
 
   if (error) return { error: 'อัปเดตไม่สำเร็จ: ' + error.message }
 
-  // Restore property to available when contract is cancelled
-  if (status === 'cancelled' && existing?.stock_id) {
-    const rentingDocTypes = ['rental', 'renewal', 'reservation']
-    if (rentingDocTypes.includes(existing.doc_type)) {
+  // Restore property to available when a LEASE contract is cancelled/terminated
+  if ((status === 'cancelled' || status === 'terminated') && existing?.stock_id) {
+    const existingCast = existing as { doc_type: string; stock_id: string }
+    if (existingCast.doc_type === 'rental') {
       await supabase
         .from('stock')
         .update({ status: 'available' })

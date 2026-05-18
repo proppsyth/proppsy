@@ -159,8 +159,8 @@ export async function searchContracts(query: string): Promise<ContractSearchResu
     .from('contracts')
     .select('id, doc_type, stock_id, owner_id, customer_id, move_in_date, end_date')
     .eq('agent_uid', user.id)
-    .in('doc_type', ['rental', 'renewal', 'reservation'])
-    .not('status', 'in', '("cancelled","completed")')
+    .eq('contract_category', 'lease')
+    .not('status', 'in', '("cancelled","completed","terminated")')
     .order('created_at', { ascending: false })
     .limit(20)
 

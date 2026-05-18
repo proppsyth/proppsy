@@ -10,11 +10,13 @@ export type ListingType = 'rent' | 'sale' | 'both'
 export type RoomType = 'Studio' | '1BR' | '2BR' | '3BR' | 'Penthouse' | 'อื่นๆ'
 export type ContractDocType =
   | 'rental' | 'reservation' | 'renewal' | 'cancellation'
-  | 'termination' | 'notice' | 'receipt_book' | 'receipt_rent' | 'commission'
+  | 'termination' | 'notice' | 'end_contract' | 'warning'
+  | 'receipt_book' | 'receipt_rent' | 'commission'
   | 'invoice_reservation' | 'receipt_reservation'
   | 'invoice_deposit' | 'receipt_deposit'
   | 'commission_confirm'
   | 'co_agent'
+export type ContractCategory = 'reservation' | 'lease' | 'child'
 export type PaymentMethod = 'cash' | 'transfer' | 'cheque'
 export type ContractStatus =
   | 'draft' | 'sent' | 'viewed' | 'partially_signed'
@@ -280,14 +282,29 @@ export interface Contract {
   finalized_docx_url?: string
   // Contract relations
   parent_contract_id?: string | null
+  master_contract_id?: string | null
   contract_relation_type?: string | null
+  contract_category?: ContractCategory | null
   effective_end_date?: string | null
+  terminated_at?: string | null
   created_at: string
   updated_at: string
   // Joined
   stock?: Stock
   owner?: Owner
   customer?: Customer
+}
+
+export interface ContractTimelineEvent {
+  id: string
+  contract_id: string
+  master_contract_id?: string | null
+  agent_uid: string
+  event_type: string
+  description?: string | null
+  related_contract_id?: string | null
+  metadata: Record<string, unknown>
+  created_at: string
 }
 
 export interface ContractSigner {
@@ -366,6 +383,8 @@ export const DOC_TYPE_LABELS: Record<ContractDocType, string> = {
   cancellation: 'ยกเลิกสัญญา',
   termination: 'บอกเลิกสัญญา',
   notice: 'หนังสือแจ้ง',
+  end_contract: 'สิ้นสุดสัญญา',
+  warning: 'หนังสือเตือน',
   receipt_book: 'ใบเสร็จรับเงิน (สมุด)',
   receipt_rent: 'ใบเสร็จค่าเช่า',
   commission: 'ใบคอมมิชชัน',
@@ -375,6 +394,12 @@ export const DOC_TYPE_LABELS: Record<ContractDocType, string> = {
   receipt_deposit: 'ใบเสร็จเงินประกัน',
   commission_confirm: 'ยืนยันค่าคอมมิชชัน',
   co_agent: 'สัญญา Co-Agent',
+}
+
+export const CONTRACT_CATEGORY_LABELS: Record<ContractCategory, string> = {
+  reservation: 'ใบจอง',
+  lease: 'สัญญาเช่า',
+  child: 'เอกสารอ้างอิง',
 }
 
 export const STATUS_LABELS: Record<StockStatus, string> = {

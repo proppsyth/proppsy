@@ -74,7 +74,7 @@ export default async function ContractDetailPage({
       .order('sort_order'),
     supabase
       .from('contracts')
-      .select('id, doc_type, status, created_at, end_date, effective_end_date')
+      .select('id, doc_type, status, created_at, end_date, effective_end_date, contract_category')
       .eq('parent_contract_id', id)
       .eq('agent_uid', user.id)
       .order('created_at', { ascending: true }),
@@ -86,16 +86,27 @@ export default async function ContractDetailPage({
   const owner    = contract.owner as unknown as Owner | null
   const customer = contract.customer as unknown as Customer | null
 
-  const docDate         = fmtDate(contract.created_at)
-  const isRental        = contract.doc_type === 'rental'
-  const isReceipt       = contract.doc_type === 'receipt_rent' || contract.doc_type === 'receipt_book'
-  const isCommission    = contract.doc_type === 'commission'
-  const isReservation   = contract.doc_type === 'reservation'
-  const hasTemplate     = TEMPLATE_SUPPORTED_TYPES.has(contract.doc_type)
-  const isFinalized     = !!(contract as { is_finalized?: boolean }).is_finalized
-  const isMasterLease   = ['rental', 'reservation', 'renewal'].includes(contract.doc_type)
-  const isActive        = !['cancelled', 'terminated', 'completed', 'renewed'].includes(contract.status)
-  const effectiveEndDate = (contract as { effective_end_date?: string | null }).effective_end_date
+  const contractMeta = contract as {
+    is_finalized?: boolean
+    effective_end_date?: string | null
+    terminated_at?: string | null
+    contract_category?: string | null
+    master_contract_id?: string | null
+  }
+
+  const docDate          = fmtDate(contract.created_at)
+  const isRental         = contract.doc_type === 'rental'
+  const isReceipt        = contract.doc_type === 'receipt_rent' || contract.doc_type === 'receipt_book'
+  const isCommission     = contract.doc_type === 'commission'
+  const isReservation    = contract.doc_type === 'reservation'
+  const hasTemplate      = TEMPLATE_SUPPORTED_TYPES.has(contract.doc_type)
+  const isFinalized      = !!contractMeta.is_finalized
+  // ONLY rental (doc_type='rental') is a master lease — reservations and renewals are NOT
+  const isMasterLease    = contract.doc_type === 'rental'
+  const isChildDoc       = contractMeta.contract_category === 'child'
+  const isActive         = !['cancelled', 'terminated', 'completed', 'renewed'].includes(contract.status)
+  const effectiveEndDate = contractMeta.effective_end_date
+  const masterContractId = contractMeta.master_contract_id
 
   return (
     <div className="w-full p-4 lg:p-8 pt-6 max-w-4xl overflow-x-hidden">
@@ -238,7 +249,35 @@ export default async function ContractDetailPage({
             </Section>
           )}
 
-          {/* ── Quick Actions: create child documents ── */}
+          {/* ── Reservation: Create Lease CTA ── */}
+          {isReservation && isActive && (
+            <Section title="ขั้นตอนถัดไป">
+              <div className="flex items-start gap-2 mb-3 p-3 bg-amber-50 rounded-lg text-xs text-amber-700">
+                <GitBranch className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span>เมื่อลูกค้าพร้อมทำสัญญาเช่า กดสร้างสัญญาเช่าจากใบจองนี้ได้เลย ข้อมูลจะถูกดึงมาให้อัตโนมัติ</span>
+              </div>
+              <Link
+                href={`/contracts/new?from_reservation=${contract.id}`}
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition w-full"
+              >
+                <Plus className="w-4 h-4" />
+                สร้างสัญญาเช่าจากใบจองนี้
+              </Link>
+            </Section>
+          )}
+
+          {/* ── Child doc: back-link to master lease ── */}
+          {isChildDoc && masterContractId && (
+            <div className="mb-2 flex items-center gap-2 text-sm text-blue-600">
+              <GitBranch className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>เอกสารนี้อ้างอิงสัญญาหลัก:</span>
+              <Link href={`/contracts/${masterContractId}`} className="font-semibold hover:underline">
+                {masterContractId}
+              </Link>
+            </div>
+          )}
+
+          {/* ── Quick Actions: create child documents (LEASE only) ── */}
           {isMasterLease && isActive && !isFinalized && (
             <Section title="สร้างเอกสารที่เกี่ยวข้อง">
               <div className="flex items-start gap-2 mb-3 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
@@ -247,10 +286,12 @@ export default async function ContractDetailPage({
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { type: 'renewal', label: 'สร้างสัญญาต่อ', color: 'text-purple-700 border-purple-200 hover:bg-purple-50' },
-                  { type: 'termination', label: 'หนังสือบอกเลิก', color: 'text-rose-700 border-rose-200 hover:bg-rose-50' },
-                  { type: 'cancellation', label: 'หนังสือยกเลิก', color: 'text-orange-700 border-orange-200 hover:bg-orange-50' },
-                  { type: 'notice', label: 'หนังสือแจ้ง', color: 'text-gray-700 border-gray-200 hover:bg-gray-50' },
+                  { type: 'renewal',     label: 'สร้างสัญญาต่อ',   color: 'text-purple-700 border-purple-200 hover:bg-purple-50' },
+                  { type: 'termination', label: 'หนังสือบอกเลิก',  color: 'text-rose-700 border-rose-200 hover:bg-rose-50' },
+                  { type: 'cancellation',label: 'หนังสือยกเลิก',   color: 'text-orange-700 border-orange-200 hover:bg-orange-50' },
+                  { type: 'end_contract',label: 'สิ้นสุดสัญญา',    color: 'text-red-700 border-red-200 hover:bg-red-50' },
+                  { type: 'notice',      label: 'หนังสือแจ้ง',     color: 'text-gray-700 border-gray-200 hover:bg-gray-50' },
+                  { type: 'warning',     label: 'หนังสือเตือน',    color: 'text-yellow-700 border-yellow-200 hover:bg-yellow-50' },
                 ].map(({ type, label, color }) => (
                   <Link
                     key={type}

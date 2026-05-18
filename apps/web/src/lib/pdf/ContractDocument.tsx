@@ -157,6 +157,8 @@ const DOC_LABELS: Record<ContractDocType, string> = {
   receipt_deposit: 'ใบเสร็จเงินประกัน',
   commission_confirm: 'เอกสารยืนยันค่าคอมมิชชัน',
   co_agent: 'สัญญา Co-Agent',
+  end_contract: 'หนังสือสิ้นสุดสัญญา',
+  warning: 'หนังสือเตือน',
 }
 
 function fmt(n: number): string {

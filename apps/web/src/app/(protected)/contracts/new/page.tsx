@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: 'สร้างสัญญาให
 export default async function NewContractPage({
   searchParams,
 }: {
-  searchParams: Promise<{ parent?: string; type?: string }>
+  searchParams: Promise<{ parent?: string; type?: string; from_reservation?: string }>
 }) {
   const params = await searchParams
   const supabase = await createClient()
@@ -53,7 +53,11 @@ export default async function NewContractPage({
   return (
     <div className="p-4 lg:p-8 pt-6 max-w-3xl">
       <h1 className="text-xl font-bold text-gray-900 mb-6">สร้างสัญญาใหม่</h1>
-      <ContractWizard initialParentId={params.parent} initialDocType={params.type} />
+      <ContractWizard
+        initialParentId={params.parent}
+        initialDocType={params.type}
+        initialFromReservationId={params.from_reservation}
+      />
     </div>
   )
 }
