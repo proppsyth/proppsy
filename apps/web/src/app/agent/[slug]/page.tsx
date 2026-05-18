@@ -43,7 +43,7 @@ export async function generateMetadata({
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('profiles')
-    .select('first_name_th, last_name_th, nickname, bio, avatar_url, logo_url')
+    .select('first_name_th, last_name_th, nickname, bio')
     .eq('public_slug', slug)
     .eq('account_status', 'approved')
     .single()
@@ -53,23 +53,23 @@ export async function generateMetadata({
   const name = data.nickname
     || [data.first_name_th, data.last_name_th].filter(Boolean).join(' ')
     || 'เอเจนต์'
-  const imageUrl = data.avatar_url || data.logo_url
 
   const description = data.bio || `ดูประกาศทรัพย์สินจาก ${name} บน Proppsy`
+  // og:image / twitter:image handled by co-located opengraph-image.tsx
   return {
     title: `${name} — เอเจนต์อสังหาฯ · Proppsy`,
     description,
+    alternates: { canonical: `/agent/${slug}` },
     openGraph: {
       title: `${name} — เอเจนต์อสังหาฯ`,
       description,
       type: 'profile',
-      ...(imageUrl && { images: [{ url: imageUrl, width: 400, height: 400, alt: name }] }),
+      url: `/agent/${slug}`,
     },
     twitter: {
-      card: imageUrl ? 'summary' : 'summary',
+      card: 'summary',
       title: `${name} — เอเจนต์อสังหาฯ`,
       description,
-      ...(imageUrl && { images: [imageUrl] }),
     },
   }
 }

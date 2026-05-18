@@ -22,7 +22,7 @@ export async function generateMetadata({
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('stock')
-    .select('project_name, room_type, unit_no, listing_type, rent_price, sale_price, size_sqm, photo_urls, project:projects(district, province)')
+    .select('project_name, room_type, unit_no, listing_type, rent_price, sale_price, size_sqm, project:projects(district, province)')
     .eq('id', id)
     .single()
 
@@ -31,7 +31,7 @@ export async function generateMetadata({
   const d = data as {
     project_name?: string | null; room_type?: string | null; unit_no?: string | null
     listing_type?: string | null; rent_price?: number | null; sale_price?: number | null
-    size_sqm?: number | null; photo_urls?: string[] | null
+    size_sqm?: number | null
     project?: { district?: string | null; province?: string | null } | null
   }
   const fmtN = (n: number) => new Intl.NumberFormat('th-TH').format(n)
@@ -53,22 +53,23 @@ export async function generateMetadata({
     d.size_sqm && `ขนาด ${d.size_sqm} ตร.ม.`,
     priceStr,
   ].filter(Boolean).join(' | ')
-  const firstPhoto = d.photo_urls?.[0] ?? null
 
+  // og:image / twitter:image are handled by the co-located opengraph-image.tsx file
+  // which generates a reliable same-domain PNG — no cross-origin URL resolution issues.
   return {
     title,
     description,
+    alternates: { canonical: `/listing/${id}` },
     openGraph: {
       title,
       description,
       type: 'website',
-      ...(firstPhoto && { images: [{ url: firstPhoto, width: 1200, height: 628, alt: title }] }),
+      url: `/listing/${id}`,
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      ...(firstPhoto && { images: [firstPhoto] }),
     },
   }
 }
