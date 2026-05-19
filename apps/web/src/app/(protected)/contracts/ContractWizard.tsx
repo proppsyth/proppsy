@@ -1,17 +1,16 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Loader2, ChevronRight, ChevronLeft, Check, FileText, X, Globe, Info, AlertCircle, GitBranch,
+  Loader2, ChevronRight, ChevronLeft, Check, FileText, X, Globe, Info, AlertCircle,
 } from 'lucide-react'
 import { DOC_TYPE_LABELS } from '@/types'
 import type { ContractDocType, PaymentMethod } from '@/types'
 import { createContract } from './actions'
 import {
-  searchStocks, searchOwners, searchCustomers, searchContracts,
-  fetchContractById,
-  type StockSearchResult, type OwnerSearchResult, type CustomerSearchResult, type ContractSearchResult,
+  searchStocks, searchOwners, searchCustomers,
+  type StockSearchResult, type OwnerSearchResult, type CustomerSearchResult,
 } from './search-actions'
 import EntityCombobox from '@/components/shared/EntityCombobox'
 import {
@@ -65,7 +64,7 @@ interface WizardState {
 }
 
 const INIT: WizardState = {
-  doc_type: '', language: 'th',
+  doc_type: 'reservation', language: 'th',
   stock_id: '', stock_label: '',
   owner_id: '', owner_label: '',
   customer_id: '', customer_label: '',
@@ -85,26 +84,9 @@ const INIT: WizardState = {
 
 // ─── Helpers ─────────────────────────────────────────────────
 
-// Standalone (top-level) doc types only — child-only types (renewal, termination,
-// cancellation, notice, end_contract, warning) are only accessible from a lease detail page.
-// 'rental' is intentionally excluded: leases must be created from a reservation (1-click flow).
-const DOC_GROUPS = [
-  {
-    label: 'สัญญาหลัก (มี template .docx)',
-    types: ['reservation', 'co_agent'] as ContractDocType[],
-    highlight: true,
-  },
-  {
-    label: 'ใบแจ้งหนี้ / ใบเสร็จ',
-    types: ['invoice_reservation', 'receipt_reservation', 'invoice_deposit', 'receipt_deposit', 'receipt_rent', 'receipt_book'] as ContractDocType[],
-    highlight: false,
-  },
-  {
-    label: 'คอมมิชชัน',
-    types: ['commission', 'commission_confirm'] as ContractDocType[],
-    highlight: false,
-  },
-]
+// Only reservations are created via this wizard.
+// Leases are created via the 1-click button on a reservation detail page.
+// All child docs are created via CreateChildDocPanel on the lease detail page.
 
 const EXTRA_VAR_FIELDS: Partial<Record<ContractDocType, Array<{ key: string; label: string; required?: boolean }>>> = {
   renewal: [
@@ -144,101 +126,14 @@ function personLabel(r: OwnerSearchResult | CustomerSearchResult): string {
 
 // ─── Component ───────────────────────────────────────────────
 
-interface ContractWizardProps {
-  initialParentId?: string
-  initialDocType?: string
-  initialFromReservationId?: string
-}
-
-export default function ContractWizard({ initialParentId, initialDocType, initialFromReservationId }: ContractWizardProps) {
+export default function ContractWizard() {
   const router = useRouter()
-  const skipStep1 = !!(initialParentId || initialFromReservationId)
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(skipStep1 ? 2 : 1)
-  const [state, setState] = useState<WizardState>(() => ({
-    ...INIT,
-    doc_type: initialFromReservationId ? 'rental' : ((initialDocType as ContractDocType) || ''),
-  }))
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
+  const [state, setState] = useState<WizardState>(() => ({ ...INIT }))
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const [showErrors, setShowErrors] = useState(false)
   const [stepErrors, setStepErrors] = useState<string[]>([])
-
-  // ─── Pre-fill from parent contract (child doc flow) ──────────
-
-  useEffect(() => {
-    if (!initialParentId) return
-    fetchContractById(initialParentId).then(parent => {
-      if (!parent) return
-      setState(s => ({
-        ...s,
-        parent_contract_id: parent.id,
-        parent_contract_label: parent.summary_label,
-        stock_id: parent.stock_id ?? s.stock_id,
-        stock_label: parent.stock_label,
-        owner_id: parent.owner_id ?? s.owner_id,
-        owner_label: parent.owner_label,
-        customer_id: parent.customer_id ?? s.customer_id,
-        customer_label: parent.customer_label,
-        rent_price: parent.rent_price != null ? String(parent.rent_price) : s.rent_price,
-        deposit_months: parent.deposit_months != null ? String(parent.deposit_months) : s.deposit_months,
-        deposit_amount: parent.deposit_amount != null ? String(parent.deposit_amount) : s.deposit_amount,
-        contract_months: parent.contract_months != null ? String(parent.contract_months) : s.contract_months,
-        water_unit_price: parent.water_unit_price != null ? String(parent.water_unit_price) : s.water_unit_price,
-        electric_unit_price: parent.electric_unit_price != null ? String(parent.electric_unit_price) : s.electric_unit_price,
-        internet_fee: parent.internet_fee != null ? String(parent.internet_fee) : s.internet_fee,
-        common_fee: parent.common_fee != null ? String(parent.common_fee) : s.common_fee,
-        parking_fee: parent.parking_fee != null ? String(parent.parking_fee) : s.parking_fee,
-        payment_grace_days: parent.payment_grace_days != null ? String(parent.payment_grace_days) : s.payment_grace_days,
-        payment_day_of_month: parent.payment_day_of_month != null ? String(parent.payment_day_of_month) : s.payment_day_of_month,
-        cleaning_fee: parent.cleaning_fee != null ? String(parent.cleaning_fee) : s.cleaning_fee,
-        ac_count: parent.ac_count != null ? String(parent.ac_count) : s.ac_count,
-        ac_wash_per_unit: parent.ac_wash_per_unit != null ? String(parent.ac_wash_per_unit) : s.ac_wash_per_unit,
-        penalty_amount: parent.penalty_amount != null ? String(parent.penalty_amount) : s.penalty_amount,
-        commission_rate_pct: parent.commission_rate_pct != null ? String(parent.commission_rate_pct) : s.commission_rate_pct,
-        commission_from_owner: parent.commission_from_owner != null ? String(parent.commission_from_owner) : s.commission_from_owner,
-        commission_from_customer: parent.commission_from_customer != null ? String(parent.commission_from_customer) : s.commission_from_customer,
-        vat_7: parent.vat_7,
-        wht_3: parent.wht_3,
-      }))
-    })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialParentId])
-
-  // ─── Pre-fill from reservation (create-lease-from-reservation flow) ─
-
-  useEffect(() => {
-    if (!initialFromReservationId) return
-    fetchContractById(initialFromReservationId).then(res => {
-      if (!res) return
-      setState(s => ({
-        ...s,
-        doc_type: 'rental',
-        parent_contract_id: res.id,
-        parent_contract_label: res.summary_label,
-        stock_id: res.stock_id ?? s.stock_id,
-        stock_label: res.stock_label,
-        owner_id: res.owner_id ?? s.owner_id,
-        owner_label: res.owner_label,
-        customer_id: res.customer_id ?? s.customer_id,
-        customer_label: res.customer_label,
-        rent_price: res.rent_price != null ? String(res.rent_price) : s.rent_price,
-        deposit_months: res.deposit_months != null ? String(res.deposit_months) : s.deposit_months,
-        deposit_amount: res.deposit_amount != null ? String(res.deposit_amount) : s.deposit_amount,
-        contract_months: res.contract_months != null ? String(res.contract_months) : s.contract_months,
-        water_unit_price: res.water_unit_price != null ? String(res.water_unit_price) : s.water_unit_price,
-        electric_unit_price: res.electric_unit_price != null ? String(res.electric_unit_price) : s.electric_unit_price,
-        internet_fee: res.internet_fee != null ? String(res.internet_fee) : s.internet_fee,
-        common_fee: res.common_fee != null ? String(res.common_fee) : s.common_fee,
-        parking_fee: res.parking_fee != null ? String(res.parking_fee) : s.parking_fee,
-        payment_grace_days: res.payment_grace_days != null ? String(res.payment_grace_days) : s.payment_grace_days,
-        payment_day_of_month: res.payment_day_of_month != null ? String(res.payment_day_of_month) : s.payment_day_of_month,
-        cleaning_fee: res.cleaning_fee != null ? String(res.cleaning_fee) : s.cleaning_fee,
-        vat_7: res.vat_7,
-        wht_3: res.wht_3,
-      }))
-    })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialFromReservationId])
 
   const set = (k: keyof WizardState, v: string | boolean | Record<string, string>) =>
     setState(s => ({ ...s, [k]: v }))
@@ -260,9 +155,6 @@ export default function ContractWizard({ initialParentId, initialDocType, initia
   const isCoAgent     = state.doc_type === 'co_agent'
   const isEarlyEnd    = ['termination', 'cancellation', 'end_contract'].includes(state.doc_type)
   const extraFields   = EXTRA_VAR_FIELDS[state.doc_type as ContractDocType] ?? []
-  const isChildDoc    = ['renewal', 'cancellation', 'termination', 'notice', 'end_contract', 'warning'].includes(state.doc_type)
-  const isFromReservation = !!initialFromReservationId
-
   const needsOwner    = isRental || isReservation || isPaymentDoc || isCommission || isCommissionConfirm || isCoAgent
   const needsCustomer = isRental || isReservation || isPaymentDoc || isReceipt
 
@@ -327,22 +219,6 @@ export default function ContractWizard({ initialParentId, initialDocType, initia
     })
   }
 
-  function handleParentContractSelect(r: ContractSearchResult | null) {
-    if (!r) {
-      setState(s => ({ ...s, parent_contract_id: '', parent_contract_label: '' }))
-      return
-    }
-    const label = [r.id, r.doc_type, r.move_in_date].filter(Boolean).join(' · ')
-    setState(s => ({
-      ...s,
-      parent_contract_id: r.id,
-      parent_contract_label: label,
-      stock_id: r.stock_id ?? s.stock_id,
-      owner_id: r.owner_id ?? s.owner_id,
-      customer_id: r.customer_id ?? s.customer_id,
-    }))
-  }
-
   function handleOwnerSelect(r: OwnerSearchResult | null) {
     if (!r) { setState(s => ({ ...s, owner_id: '', owner_label: '' })); return }
     setState(s => ({ ...s, owner_id: r.id, owner_label: personLabel(r) }))
@@ -353,19 +229,6 @@ export default function ContractWizard({ initialParentId, initialDocType, initia
     setState(s => ({ ...s, customer_id: r.id, customer_label: personLabel(r) }))
   }
 
-  function handleDocTypeSelect(type: ContractDocType) {
-    const templates = TEMPLATE_REGISTRY.filter(t => t.docType === type)
-    const defaultLang = templates.find(t => t.language === 'th')?.language ?? templates[0]?.language ?? 'th'
-    setState(s => {
-      const next: WizardState = { ...s, doc_type: type, language: defaultLang as LanguageVersion }
-      // Auto-set reservation amount = 1 month rent when switching to reservation invoice/receipt
-      if ((type === 'invoice_reservation' || type === 'receipt_reservation') && s.rent_price) {
-        next.deposit_amount = s.rent_price
-      }
-      return next
-    })
-  }
-
   function computeTemplateSlug(template: TemplateDefinition | undefined): string | undefined {
     return template?.slug
   }
@@ -374,7 +237,6 @@ export default function ContractWizard({ initialParentId, initialDocType, initia
 
   function validateStep1(): string[] {
     const errs: string[] = []
-    if (!state.doc_type) errs.push('กรุณาเลือกประเภทเอกสาร')
     if (!state.stock_id) errs.push('กรุณาเลือกทรัพย์สิน')
     return errs
   }
@@ -465,10 +327,8 @@ export default function ContractWizard({ initialParentId, initialDocType, initia
         commission_from_owner: num(state.commission_from_owner),
         commission_from_customer: num(state.commission_from_customer),
         extra_vars: Object.keys(state.extra_vars).length > 0 ? state.extra_vars : null,
-        parent_contract_id: state.parent_contract_id || null,
-        contract_relation_type: state.parent_contract_id
-          ? (isFromReservation ? 'created_from_reservation' : state.doc_type)
-          : null,
+        parent_contract_id: null,
+        contract_relation_type: null,
       })
 
       if (res.error) { setError(res.error); return }
@@ -507,41 +367,16 @@ export default function ContractWizard({ initialParentId, initialDocType, initia
         </div>
       </div>
 
-      {/* ── Step 1: doc_type + language + stock ── */}
+      {/* ── Step 1: doc_type (fixed: reservation) + language + stock ── */}
       {step === 1 && (
         <div className="space-y-4">
-          {DOC_GROUPS.map(group => (
-            <Section key={group.label} title={group.label}>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {group.types.map(type => {
-                  const isSelected = state.doc_type === type
-                  const hasTempl = TEMPLATE_SUPPORTED_TYPES.has(type)
-                  return (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => handleDocTypeSelect(type)}
-                      className={`flex items-start gap-2 p-3 rounded-xl border-2 text-left transition ${
-                        isSelected
-                          ? 'border-blue-600 bg-blue-50'
-                          : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <FileText className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isSelected ? 'text-blue-600' : 'text-gray-400'}`} />
-                      <div>
-                        <span className={`text-xs font-medium leading-tight block ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
-                          {DOC_TYPE_LABELS[type]}
-                        </span>
-                        {hasTempl && (
-                          <span className="text-[10px] text-emerald-600 font-medium">มี template</span>
-                        )}
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </Section>
-          ))}
+          <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
+            <FileText className="w-5 h-5 text-blue-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-blue-800">สร้างใบจอง</p>
+              <p className="text-xs text-blue-600">ทุกสัญญาเช่าและเอกสารอ้างอิงต้องเริ่มจากใบจองเสมอ</p>
+            </div>
+          </div>
 
           {/* Language selector */}
           {hasTemplate && availableLanguages.length > 0 && (
@@ -601,31 +436,6 @@ export default function ContractWizard({ initialParentId, initialDocType, initia
       {/* ── Step 2: owner + customer ── */}
       {step === 2 && (
         <div className="space-y-4">
-          {isFromReservation && state.parent_contract_id && (
-            <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
-              <GitBranch className="w-4 h-4 flex-shrink-0" />
-              <span>สร้างสัญญาเช่าจากใบจอง <strong>{state.parent_contract_id}</strong> — ข้อมูลถูกดึงมาให้อัตโนมัติ</span>
-            </div>
-          )}
-          {!isFromReservation && initialParentId && state.parent_contract_id && (
-            <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700">
-              <GitBranch className="w-4 h-4 flex-shrink-0" />
-              <span>อ้างอิงสัญญาต้นทาง: <strong>{state.parent_contract_id}</strong> — ข้อมูลถูกดึงมาให้อัตโนมัติ</span>
-            </div>
-          )}
-          {isChildDoc && !initialParentId && !isFromReservation && (
-            <Section title="สัญญาต้นทาง *">
-              <EntityCombobox
-                kind="contract"
-                value={state.parent_contract_id}
-                selectedLabel={state.parent_contract_label}
-                onSelect={handleParentContractSelect}
-                searchFn={searchContracts}
-                placeholder="ค้นหาสัญญาเช่า (BK-XXXX)..."
-              />
-              <p className="text-xs text-gray-400 mt-1.5">เมื่อเลือกสัญญาต้นทาง ระบบจะดึงทรัพย์ / เจ้าของ / ผู้เช่าให้อัตโนมัติ</p>
-            </Section>
-          )}
           <Section title={`เจ้าของทรัพย์ / ผู้ให้เช่า${needsOwner ? ' *' : ''}`}>
             <div className={showErrors && needsOwner && !state.owner_id ? 'ring-2 ring-red-300 rounded-xl' : ''}>
               <EntityCombobox

@@ -118,6 +118,14 @@ export async function createContract(
     }
   }
 
+  // ── Enforce hierarchy: only reservations via this path ───────
+  if (contract_category === 'lease') {
+    return { error: 'สัญญาเช่าต้องสร้างจากใบจอง (ใช้ปุ่ม "สร้างสัญญาเช่า" บนหน้าใบจอง)' }
+  }
+  if (contract_category === 'child') {
+    return { error: 'เอกสารนี้ต้องสร้างจากสัญญาเช่า (ใช้ปุ่มบนหน้าสัญญาเช่า)' }
+  }
+
   // ── For child docs: resolve master_contract_id ───────────────
   let master_contract_id: string | null = null
   if (contract_category === 'child' && input.parent_contract_id) {
@@ -284,11 +292,195 @@ export async function createLeaseFromReservation(
     await setStockPendingMoveIn(supabase, reservation.stock_id, user.id)
   }
 
+  // Mark reservation as converted — prevents duplicate lease creation
+  await supabase
+    .from('contracts')
+    .update({ status: 'converted_to_lease' })
+    .eq('id', reservationId)
+    .eq('agent_uid', user.id)
+
   await appendTimelineEvent(supabase, id, id, user.id, 'lease_created',
     `สัญญาเช่าสร้างจากใบจอง ${reservationId}`, reservationId)
 
   revalidatePath('/contracts')
   revalidatePath(`/contracts/${reservationId}`)
+  return { id }
+}
+
+// ─── Create Child Document From Lease ────────────────────────
+
+export type ChildDocInput = {
+  amount?: number | null
+  paymentDate?: string | null
+  paymentMethod?: string
+  bankRef?: string | null
+  periodDate?: string | null
+  commissionNet?: number | null
+  vat7?: boolean
+  wht3?: boolean
+  newRentPrice?: number | null
+  newContractMonths?: number | null
+  newMoveInDate?: string | null
+  newEndDate?: string | null
+  effectiveEndDate?: string | null
+  penaltyAmount?: number | null
+  issueDate?: string | null
+  extraVars?: Record<string, string>
+}
+
+export async function createChildDocument(
+  leaseId: string,
+  docType: ContractDocType,
+  input: ChildDocInput = {}
+): Promise<{ error?: string; id?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { data: lease } = await supabase
+    .from('contracts')
+    .select('*')
+    .eq('id', leaseId)
+    .eq('agent_uid', user.id)
+    .eq('contract_category', 'lease')
+    .single()
+
+  if (!lease) return { error: 'ไม่พบสัญญาเช่า' }
+  if (['cancelled', 'terminated', 'completed'].includes(lease.status)) {
+    return { error: 'สัญญาเช่านี้สิ้นสุดแล้ว ไม่สามารถสร้างเอกสารเพิ่มได้' }
+  }
+
+  const [{ data: profile }] = await Promise.all([
+    supabase.from('profiles').select('plan').eq('id', user.id).single(),
+  ])
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const { count: contractsThisMonth } = await supabase
+    .from('contracts')
+    .select('*', { count: 'exact', head: true })
+    .eq('agent_uid', user.id)
+    .gte('created_at', startOfMonth)
+
+  const limits = PLAN_LIMITS[resolvePlan(profile?.plan)]
+  if (limits.maxContractsPerMonth !== null && (contractsThisMonth ?? 0) >= limits.maxContractsPerMonth) {
+    return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
+  }
+
+  const id = await nextContractId()
+  const masterId = (lease as { master_contract_id?: string | null }).master_contract_id ?? leaseId
+
+  // Build row with full lease inheritance
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const row: Record<string, any> = {
+    id,
+    agent_uid: user.id,
+    status: 'draft',
+    contract_category: 'child' as ContractCategory,
+    doc_type: docType,
+    parent_contract_id: leaseId,
+    master_contract_id: masterId,
+    stock_id:            lease.stock_id,
+    owner_id:            lease.owner_id,
+    customer_id:         lease.customer_id,
+    language_version:    lease.language_version ?? 'th',
+    template_slug:       null,
+    rent_price:          lease.rent_price,
+    deposit_months:      lease.deposit_months,
+    deposit_amount:      lease.deposit_amount,
+    contract_months:     lease.contract_months,
+    move_in_date:        lease.move_in_date,
+    end_date:            lease.end_date,
+    vat_7:               lease.vat_7 ?? false,
+    wht_3:               lease.wht_3 ?? false,
+    water_unit_price:    lease.water_unit_price,
+    electric_unit_price: lease.electric_unit_price,
+    internet_fee:        lease.internet_fee,
+    common_fee:          lease.common_fee,
+    parking_fee:         lease.parking_fee,
+    payment_grace_days:  lease.payment_grace_days,
+    payment_day_of_month: lease.payment_day_of_month,
+    cleaning_fee:        lease.cleaning_fee,
+    ac_count:            lease.ac_count,
+    ac_wash_per_unit:    lease.ac_wash_per_unit,
+    penalty_amount:      lease.penalty_amount,
+    commission_net:      lease.commission_net,
+    commission_rate_pct: lease.commission_rate_pct,
+    commission_from_owner: lease.commission_from_owner,
+    commission_from_customer: lease.commission_from_customer,
+    occupant_count:      lease.occupant_count,
+    extra_vars:          {},
+  }
+
+  // Apply doc-type specific overrides
+  if (docType === 'renewal') {
+    if (input.newRentPrice != null)     row.rent_price = input.newRentPrice
+    if (input.newContractMonths != null) row.contract_months = input.newContractMonths
+    if (input.newMoveInDate)            row.move_in_date = input.newMoveInDate
+    if (input.newEndDate)               row.end_date = input.newEndDate
+  }
+
+  if (['invoice_reservation','receipt_reservation','invoice_deposit','receipt_deposit'].includes(docType)) {
+    if (input.amount != null)    row.deposit_amount = input.amount
+    if (input.paymentDate)       row.payment_date = input.paymentDate
+    if (input.paymentMethod)     row.payment_method = input.paymentMethod
+    if (input.bankRef)           row.bank_ref = input.bankRef
+  }
+
+  if (docType === 'receipt_rent') {
+    if (input.amount != null)    row.rent_price = input.amount
+    if (input.periodDate)        row.move_in_date = input.periodDate
+    if (input.paymentMethod)     row.payment_method = input.paymentMethod
+    if (input.bankRef)           row.bank_ref = input.bankRef
+  }
+
+  if (docType === 'receipt_book') {
+    if (input.amount != null)    row.rent_price = input.amount
+    if (input.paymentDate)       row.move_in_date = input.paymentDate
+  }
+
+  if (docType === 'commission' || docType === 'commission_confirm') {
+    if (input.commissionNet != null) row.commission_net = input.commissionNet
+    if (input.vat7 !== undefined)    row.vat_7 = input.vat7
+    if (input.wht3 !== undefined)    row.wht_3 = input.wht3
+  }
+
+  if (['termination','cancellation','end_contract'].includes(docType)) {
+    if (input.effectiveEndDate) row.end_date = input.effectiveEndDate
+    if (input.penaltyAmount != null) row.penalty_amount = input.penaltyAmount
+    if (input.issueDate)        row.move_in_date = input.issueDate
+  }
+
+  if (docType === 'notice' || docType === 'warning') {
+    if (input.issueDate)        row.move_in_date = input.issueDate
+    if (input.effectiveEndDate) row.end_date = input.effectiveEndDate
+  }
+
+  if (input.extraVars) row.extra_vars = input.extraVars
+
+  const { error } = await supabase.from('contracts').insert(row)
+  if (error) return { error: 'สร้างเอกสารไม่สำเร็จ: ' + error.message }
+
+  // Ending docs: update master lease status + stock
+  const endingTypes = ['termination', 'cancellation', 'end_contract']
+  if (endingTypes.includes(docType) && input.effectiveEndDate) {
+    const newStatus = docType === 'cancellation' ? 'cancelled' : 'terminated'
+    await supabase.from('contracts')
+      .update({ effective_end_date: input.effectiveEndDate, terminated_at: new Date().toISOString(), status: newStatus })
+      .eq('id', masterId)
+      .eq('agent_uid', user.id)
+
+    const today = new Date().toISOString().split('T')[0]!
+    if (input.effectiveEndDate <= today && (lease as { stock_id?: string | null }).stock_id) {
+      await setStockAvailable(supabase, (lease as { stock_id: string }).stock_id, user.id)
+    }
+    await appendTimelineEvent(supabase, id, masterId, user.id, docType,
+      `${docType === 'cancellation' ? 'ยกเลิก' : 'บอกเลิก/สิ้นสุด'}สัญญา มีผลวันที่ ${input.effectiveEndDate}`, id)
+  } else {
+    await appendTimelineEvent(supabase, id, masterId, user.id, docType, `สร้างเอกสาร ${docType}`)
+  }
+
+  revalidatePath('/contracts')
+  revalidatePath(`/contracts/${leaseId}`)
   return { id }
 }
 

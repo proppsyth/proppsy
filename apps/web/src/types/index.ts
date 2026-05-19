@@ -21,7 +21,7 @@ export type PaymentMethod = 'cash' | 'transfer' | 'cheque'
 export type ContractStatus =
   | 'draft' | 'sent' | 'sent_for_sign' | 'viewed' | 'partially_signed'
   | 'signed' | 'finalized' | 'active' | 'completed'
-  | 'cancelled' | 'terminated' | 'renewed'
+  | 'cancelled' | 'terminated' | 'renewed' | 'converted_to_lease'
 export type SignerRole = 'tenant' | 'owner' | 'co_agent' | 'witness'
 export type SignerStatus = 'pending' | 'viewed' | 'signed' | 'declined'
 export type CustomerSource = 'line_oa' | 'referral' | 'walk_in' | 'online' | 'facebook' | 'instagram' | 'tiktok' | 'website' | 'other' | 'public_listing'

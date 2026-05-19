@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, FileText, Eye, GitBranch, Plus } from 'lucide-react'
+import { ArrowLeft, FileText, Eye, GitBranch } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { DOC_TYPE_LABELS, ownerDisplayName, customerDisplayName, stockDisplayTitle } from '@/types'
@@ -8,39 +8,42 @@ import type { ContractDocType, ContractStatus, Stock, Owner, Customer, ContractS
 import ContractActions from './ContractActions'
 import FurnitureChecklist from './FurnitureChecklist'
 import SignersPanel from './SignersPanel'
+import CreateChildDocPanel from '../CreateChildDocPanel'
 import { TEMPLATE_SUPPORTED_TYPES } from '@/lib/contracts/templateRegistry'
 import { createLeaseFromReservation } from '../actions'
 
 export const metadata: Metadata = { title: 'รายละเอียดสัญญา' }
 
 const STATUS_COLORS: Record<ContractStatus, string> = {
-  draft:            'bg-gray-100 text-gray-600',
-  sent:             'bg-yellow-100 text-yellow-700',
-  sent_for_sign:    'bg-amber-100 text-amber-700',
-  viewed:           'bg-blue-100 text-blue-700',
-  partially_signed: 'bg-orange-100 text-orange-700',
-  signed:           'bg-green-100 text-green-700',
-  finalized:        'bg-teal-100 text-teal-700',
-  active:           'bg-emerald-100 text-emerald-700',
-  completed:        'bg-emerald-100 text-emerald-700',
-  cancelled:        'bg-red-100 text-red-600',
-  terminated:       'bg-rose-100 text-rose-700',
-  renewed:          'bg-purple-100 text-purple-700',
+  draft:              'bg-gray-100 text-gray-600',
+  sent:               'bg-yellow-100 text-yellow-700',
+  sent_for_sign:      'bg-amber-100 text-amber-700',
+  viewed:             'bg-blue-100 text-blue-700',
+  partially_signed:   'bg-orange-100 text-orange-700',
+  signed:             'bg-green-100 text-green-700',
+  finalized:          'bg-teal-100 text-teal-700',
+  active:             'bg-emerald-100 text-emerald-700',
+  completed:          'bg-emerald-100 text-emerald-700',
+  cancelled:          'bg-red-100 text-red-600',
+  terminated:         'bg-rose-100 text-rose-700',
+  renewed:            'bg-purple-100 text-purple-700',
+  converted_to_lease: 'bg-sky-100 text-sky-700',
 }
 
 const STATUS_LABELS_TH: Record<ContractStatus, string> = {
-  draft:            'ร่าง',
-  sent:             'ส่งแล้ว',
-  sent_for_sign:    'รอลงนาม',
-  viewed:           'เปิดดูแล้ว',
-  partially_signed: 'ลงนามบางส่วน',
-  signed:           'ลงนามครบแล้ว',
-  finalized:        'ล็อกแล้ว',
-  active:           'ใช้งาน',
-  completed:        'เสร็จสมบูรณ์',
-  cancelled:        'ยกเลิก',
-  terminated:       'บอกเลิกแล้ว',
-  renewed:          'ต่อสัญญาแล้ว',
+  draft:              'ร่าง',
+  sent:               'ส่งแล้ว',
+  sent_for_sign:      'รอลงนาม',
+  viewed:             'เปิดดูแล้ว',
+  partially_signed:   'ลงนามบางส่วน',
+  signed:             'ลงนามครบแล้ว',
+  finalized:          'ล็อกแล้ว',
+  active:             'ใช้งาน',
+  completed:          'เสร็จสมบูรณ์',
+  cancelled:          'ยกเลิก',
+  terminated:         'บอกเลิกแล้ว',
+  renewed:            'ต่อสัญญาแล้ว',
+  converted_to_lease: 'สร้างสัญญาเช่าแล้ว',
 }
 
 
@@ -269,7 +272,7 @@ export default async function ContractDetailPage({
           )}
 
           {/* ── Reservation: One-Click Create Lease CTA ── */}
-          {isReservation && isActive && (
+          {isReservation && contract.status !== 'converted_to_lease' && isActive && (
             <Section title="ขั้นตอนถัดไป">
               <div className="flex items-start gap-2 mb-3 p-3 bg-amber-50 rounded-lg text-xs text-amber-700">
                 <GitBranch className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
@@ -280,7 +283,7 @@ export default async function ContractDetailPage({
                   type="submit"
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition w-full"
                 >
-                  <Plus className="w-4 h-4" />
+                  <GitBranch className="w-4 h-4" />
                   สร้างสัญญาเช่าจากใบจองนี้ (1 คลิก)
                 </button>
               </form>
@@ -309,33 +312,27 @@ export default async function ContractDetailPage({
             </div>
           )}
 
-          {/* ── Quick Actions: create child documents (LEASE only) ── */}
-          {isMasterLease && isActive && !isFinalized && (
-            <Section title="สร้างเอกสารที่เกี่ยวข้อง">
-              <div className="flex items-start gap-2 mb-3 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
-                <GitBranch className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                <span>เอกสารด้านล่างจะอ้างอิงสัญญานี้เป็นต้นทาง และดึงข้อมูลทรัพย์ / เจ้าของ / ผู้เช่า ให้อัตโนมัติ</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { type: 'renewal',     label: 'สร้างสัญญาต่อ',   color: 'text-purple-700 border-purple-200 hover:bg-purple-50' },
-                  { type: 'termination', label: 'หนังสือบอกเลิก',  color: 'text-rose-700 border-rose-200 hover:bg-rose-50' },
-                  { type: 'cancellation',label: 'หนังสือยกเลิก',   color: 'text-orange-700 border-orange-200 hover:bg-orange-50' },
-                  { type: 'end_contract',label: 'สิ้นสุดสัญญา',    color: 'text-red-700 border-red-200 hover:bg-red-50' },
-                  { type: 'notice',      label: 'หนังสือแจ้ง',     color: 'text-gray-700 border-gray-200 hover:bg-gray-50' },
-                  { type: 'warning',     label: 'หนังสือเตือน',    color: 'text-yellow-700 border-yellow-200 hover:bg-yellow-50' },
-                ].map(({ type, label, color }) => (
-                  <Link
-                    key={type}
-                    href={`/contracts/new?parent=${contract.id}&type=${type}`}
-                    className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg border text-xs font-medium transition ${color}`}
-                  >
-                    <Plus className="w-3.5 h-3.5 flex-shrink-0" />
-                    {label}
-                  </Link>
-                ))}
-              </div>
-            </Section>
+          {/* ── Child Doc Panel: all documents from this lease ── */}
+          {isMasterLease && isActive && (
+            <CreateChildDocPanel
+              leaseId={contract.id}
+              leaseData={{
+                rentPrice:            contract.rent_price ?? null,
+                depositAmount:        contract.deposit_amount ?? null,
+                depositMonths:        contract.deposit_months ?? null,
+                contractMonths:       contract.contract_months ?? null,
+                moveInDate:           contract.move_in_date ?? null,
+                endDate:              contract.end_date ?? null,
+                commissionNet:        contract.commission_net ?? null,
+                commissionFromOwner:  (contract as { commission_from_owner?: number | null }).commission_from_owner ?? null,
+                commissionFromCustomer: (contract as { commission_from_customer?: number | null }).commission_from_customer ?? null,
+                commissionRatePct:    (contract as { commission_rate_pct?: number | null }).commission_rate_pct ?? null,
+                vat7:                 contract.vat_7 ?? false,
+                wht3:                 contract.wht_3 ?? false,
+                paymentDayOfMonth:    (contract as { payment_day_of_month?: number | null }).payment_day_of_month ?? null,
+                paymentGraceDays:     (contract as { payment_grace_days?: number | null }).payment_grace_days ?? null,
+              }}
+            />
           )}
 
           {/* ── Related Documents Timeline ── */}
