@@ -171,6 +171,34 @@ const s = StyleSheet.create({
   listBullet: { fontFamily: 'Sarabun', width: 14, fontSize: 9.5, color: C.sub },
   listText: { flex: 1, fontFamily: 'Sarabun', fontSize: 9.5, lineHeight: 1.8, color: C.text },
 
+  // ── Thai contract patterns ─────────────────────────────
+  docTitle: {
+    fontFamily: 'Sarabun',
+    fontSize:   13, fontWeight: 700,
+    color:      C.text, textAlign: 'center',
+    marginTop:  8, marginBottom: 14,
+  },
+  metaLine: {
+    fontFamily: 'Sarabun', fontSize: 9.5,
+    lineHeight: 1.8, color: C.text, marginBottom: 3,
+  },
+  clauseWrap: {
+    flexDirection: 'row', marginTop: 8, marginBottom: 2,
+  },
+  clauseNum: {
+    fontFamily: 'Sarabun', fontSize: 9.5, fontWeight: 700,
+    color: C.text, width: 48, lineHeight: 1.8,
+  },
+  clauseBody: {
+    flex: 1, fontFamily: 'Sarabun', fontSize: 9.5,
+    lineHeight: 1.8, color: C.text, textAlign: 'justify',
+  },
+  pIndented: {
+    fontFamily: 'Sarabun', fontSize: 9.5,
+    lineHeight: 1.8, color: C.text,
+    marginBottom: 3, textAlign: 'justify', paddingLeft: 48,
+  },
+
   // ── Signature ─────────────────────────────────────────────
   sigWrap: {
     marginTop: 40, paddingTop: 24,
@@ -471,9 +499,44 @@ function parseBlocks(html: string): Block[] {
   return blocks
 }
 
+// ─── Block Classification (Thai legal pattern detection) ──────
+
+type ParaClass = 'title' | 'clause' | 'indented' | 'meta' | 'normal'
+
+const CLAUSE_RE = /^ข้อ\s*\d/
+const META_RE   = /^(ทำที่|วันที่\s*\d|ณ\s)/
+const TITLE_RE  = /^สัญญา/
+
+function classifyBlocks(blocks: Block[]): ParaClass[] {
+  const out: ParaClass[] = new Array(blocks.length).fill('normal')
+  let titleSeen = false
+  let inClause  = false
+
+  for (let idx = 0; idx < blocks.length; idx++) {
+    const blk = blocks[idx]!
+    if (blk.kind !== 'p') { inClause = false; continue }
+
+    const text = blk.segs.map(sg => sg.text).join('').trim()
+    if (!text) { inClause = false; continue }
+
+    if (!titleSeen && TITLE_RE.test(text) && text.length < 100) {
+      out[idx] = 'title'; titleSeen = true; inClause = false
+    } else if (CLAUSE_RE.test(text)) {
+      out[idx] = 'clause'; inClause = true
+    } else if (META_RE.test(text)) {
+      out[idx] = 'meta'; inClause = false
+    } else if (inClause) {
+      out[idx] = 'indented'
+    }
+  }
+  return out
+}
+
 // ─── Block Renderers ──────────────────────────────────────────
 
 function renderBlocks(blocks: Block[]): React.ReactElement[] {
+  const classes = classifyBlocks(blocks)
+
   return blocks.flatMap((block, i) => {
     if (block.kind === 'h') {
       if (block.level === 1) {
@@ -493,6 +556,42 @@ function renderBlocks(blocks: Block[]): React.ReactElement[] {
       if (block.segs.length === 0) {
         return [<View key={i} style={s.pBlank} />]
       }
+
+      const cls = classes[i] ?? 'normal'
+
+      // ── contract title (e.g. "สัญญาจองห้องชุด") ──────────
+      if (cls === 'title') {
+        const text = block.segs.map(sg => sg.text).join('')
+        return [<RichText key={i} text={text} style={s.docTitle} />]
+      }
+
+      // ── meta lines (ทำที่ / วันที่) ──────────────────────
+      if (cls === 'meta') {
+        const text = block.segs.map(sg => sg.text).join('')
+        return [<RichText key={i} text={text} style={s.metaLine} />]
+      }
+
+      // ── "ข้อ N." clause — split number + body ─────────────
+      if (cls === 'clause') {
+        const fullText = block.segs.map(sg => sg.text).join('')
+        const m = /^(ข้อ\s*\d+[.。．]*\.*\s*)(.*)$/s.exec(fullText)
+        const numPart  = m ? (m[1] ?? '').trimEnd() : ''
+        const bodyPart = m ? (m[2] ?? '').trim()    : fullText
+        return [
+          <View key={i} style={s.clauseWrap}>
+            <Text style={s.clauseNum}>{numPart}</Text>
+            {bodyPart ? <Text style={s.clauseBody}>{bodyPart}</Text> : null}
+          </View>,
+        ]
+      }
+
+      // ── indented continuation lines inside a clause ────────
+      if (cls === 'indented') {
+        const text = block.segs.map(sg => sg.text).join('')
+        return [<RichText key={i} text={text} style={s.pIndented} />]
+      }
+
+      // ── normal paragraph ───────────────────────────────────
       return [
         <Text key={i} style={s.p}>
           {block.segs.map((seg, j) => {
@@ -501,7 +600,6 @@ function renderBlocks(blocks: Block[]): React.ReactElement[] {
             if (!cjk) {
               return <Text key={j} style={{ fontFamily: 'Sarabun', fontWeight: wt }}>{seg.text}</Text>
             }
-            // Mixed script: split into CJK and non-CJK runs
             return splitScripts(seg.text).map((run, k) => (
               <Text
                 key={`${j}-${k}`}

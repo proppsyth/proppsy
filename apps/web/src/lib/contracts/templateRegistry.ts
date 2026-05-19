@@ -10,6 +10,7 @@ export interface TemplateDefinition {
   docType: ContractDocType
   language: LanguageVersion
   filename: string              // filename inside public/template-doc/
+  mdFilename?: string           // optional .md template in public/template-md/ (preferred over DOCX)
   label: string                 // Thai display name
   languageLabel: string         // language display name
   hasFurniture: boolean         // show furniture checklist only for rental
@@ -28,6 +29,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     docType: 'rental',
     language: 'th',
     filename: 'สัญญาเช่าไทย.docx',
+    mdFilename: 'rental_th.md',
     label: 'สัญญาเช่า',
     languageLabel: 'ภาษาไทย',
     hasFurniture: true,
@@ -46,6 +48,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     docType: 'rental',
     language: 'th_en',
     filename: 'สัญญาเช่าอังกฤษไทย.docx',
+    mdFilename: 'rental_th_en.md',
     label: 'สัญญาเช่า',
     languageLabel: 'ไทย + อังกฤษ',
     hasFurniture: true,
@@ -64,6 +67,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     docType: 'rental',
     language: 'th_en_zh',
     filename: 'สัญญาเช่าจีนอังกฤษไทย.docx',
+    mdFilename: 'rental_th_en_zh.md',
     label: 'สัญญาเช่า',
     languageLabel: 'ไทย + อังกฤษ + จีน',
     hasFurniture: true,
@@ -83,6 +87,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     docType: 'reservation',
     language: 'th',
     filename: 'สัญญาจองไทย.docx',
+    mdFilename: 'reservation_th.md',
     label: 'สัญญาจอง',
     languageLabel: 'ภาษาไทย',
     hasFurniture: false,
@@ -100,6 +105,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     docType: 'reservation',
     language: 'th_en',
     filename: 'สัญญาจองอังกฤษไทย.docx',
+    mdFilename: 'reservation_th_en.md',
     label: 'สัญญาจอง',
     languageLabel: 'ไทย + อังกฤษ',
     hasFurniture: false,
@@ -117,6 +123,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     docType: 'reservation',
     language: 'th_en_zh',
     filename: 'สัญญาจองจีนอังกฤษไทย.docx',
+    mdFilename: 'reservation_th_en_zh.md',
     label: 'สัญญาจอง',
     languageLabel: 'ไทย + อังกฤษ + จีน',
     hasFurniture: false,
@@ -136,6 +143,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     docType: 'renewal',
     language: 'th',
     filename: 'ต่อสัญญาไทย.docx',
+    mdFilename: 'renewal_th.md',
     label: 'ต่อสัญญาเช่า',
     languageLabel: 'ภาษาไทย',
     hasFurniture: false,
@@ -174,6 +182,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     docType: 'co_agent' as ContractDocType,
     language: 'th_en',
     filename: 'สัญญาco-agentอังกฤษไทย.docx',
+    mdFilename: 'co_agent_th_en.md',
     label: 'สัญญา Co-Agent',
     languageLabel: 'ไทย + อังกฤษ',
     hasFurniture: false,

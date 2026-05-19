@@ -939,15 +939,12 @@ export async function generateContractPdf(
         agent:    profile ?? null,
       }, template)
 
-      const docxBuffer = await generateDocx(template.filename, variables)
-      const { value: html } = await mammoth.convertToHtml({ buffer: docxBuffer })
-
       const ownerName = [contract.owner?.prefix, contract.owner?.first_name_th, contract.owner?.last_name_th]
         .filter(Boolean).join(' ') || ''
       const customerName = [contract.customer?.prefix, contract.customer?.first_name_th, contract.customer?.last_name_th]
         .filter(Boolean).join(' ') || ''
 
-      buffer = await renderMammothHtmlAsPdf(html, {
+      const pdfMeta = {
         contractId:   contract.id,
         docTypeLabel: template.label,
         status:       (contract as { status?: string }).status ?? 'draft',
@@ -959,7 +956,22 @@ export async function generateContractPdf(
           { label: 'ผู้เช่า (Tenant)',       name: customerName },
           { label: 'พยาน (Witness)',          name: '' },
         ],
-      })
+      }
+
+      if (template.mdFilename) {
+        // Preferred: Markdown→PDF pipeline (from Google Docs .md templates)
+        const { readFileSync } = await import('fs')
+        const { join } = await import('path')
+        const { renderMarkdownAsPdf } = await import('@/lib/pdf/markdownToPdf')
+        const mdPath = join(process.cwd(), 'public', 'template-md', template.mdFilename)
+        const mdContent = readFileSync(mdPath, 'utf-8')
+        buffer = await renderMarkdownAsPdf(mdContent, variables, pdfMeta)
+      } else {
+        // Fallback: DOCX→mammoth→HTML→PDF pipeline
+        const docxBuffer = await generateDocx(template.filename, variables)
+        const { value: html } = await mammoth.convertToHtml({ buffer: docxBuffer })
+        buffer = await renderMammothHtmlAsPdf(html, pdfMeta)
+      }
     } else {
       const { renderToBuffer } = await import('@react-pdf/renderer')
       const { ContractDocument } = await import('@/lib/pdf/ContractDocument')
