@@ -248,7 +248,9 @@ function RichText({
 // ─── Markdown processor ───────────────────────────────────────
 
 export function deEscape(md: string): string {
-  return md.replace(/\\<\\</g, '<<').replace(/\\>\\>/g, '>>')
+  // Strip UTF-8 BOM if present (PowerShell Out-File adds it)
+  const stripped = md.startsWith('﻿') ? md.slice(1) : md
+  return stripped.replace(/\\<\\</g, '<<').replace(/\\>\\>/g, '>>')
 }
 
 export function substituteVars(md: string, vars: Record<string, string>): string {
