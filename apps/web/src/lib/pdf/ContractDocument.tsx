@@ -159,6 +159,8 @@ const DOC_LABELS: Record<ContractDocType, string> = {
   co_agent: 'สัญญา Co-Agent',
   end_contract: 'หนังสือสิ้นสุดสัญญา',
   warning: 'หนังสือเตือน',
+  installment_schedule: 'ตารางผ่อนชำระ',
+  furniture_list: 'รายการเฟอร์นิเจอร์/สินทรัพย์',
 }
 
 function fmt(n: number): string {

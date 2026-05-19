@@ -27,8 +27,11 @@ interface LeaseSummary {
 }
 
 interface Props {
+  /** ID of the parent contract (lease or reservation) */
   leaseId: string
   leaseData: LeaseSummary
+  /** 'lease' = full doc set; 'reservation' = only invoice/receipt reservation */
+  parentCategory?: 'lease' | 'reservation'
 }
 
 interface FormValues {
@@ -49,11 +52,12 @@ interface FormValues {
   issueDate: string
   coAgentName: string
   coAgentNationalId: string
+  noticeDetails: string
 }
 
 // ─── Doc type groups ──────────────────────────────────────────
 
-const DOC_GROUPS: Array<{
+const LEASE_DOC_GROUPS: Array<{
   label: string
   color: string
   types: Array<{ type: ContractDocType; label: string }>
@@ -62,8 +66,6 @@ const DOC_GROUPS: Array<{
     label: 'ใบแจ้งหนี้ / ใบเสร็จ',
     color: 'text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100',
     types: [
-      { type: 'invoice_reservation', label: 'ใบแจ้งหนี้เงินจอง' },
-      { type: 'receipt_reservation', label: 'ใบเสร็จเงินจอง' },
       { type: 'invoice_deposit',     label: 'ใบแจ้งหนี้เงินประกัน' },
       { type: 'receipt_deposit',     label: 'ใบเสร็จเงินประกัน' },
       { type: 'receipt_rent',        label: 'ใบเสร็จค่าเช่า' },
@@ -93,6 +95,14 @@ const DOC_GROUPS: Array<{
     ],
   },
   {
+    label: 'เอกสารประกอบ',
+    color: 'text-teal-700 border-teal-200 bg-teal-50 hover:bg-teal-100',
+    types: [
+      { type: 'installment_schedule', label: 'ตารางผ่อนชำระ' },
+      { type: 'furniture_list',       label: 'รายการเฟอร์นิเจอร์' },
+    ],
+  },
+  {
     label: 'แจ้งเตือน / หนังสือ',
     color: 'text-amber-700 border-amber-200 bg-amber-50 hover:bg-amber-100',
     types: [
@@ -111,25 +121,43 @@ const DOC_GROUPS: Array<{
   },
 ]
 
+const RESERVATION_DOC_GROUPS: typeof LEASE_DOC_GROUPS = [
+  {
+    label: 'ใบแจ้งหนี้ / ใบเสร็จ (เงินจอง)',
+    color: 'text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100',
+    types: [
+      { type: 'invoice_reservation', label: 'ใบแจ้งหนี้เงินจอง' },
+      { type: 'receipt_reservation', label: 'ใบเสร็จเงินจอง' },
+    ],
+  },
+]
+
 function fmt(n: number): string {
   return new Intl.NumberFormat('th-TH').format(n)
 }
 
+function todayStr(): string {
+  return new Date().toISOString().split('T')[0]!
+}
+
 // ─── Component ───────────────────────────────────────────────
 
-export default function CreateChildDocPanel({ leaseId, leaseData }: Props) {
+export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory = 'lease' }: Props) {
   const router = useRouter()
   const [selectedType, setSelectedType] = useState<ContractDocType | null>(null)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
 
-  function makeInitForm(): FormValues {
+  const DOC_GROUPS = parentCategory === 'reservation' ? RESERVATION_DOC_GROUPS : LEASE_DOC_GROUPS
+
+  function makeInitForm(type?: ContractDocType | null): FormValues {
+    const today = todayStr()
     return {
       amount:             String(leaseData.depositAmount ?? ''),
-      paymentDate:        '',
+      paymentDate:        today,
       paymentMethod:      'transfer',
       bankRef:            '',
-      periodDate:         '',
+      periodDate:         today,
       commissionNet:      String(leaseData.commissionNet ?? ''),
       vat7:               leaseData.vat7,
       wht3:               leaseData.wht3,
@@ -139,23 +167,20 @@ export default function CreateChildDocPanel({ leaseId, leaseData }: Props) {
       newEndDate:         '',
       effectiveEndDate:   '',
       penaltyAmount:      '',
-      issueDate:          '',
+      issueDate:          today,
       coAgentName:        '',
       coAgentNationalId:  '',
+      noticeDetails:      '',
+      ...(type === 'receipt_rent' ? { amount: String(leaseData.rentPrice ?? '') } : {}),
     }
   }
 
-  const [form, setForm] = useState<FormValues>(makeInitForm)
+  const [form, setForm] = useState<FormValues>(() => makeInitForm())
 
   function handleSelectType(type: ContractDocType) {
     setSelectedType(type)
     setError('')
-    // Re-init form with amount defaulting correctly per type
-    const init = makeInitForm()
-    if (type === 'receipt_rent') {
-      init.amount = String(leaseData.rentPrice ?? '')
-    }
-    setForm(init)
+    setForm(makeInitForm(type))
   }
 
   const set = (k: keyof FormValues, v: string | boolean) =>
@@ -168,7 +193,17 @@ export default function CreateChildDocPanel({ leaseId, leaseData }: Props) {
       const num = (v: string) => v.trim() ? parseFloat(v) || null : null
       const int = (v: string) => v.trim() ? parseInt(v) || null : null
 
-      const input = {
+      const extraVars: Record<string, string> = {}
+      if (selectedType === 'co_agent') {
+        extraVars['ชื่อ'] = form.coAgentName
+        extraVars['เลขเสียภาษี'] = form.coAgentNationalId
+      }
+      if ((selectedType === 'notice' || selectedType === 'warning') && form.noticeDetails) {
+        extraVars['เหตุผล'] = form.noticeDetails
+        extraVars['รายละเอียด'] = form.noticeDetails
+      }
+
+      const result = await createChildDocument(leaseId, selectedType, {
         amount:             num(form.amount),
         paymentDate:        form.paymentDate || null,
         paymentMethod:      form.paymentMethod,
@@ -184,12 +219,9 @@ export default function CreateChildDocPanel({ leaseId, leaseData }: Props) {
         effectiveEndDate:   form.effectiveEndDate || null,
         penaltyAmount:      num(form.penaltyAmount),
         issueDate:          form.issueDate || null,
-        extraVars:          selectedType === 'co_agent'
-          ? { 'ชื่อ': form.coAgentName, 'เลขเสียภาษี': form.coAgentNationalId }
-          : undefined,
-      }
+        extraVars:          Object.keys(extraVars).length > 0 ? extraVars : undefined,
+      })
 
-      const result = await createChildDocument(leaseId, selectedType, input)
       if (result.error) { setError(result.error); return }
       router.push(`/contracts/${result.id}`)
     })
@@ -201,18 +233,20 @@ export default function CreateChildDocPanel({ leaseId, leaseData }: Props) {
     if (!selectedType) return null
 
     const isPaymentDoc = ['invoice_reservation','receipt_reservation','invoice_deposit','receipt_deposit'].includes(selectedType)
-    const isReceiptRent = selectedType === 'receipt_rent'
-    const isReceiptBook = selectedType === 'receipt_book'
-    const isCommission  = selectedType === 'commission' || selectedType === 'commission_confirm'
-    const isRenewal     = selectedType === 'renewal'
-    const isEnding      = ['termination','cancellation','end_contract'].includes(selectedType)
+    const isReceiptRent  = selectedType === 'receipt_rent'
+    const isReceiptBook  = selectedType === 'receipt_book'
+    const isCommission   = selectedType === 'commission' || selectedType === 'commission_confirm'
+    const isRenewal      = selectedType === 'renewal'
+    const isEnding       = ['termination','cancellation','end_contract'].includes(selectedType)
     const isNotification = selectedType === 'notice' || selectedType === 'warning'
-    const isCoAgent     = selectedType === 'co_agent'
+    const isCoAgent      = selectedType === 'co_agent'
+    const isSchedule     = selectedType === 'installment_schedule'
+    const isFurniture    = selectedType === 'furniture_list'
 
     return (
       <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
         <p className="text-xs font-semibold text-gray-600">
-          {DOC_TYPE_LABELS[selectedType]} — กรอกข้อมูลเฉพาะที่ต้องการ (ที่เหลือดึงจากสัญญาเช่าอัตโนมัติ)
+          {DOC_TYPE_LABELS[selectedType]} — กรอกข้อมูลที่ต้องการ (ที่เหลือดึงจากสัญญาหลักอัตโนมัติ)
         </p>
 
         {(isPaymentDoc || isReceiptBook) && (
@@ -251,7 +285,7 @@ export default function CreateChildDocPanel({ leaseId, leaseData }: Props) {
               onChange={v => set('commissionNet', v)} type="number"
               hint={leaseData.commissionNet ? `จากสัญญา: ฿${fmt(leaseData.commissionNet)}` : undefined}
             />
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <Toggle label="VAT 7%" checked={form.vat7} onChange={v => set('vat7', v)} />
               <Toggle label="หัก ณ ที่จ่าย 3%" checked={form.wht3} onChange={v => set('wht3', v)} />
             </div>
@@ -294,6 +328,14 @@ export default function CreateChildDocPanel({ leaseId, leaseData }: Props) {
               onChange={v => set('issueDate', v)} type="date" />
             <Field label="วันที่มีผล" value={form.effectiveEndDate}
               onChange={v => set('effectiveEndDate', v)} type="date" placeholder="ไม่บังคับ" />
+            <TextareaField
+              label={selectedType === 'warning' ? 'สาเหตุ / พฤติกรรมที่เตือน *' : 'รายละเอียด / เนื้อหาแจ้ง *'}
+              value={form.noticeDetails}
+              onChange={v => set('noticeDetails', v)}
+              placeholder={selectedType === 'warning'
+                ? 'เช่น: ส่งเสียงดังรบกวน, ค้างค่าเช่า, เลี้ยงสัตว์โดยไม่ได้รับอนุญาต'
+                : 'เช่น: แจ้งวันหมดสัญญา, แจ้งเรื่องซ่อมบำรุง'}
+            />
           </>
         )}
 
@@ -305,20 +347,29 @@ export default function CreateChildDocPanel({ leaseId, leaseData }: Props) {
               onChange={v => set('coAgentNationalId', v)} placeholder="13 หลัก" />
           </>
         )}
+
+        {(isSchedule || isFurniture) && (
+          <div className="px-3 py-2 bg-blue-50 rounded-lg text-xs text-blue-700">
+            เอกสารนี้จะสร้างด้วยข้อมูลจากสัญญาเช่า ไม่ต้องกรอกเพิ่ม
+          </div>
+        )}
       </div>
     )
   }
 
   // ── Render ──────────────────────────────────────────────────
 
+  const panelTitle = parentCategory === 'reservation'
+    ? 'สร้างใบแจ้งหนี้ / ใบเสร็จเงินจอง'
+    : 'สร้างเอกสารที่เกี่ยวข้อง'
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
-        <h2 className="text-sm font-semibold text-gray-700">สร้างเอกสารที่เกี่ยวข้อง</h2>
+        <h2 className="text-sm font-semibold text-gray-700">{panelTitle}</h2>
       </div>
       <div className="p-4">
         {!selectedType ? (
-          // ── Type grid ─────────────────────────────────────────
           <div className="space-y-4">
             {DOC_GROUPS.map(group => (
               <div key={group.label}>
@@ -340,7 +391,6 @@ export default function CreateChildDocPanel({ leaseId, leaseData }: Props) {
             ))}
           </div>
         ) : (
-          // ── Inline form ───────────────────────────────────────
           <div>
             <button
               type="button"
@@ -429,10 +479,25 @@ function Field({ label, value, onChange, type = 'text', placeholder, hint }: Fie
   )
 }
 
+function TextareaField({ label, value, onChange, placeholder }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string
+}) {
+  return (
+    <div>
+      <label className="block text-xs text-gray-500 mb-1 font-medium">{label}</label>
+      <textarea
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={3}
+        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+      />
+    </div>
+  )
+}
+
 function SelectField({ label, value, onChange, options }: {
-  label: string
-  value: string
-  onChange: (v: string) => void
+  label: string; value: string; onChange: (v: string) => void
   options: { value: string; label: string }[]
 }) {
   return (

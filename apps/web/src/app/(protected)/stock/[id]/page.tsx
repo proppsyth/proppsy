@@ -13,10 +13,12 @@ import StockShareButtons from './StockShareButtons'
 export const metadata: Metadata = { title: 'รายละเอียดทรัพย์' }
 
 const STATUS_COLORS: Record<StockStatus, string> = {
-  available: 'bg-green-100 text-green-700',
-  rented: 'bg-blue-100 text-blue-700',
-  sold: 'bg-purple-100 text-purple-700',
-  unavailable: 'bg-gray-100 text-gray-600',
+  available:      'bg-green-100 text-green-700',
+  reserved:       'bg-yellow-100 text-yellow-700',
+  pending_move_in:'bg-orange-100 text-orange-700',
+  rented:         'bg-blue-100 text-blue-700',
+  sold:           'bg-purple-100 text-purple-700',
+  unavailable:    'bg-gray-100 text-gray-600',
 }
 
 const LISTING_LABELS: Record<ListingType, string> = {

@@ -10,6 +10,7 @@ import FurnitureChecklist from './FurnitureChecklist'
 import SignersPanel from './SignersPanel'
 import CreateChildDocPanel from '../CreateChildDocPanel'
 import CreateLeasePanel from '../CreateLeasePanel'
+import EditDraftPanel from '../EditDraftPanel'
 import { TEMPLATE_SUPPORTED_TYPES } from '@/lib/contracts/templateRegistry'
 
 export const metadata: Metadata = { title: 'รายละเอียดสัญญา' }
@@ -260,6 +261,67 @@ export default async function ContractDetailPage({
                 }))}
               />
             </Section>
+          )}
+
+          {/* ── Draft: Edit Panel ── */}
+          {!isFinalized && contract.status === 'draft' && (
+            <EditDraftPanel
+              data={{
+                contractId:            id,
+                contractCategory:      contractMeta.contract_category ?? null,
+                docType:               contract.doc_type,
+                rentPrice:             contract.rent_price ?? null,
+                depositMonths:         contract.deposit_months ?? null,
+                depositAmount:         contract.deposit_amount ?? null,
+                contractMonths:        contract.contract_months ?? null,
+                moveInDate:            contract.move_in_date ?? null,
+                endDate:               contract.end_date ?? null,
+                reservationExpireDate: (contract as { reservation_expire_date?: string | null }).reservation_expire_date ?? null,
+                paymentDate:           (contract as { payment_date?: string | null }).payment_date ?? null,
+                penaltyAmount:         contract.penalty_amount ?? null,
+                cleaningFee:           contract.cleaning_fee ?? null,
+                acCount:               contract.ac_count ?? null,
+                acWashPerUnit:         contract.ac_wash_per_unit ?? null,
+                occupantCount:         (contract as { occupant_count?: number | null }).occupant_count ?? null,
+                waterUnitPrice:        (contract as { water_unit_price?: number | null }).water_unit_price ?? null,
+                electricUnitPrice:     (contract as { electric_unit_price?: number | null }).electric_unit_price ?? null,
+                internetFee:           (contract as { internet_fee?: number | null }).internet_fee ?? null,
+                commonFee:             (contract as { common_fee?: number | null }).common_fee ?? null,
+                parkingFee:            (contract as { parking_fee?: number | null }).parking_fee ?? null,
+                paymentGraceDays:      (contract as { payment_grace_days?: number | null }).payment_grace_days ?? null,
+                paymentDayOfMonth:     (contract as { payment_day_of_month?: number | null }).payment_day_of_month ?? null,
+                vat7:                  contract.vat_7 ?? false,
+                wht3:                  contract.wht_3 ?? false,
+                commissionNet:         contract.commission_net ?? null,
+                commissionRatePct:     (contract as { commission_rate_pct?: number | null }).commission_rate_pct ?? null,
+                commissionFromOwner:   (contract as { commission_from_owner?: number | null }).commission_from_owner ?? null,
+                commissionFromCustomer: (contract as { commission_from_customer?: number | null }).commission_from_customer ?? null,
+              }}
+            />
+          )}
+
+          {/* ── Reservation: Invoice/Receipt docs panel ── */}
+          {isReservation && isActive && (
+            <CreateChildDocPanel
+              leaseId={id}
+              parentCategory="reservation"
+              leaseData={{
+                rentPrice:             contract.rent_price ?? null,
+                depositAmount:         contract.deposit_amount ?? null,
+                depositMonths:         contract.deposit_months ?? null,
+                contractMonths:        contract.contract_months ?? null,
+                moveInDate:            contract.move_in_date ?? null,
+                endDate:               contract.end_date ?? null,
+                commissionNet:         contract.commission_net ?? null,
+                commissionFromOwner:   (contract as { commission_from_owner?: number | null }).commission_from_owner ?? null,
+                commissionFromCustomer: (contract as { commission_from_customer?: number | null }).commission_from_customer ?? null,
+                commissionRatePct:     (contract as { commission_rate_pct?: number | null }).commission_rate_pct ?? null,
+                vat7:                  contract.vat_7 ?? false,
+                wht3:                  contract.wht_3 ?? false,
+                paymentDayOfMonth:     (contract as { payment_day_of_month?: number | null }).payment_day_of_month ?? null,
+                paymentGraceDays:      (contract as { payment_grace_days?: number | null }).payment_grace_days ?? null,
+              }}
+            />
           )}
 
           {/* ── Reservation: Create Lease Panel ── */}

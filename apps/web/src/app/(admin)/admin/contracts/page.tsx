@@ -10,25 +10,33 @@ export const metadata: Metadata = { title: 'ระบบสัญญา — Admi
 const STATUS_LABELS: Record<ContractStatus, string> = {
   draft: 'ร่าง',
   sent: 'ส่งแล้ว',
+  sent_for_sign: 'ส่งเซ็นแล้ว',
   viewed: 'เปิดดูแล้ว',
   partially_signed: 'เซ็นบางส่วน',
   signed: 'เซ็นครบ',
+  finalized: 'ล็อกแล้ว',
+  active: 'มีผลแล้ว',
   completed: 'เสร็จสิ้น',
   cancelled: 'ยกเลิก',
   terminated: 'ยกเลิกสัญญา',
   renewed: 'ต่อสัญญาแล้ว',
+  converted_to_lease: 'แปลงเป็นสัญญาเช่า',
 }
 
 const STATUS_COLORS: Record<ContractStatus, string> = {
   draft: 'bg-gray-100 text-gray-600',
   sent: 'bg-yellow-100 text-yellow-700',
+  sent_for_sign: 'bg-yellow-100 text-yellow-700',
   viewed: 'bg-yellow-100 text-yellow-700',
   partially_signed: 'bg-orange-100 text-orange-700',
   signed: 'bg-green-100 text-green-700',
+  finalized: 'bg-emerald-100 text-emerald-700',
+  active: 'bg-emerald-100 text-emerald-700',
   completed: 'bg-emerald-100 text-emerald-700',
   cancelled: 'bg-red-100 text-red-600',
   terminated: 'bg-red-100 text-red-600',
   renewed: 'bg-blue-100 text-blue-700',
+  converted_to_lease: 'bg-blue-100 text-blue-700',
 }
 
 const CATEGORY_LABELS: Record<ContractCategory, string> = {

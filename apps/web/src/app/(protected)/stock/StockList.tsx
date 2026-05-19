@@ -8,17 +8,21 @@ import type { Stock, StockStatus, ListingType } from '@/types'
 import StorageImage from '@/components/shared/StorageImage'
 
 const STATUS_COLORS: Record<StockStatus, string> = {
-  available: 'bg-green-100 text-green-700',
-  rented: 'bg-blue-100 text-blue-700',
-  sold: 'bg-purple-100 text-purple-700',
-  unavailable: 'bg-gray-100 text-gray-600',
+  available:      'bg-green-100 text-green-700',
+  reserved:       'bg-yellow-100 text-yellow-700',
+  pending_move_in:'bg-orange-100 text-orange-700',
+  rented:         'bg-blue-100 text-blue-700',
+  sold:           'bg-purple-100 text-purple-700',
+  unavailable:    'bg-gray-100 text-gray-600',
 }
 
 const STATUS_LABELS: Record<StockStatus, string> = {
-  available: 'ว่าง',
-  rented: 'เช่าแล้ว',
-  sold: 'ขายแล้ว',
-  unavailable: 'ไม่ว่าง',
+  available:      'ว่าง',
+  reserved:       'จองแล้ว',
+  pending_move_in:'รอเข้าอยู่',
+  rented:         'เช่าแล้ว',
+  sold:           'ขายแล้ว',
+  unavailable:    'ไม่ว่าง',
 }
 
 const LISTING_LABELS: Record<ListingType, string> = {

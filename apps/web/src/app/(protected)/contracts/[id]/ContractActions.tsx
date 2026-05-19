@@ -175,11 +175,11 @@ export default function ContractActions({
         </div>
       )}
 
-      {/* .docx Download */}
+      {/* .docx Download (secondary — editing/custom use) */}
       {hasTemplate && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
-            <h2 className="text-sm font-semibold text-gray-700">ดาวน์โหลด .docx</h2>
+            <h2 className="text-sm font-semibold text-gray-700">.docx (สำหรับแก้ไข)</h2>
           </div>
           <div className="p-4 space-y-2">
             {currentDocxUrl && (
@@ -189,14 +189,14 @@ export default function ContractActions({
                 className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline mb-2"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                เปิด .docx ล่าสุด
+                ดาวน์โหลด .docx ล่าสุด
               </a>
             )}
             <button
               type="button"
               onClick={handleGenerateDocx}
               disabled={isDocxPending}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-medium rounded-xl transition disabled:opacity-50"
             >
               {isDocxPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
               {isDocxPending ? 'กำลังสร้าง...' : currentDocxUrl ? 'สร้าง .docx ใหม่' : 'สร้าง .docx'}
@@ -215,10 +215,10 @@ export default function ContractActions({
         </div>
       )}
 
-      {/* PDF (legacy) */}
+      {/* PDF */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
-          <h2 className="text-sm font-semibold text-gray-700">PDF (legacy)</h2>
+          <h2 className="text-sm font-semibold text-gray-700">PDF (เอกสารทางการ)</h2>
         </div>
         <div className="p-4 space-y-2">
           {currentPdfUrl && (
@@ -236,10 +236,10 @@ export default function ContractActions({
             type="button"
             onClick={handleGeneratePdf}
             disabled={isPdfPending}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-medium rounded-xl transition disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
           >
             {isPdfPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
-            {isPdfPending ? 'กำลังสร้าง...' : 'สร้าง PDF'}
+            {isPdfPending ? 'กำลังสร้าง...' : currentPdfUrl ? 'สร้าง PDF ใหม่' : 'สร้าง PDF'}
           </button>
           {pdfError && <p className="text-xs text-red-600">{pdfError}</p>}
         </div>

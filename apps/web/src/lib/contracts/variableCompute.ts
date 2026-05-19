@@ -245,6 +245,10 @@ export function computeVariables(
   v['รวมหักตัวอักษร']         = bahtText(wht3Amt)
   v['รวมหักตัวอักษรen']       = bahtTextEn(wht3Amt)
 
+  // ─── Notice / Warning specific ───────────────────────────────
+  v['เหตุผล']           = extra['เหตุผล']    ?? '-'
+  v['รายละเอียด']       = extra['รายละเอียด'] ?? '-'
+
   // ─── Co-Agent specific ───────────────────────────────────────
   // These come from extra_vars entered by the agent in the wizard
   v['ชื่อ']             = extra['ชื่อ'] ?? '-'

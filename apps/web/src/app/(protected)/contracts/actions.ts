@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { resolvePlan, PLAN_LIMITS, type ContractDocType, type ContractCategory } from '@/types'
+import { resolvePlan, PLAN_LIMITS, type ContractDocType, type ContractCategory, type ContractStatus } from '@/types'
 import {
   setStockReserved, setStockPendingMoveIn, setStockRented, setStockAvailable,
   captureFinalizationSnapshot, appendTimelineEvent, docTypeToCategory,
@@ -53,18 +53,39 @@ export type ContractInput = {
 
 // ─── ID Generators ────────────────────────────────────────────
 
-async function nextContractId(): Promise<string> {
-  const supabase = await createClient()
+// Prefix per doc type / category — keeps contract lists scannable
+function docTypePrefix(docType: ContractDocType, category: ContractCategory): string {
+  if (category === 'reservation') return 'B'
+  if (category === 'lease')       return 'C'
+  if (docType.startsWith('invoice_'))        return 'IV'
+  if (docType.startsWith('receipt_'))        return 'RC'
+  if (docType === 'warning')                 return 'WN'
+  if (docType === 'termination')             return 'TM'
+  if (docType === 'cancellation')            return 'CN'
+  if (docType === 'notice')                  return 'NT'
+  if (docType === 'end_contract')            return 'EC'
+  if (docType === 'renewal')                 return 'RL'
+  if (docType === 'commission' || docType === 'commission_confirm') return 'CM'
+  if (docType === 'co_agent')                return 'CA'
+  if (docType === 'installment_schedule')    return 'IS'
+  if (docType === 'furniture_list')          return 'FL'
+  return 'BK'
+}
+
+async function nextId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  prefix: string,
+): Promise<string> {
   const { data } = await supabase
     .from('contracts')
     .select('id')
-    .like('id', 'BK-%')
+    .like('id', `${prefix}-%`)
     .order('id', { ascending: false })
     .limit(1)
     .maybeSingle()
 
-  const num = data?.id ? (parseInt(data.id.slice(3)) || 0) : 0
-  return `BK-${String(num + 1).padStart(4, '0')}`
+  const num = data?.id ? (parseInt(data.id.slice(prefix.length + 1)) || 0) : 0
+  return `${prefix}-${String(num + 1).padStart(4, '0')}`
 }
 
 // ─── Create ──────────────────────────────────────────────────
@@ -126,26 +147,14 @@ export async function createContract(
     return { error: 'เอกสารนี้ต้องสร้างจากสัญญาเช่า (ใช้ปุ่มบนหน้าสัญญาเช่า)' }
   }
 
-  // ── For child docs: resolve master_contract_id ───────────────
-  let master_contract_id: string | null = null
-  if (contract_category === 'child' && input.parent_contract_id) {
-    const { data: parent } = await supabase
-      .from('contracts')
-      .select('master_contract_id, contract_category')
-      .eq('id', input.parent_contract_id)
-      .single()
-    master_contract_id = (parent as { master_contract_id?: string | null } | null)?.master_contract_id
-      ?? input.parent_contract_id
-  }
-
-  const id = await nextContractId()
+  const id = await nextId(supabase, docTypePrefix(input.doc_type, contract_category))
 
   const { error } = await supabase.from('contracts').insert({
     id,
     agent_uid: user.id,
     status: 'draft',
     contract_category,
-    master_contract_id,
+    master_contract_id: null,
     ...input,
     stock_id:    input.stock_id    || null,
     owner_id:    input.owner_id    || null,
@@ -156,47 +165,9 @@ export async function createContract(
   if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
 
   // ── Reservation → stock: reserved ────────────────────────────
-  if (contract_category === 'reservation' && input.stock_id) {
+  if (input.stock_id) {
     await setStockReserved(supabase, input.stock_id, user.id)
     await appendTimelineEvent(supabase, id, null, user.id, 'reservation_created', 'สร้างใบจอง')
-  }
-
-  // ── Lease → stock: pending_move_in ───────────────────────────
-  if (contract_category === 'lease' && input.stock_id) {
-    await setStockPendingMoveIn(supabase, input.stock_id, user.id)
-    await appendTimelineEvent(supabase, id, id, user.id, 'lease_created',
-      input.parent_contract_id
-        ? `สัญญาเช่าสร้างจากใบจอง ${input.parent_contract_id}`
-        : 'สร้างสัญญาเช่า',
-      input.parent_contract_id ?? undefined,
-    )
-  }
-
-  // ── Child doc lifecycle effects on the MASTER lease ──────────
-  if (contract_category === 'child' && master_contract_id) {
-    const endingTypes = ['termination', 'cancellation', 'end_contract']
-    if (endingTypes.includes(input.doc_type) && input.end_date) {
-      const newStatus = input.doc_type === 'cancellation' ? 'cancelled' : 'terminated'
-      await supabase
-        .from('contracts')
-        .update({
-          effective_end_date: input.end_date,
-          terminated_at: new Date().toISOString(),
-          status: newStatus,
-        })
-        .eq('id', master_contract_id)
-        .eq('agent_uid', user.id)
-
-      const today = new Date().toISOString().split('T')[0]!
-      if (input.end_date <= today && input.stock_id) {
-        await setStockAvailable(supabase, input.stock_id, user.id)
-      }
-
-      await appendTimelineEvent(supabase, id, master_contract_id, user.id, input.doc_type,
-        `${input.doc_type === 'cancellation' ? 'ยกเลิก' : 'บอกเลิก/สิ้นสุด'}สัญญา มีผลวันที่ ${input.end_date}`,
-        id,
-      )
-    }
   }
 
   revalidatePath('/contracts')
@@ -264,7 +235,7 @@ export async function createLeaseFromReservation(
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }
 
-  const id = await nextContractId()
+  const id = await nextId(supabase, 'C')
 
   // Compute end_date from move_in_date + contract_months if both provided
   const moveIn = extras.move_in_date ?? null
@@ -374,12 +345,24 @@ export async function createChildDocument(
     .select('*')
     .eq('id', leaseId)
     .eq('agent_uid', user.id)
-    .eq('contract_category', 'lease')
+    .in('contract_category', ['lease', 'reservation'])
     .single()
 
-  if (!lease) return { error: 'ไม่พบสัญญาเช่า' }
-  if (['cancelled', 'terminated', 'completed'].includes(lease.status)) {
+  if (!lease) return { error: 'ไม่พบสัญญา/ใบจอง' }
+
+  const parentCategory = (lease as { contract_category?: string }).contract_category
+  if (parentCategory === 'lease' && ['cancelled', 'terminated', 'completed'].includes(lease.status)) {
     return { error: 'สัญญาเช่านี้สิ้นสุดแล้ว ไม่สามารถสร้างเอกสารเพิ่มได้' }
+  }
+  if (parentCategory === 'reservation') {
+    // Only reservation-specific docs allowed from a reservation parent
+    const reservationAllowed = ['invoice_reservation', 'receipt_reservation']
+    if (!reservationAllowed.includes(docType)) {
+      return { error: 'เอกสารประเภทนี้ต้องสร้างจากสัญญาเช่า ไม่ใช่ใบจอง' }
+    }
+    if (['cancelled', 'completed', 'converted_to_lease'].includes(lease.status)) {
+      return { error: 'ใบจองนี้สิ้นสุด/ถูกแปลงแล้ว ไม่สามารถสร้างเอกสารเพิ่มได้' }
+    }
   }
 
   const [{ data: profile }] = await Promise.all([
@@ -398,8 +381,12 @@ export async function createChildDocument(
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }
 
-  const id = await nextContractId()
-  const masterId = (lease as { master_contract_id?: string | null }).master_contract_id ?? leaseId
+  const prefix = docTypePrefix(docType, 'child')
+  const id = await nextId(supabase, prefix)
+  // For reservation parents the reservation itself is the "master"
+  const masterId = parentCategory === 'reservation'
+    ? leaseId
+    : ((lease as { master_contract_id?: string | null }).master_contract_id ?? leaseId)
 
   // Build row with full lease inheritance
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -514,6 +501,67 @@ export async function createChildDocument(
   revalidatePath('/contracts')
   revalidatePath(`/contracts/${leaseId}`)
   return { id }
+}
+
+// ─── Update Draft Fields ──────────────────────────────────────
+
+export type DraftFields = {
+  rent_price?: number | null
+  deposit_months?: number | null
+  deposit_amount?: number | null
+  contract_months?: number | null
+  move_in_date?: string | null
+  end_date?: string | null
+  reservation_expire_date?: string | null
+  payment_date?: string | null
+  payment_grace_days?: number | null
+  payment_day_of_month?: number | null
+  penalty_amount?: number | null
+  cleaning_fee?: number | null
+  ac_count?: number | null
+  ac_wash_per_unit?: number | null
+  occupant_count?: number | null
+  water_unit_price?: number | null
+  electric_unit_price?: number | null
+  internet_fee?: number | null
+  common_fee?: number | null
+  parking_fee?: number | null
+  vat_7?: boolean
+  wht_3?: boolean
+  commission_net?: number | null
+  commission_rate_pct?: number | null
+  commission_from_owner?: number | null
+  commission_from_customer?: number | null
+  extra_vars?: Record<string, string> | null
+}
+
+export async function updateContractDraft(
+  contractId: string,
+  fields: DraftFields,
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { data: existing } = await supabase
+    .from('contracts')
+    .select('is_finalized')
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+    .single()
+
+  if (!existing) return { error: 'ไม่พบสัญญา' }
+  if (existing.is_finalized) return { error: 'สัญญานี้ถูกล็อกแล้ว ไม่สามารถแก้ไขได้' }
+
+  const { error } = await supabase
+    .from('contracts')
+    .update(fields)
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+
+  if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
+  revalidatePath(`/contracts/${contractId}`)
+  return {}
 }
 
 // ─── Activate Lease (after finalization) ─────────────────────
@@ -641,7 +689,7 @@ export async function finalizeManually(
 
 export async function updateContractStatus(
   contractId: string,
-  status: 'draft' | 'sent' | 'sent_for_sign' | 'viewed' | 'partially_signed' | 'signed' | 'active' | 'completed' | 'cancelled' | 'terminated' | 'renewed'
+  status: ContractStatus
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -857,7 +905,7 @@ export async function generateContractPdf(
   const [{ data: contract }, { data: profile }] = await Promise.all([
     supabase
       .from('contracts')
-      .select('*, stock:stock(*), owner:owners(*), customer:customers(*)')
+      .select('*, stock:stock(*, project:projects(*)), owner:owners(*), customer:customers(*)')
       .eq('id', contractId)
       .eq('agent_uid', user.id)
       .single(),

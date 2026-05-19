@@ -16,6 +16,7 @@ export type ContractDocType =
   | 'invoice_deposit' | 'receipt_deposit'
   | 'commission_confirm'
   | 'co_agent'
+  | 'installment_schedule' | 'furniture_list'
 export type ContractCategory = 'reservation' | 'lease' | 'child'
 export type PaymentMethod = 'cash' | 'transfer' | 'cheque'
 export type ContractStatus =
@@ -426,6 +427,8 @@ export const DOC_TYPE_LABELS: Record<ContractDocType, string> = {
   receipt_deposit: 'ใบเสร็จเงินประกัน',
   commission_confirm: 'ยืนยันค่าคอมมิชชัน',
   co_agent: 'สัญญา Co-Agent',
+  installment_schedule: 'ตารางผ่อนชำระ',
+  furniture_list: 'รายการเฟอร์นิเจอร์/สินทรัพย์',
 }
 
 export const CONTRACT_CATEGORY_LABELS: Record<ContractCategory, string> = {
