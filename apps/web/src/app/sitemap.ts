@@ -9,13 +9,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: BASE,                  lastModified: new Date(), changeFrequency: 'daily',   priority: 1.0 },
     { url: `${BASE}/news`,        lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.7 },
+    { url: `${BASE}/articles`,    lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.7 },
+    { url: `${BASE}/faq`,         lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.6 },
     { url: `${BASE}/about`,       lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
     { url: `${BASE}/contact`,     lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
-    { url: `${BASE}/how-to`,      lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
     { url: `${BASE}/services`,    lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${BASE}/help`,        lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
   ]
 
-  const [stocksRes, agentsRes, newsRes] = await Promise.all([
+  const [stocksRes, agentsRes, newsRes, articlesRes] = await Promise.all([
     supabase
       .from('stock')
       .select('id, updated_at, published_at')
@@ -36,6 +38,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .select('id, updated_at, created_at')
       .eq('published', true)
       .order('created_at', { ascending: false })
+      .limit(1000),
+
+    supabase
+      .from('articles')
+      .select('slug, updated_at, published_at')
+      .eq('is_published', true)
+      .order('published_at', { ascending: false })
       .limit(1000),
   ])
 
@@ -62,5 +71,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }))
 
-  return [...staticRoutes, ...listingRoutes, ...agentRoutes, ...newsRoutes]
+  const articleRoutes: MetadataRoute.Sitemap = (articlesRes.data ?? []).map(a => ({
+    url: `${BASE}/articles/${a.slug}`,
+    lastModified: new Date(a.updated_at ?? a.published_at ?? new Date()),
+    changeFrequency: 'monthly' as const,
+    priority: 0.6,
+  }))
+
+  return [...staticRoutes, ...listingRoutes, ...agentRoutes, ...newsRoutes, ...articleRoutes]
 }
