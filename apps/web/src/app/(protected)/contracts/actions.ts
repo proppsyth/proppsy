@@ -941,7 +941,24 @@ export async function generateContractPdf(
 
       const docxBuffer = await generateDocx(template.filename, variables)
       const { value: html } = await mammoth.convertToHtml({ buffer: docxBuffer })
-      buffer = await renderMammothHtmlAsPdf(html)
+
+      const ownerName = [contract.owner?.prefix, contract.owner?.first_name_th, contract.owner?.last_name_th]
+        .filter(Boolean).join(' ') || ''
+      const customerName = [contract.customer?.prefix, contract.customer?.first_name_th, contract.customer?.last_name_th]
+        .filter(Boolean).join(' ') || ''
+
+      buffer = await renderMammothHtmlAsPdf(html, {
+        contractId:   contract.id,
+        docTypeLabel: template.label,
+        status:       (contract as { status?: string }).status ?? 'draft',
+        isFinalized:  contract.is_finalized ?? false,
+        generatedAt:  new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
+        signers: [
+          { label: 'ผู้ให้เช่า (Landlord)', name: ownerName },
+          { label: 'ผู้เช่า (Tenant)',       name: customerName },
+          { label: 'พยาน (Witness)',          name: '' },
+        ],
+      })
     } else {
       const { renderToBuffer } = await import('@react-pdf/renderer')
       const { ContractDocument } = await import('@/lib/pdf/ContractDocument')
@@ -1014,7 +1031,6 @@ export async function generateContractPdf(
 
     await supabase.from('contracts').update({ pdf_url: publicUrl }).eq('id', contractId)
 
-    revalidatePath(`/contracts/${contractId}`)
     return { url: publicUrl }
   } catch (err) {
     console.error('PDF generation error:', err)

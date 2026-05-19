@@ -24,38 +24,70 @@ Font.register({
 
 // ─── Styles ───────────────────────────────────────────────────
 
+// Design tokens shared with mammothToPdf
+const NAVY  = '#1B3A5C'
+const GOLD  = '#C9A227'
+const MUTED = '#64748B'
+const BORDER = '#CBD5E1'
+
 const s = StyleSheet.create({
-  page: { fontFamily: 'Sarabun', fontSize: 9.5, paddingTop: 36, paddingBottom: 68, paddingHorizontal: 45, color: '#1a1a1a' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, paddingBottom: 12, borderBottomWidth: 1.5, borderBottomColor: '#2563EB' },
-  logo: { width: 56, height: 56, objectFit: 'contain' },
-  docTitle: { fontSize: 14, fontWeight: 700, color: '#2563EB', textAlign: 'right' },
-  docMeta: { fontSize: 8.5, color: '#555', marginTop: 2, textAlign: 'right' },
+  page: { fontFamily: 'Sarabun', fontSize: 9.5, paddingTop: 80, paddingBottom: 62, paddingHorizontal: 50, color: '#1a1a1a' },
+  // Fixed navy header
+  header: {
+    position: 'absolute', top: 0, left: 0, right: 0, height: 64,
+    backgroundColor: NAVY, flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', paddingHorizontal: 50, paddingVertical: 10,
+  },
+  headerLeft: {},
+  headerBrand: { fontSize: 7, fontWeight: 700, color: GOLD, letterSpacing: 1.5, marginBottom: 2 },
+  headerAgentName: { fontSize: 9, color: '#FFFFFF', fontWeight: 700 },
+  headerRight: { alignItems: 'flex-end' },
+  docTitle: { fontSize: 11.5, fontWeight: 700, color: '#FFFFFF' },
+  docMeta: { fontSize: 8, color: '#CBD5E1', marginTop: 2, textAlign: 'right' },
+  logo: { width: 40, height: 40, objectFit: 'contain' },
   agentName: { fontSize: 9.5, fontWeight: 700, marginTop: 3 },
   section: { marginBottom: 10 },
-  sectionTitle: { fontSize: 9.5, fontWeight: 700, backgroundColor: '#EFF6FF', color: '#1D4ED8', padding: '3 7', marginBottom: 5 },
+  sectionTitle: {
+    fontSize: 9.5, fontWeight: 700,
+    backgroundColor: '#F0F4F8', color: NAVY,
+    paddingVertical: 5, paddingLeft: 10,
+    marginBottom: 6,
+    borderLeftWidth: 3, borderLeftColor: GOLD,
+  },
   row: { flexDirection: 'row', marginBottom: 2.5 },
-  label: { width: '36%', color: '#555', fontSize: 8.5 },
+  label: { width: '36%', color: MUTED, fontSize: 8.5 },
   value: { flex: 1, fontWeight: 700 },
-  divider: { borderBottomWidth: 0.5, borderBottomColor: '#ddd', marginVertical: 8 },
+  divider: { borderBottomWidth: 0.5, borderBottomColor: BORDER, marginVertical: 8 },
   finRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3, paddingBottom: 3, borderBottomWidth: 0.5, borderBottomColor: '#eee' },
-  finLabel: { color: '#555', fontSize: 8.5, flex: 1 },
+  finLabel: { color: MUTED, fontSize: 8.5, flex: 1 },
   finValue: { fontWeight: 700, textAlign: 'right' },
-  clause: { fontSize: 8.5, color: '#333', lineHeight: 1.5, marginBottom: 2 },
-  clauseIndent: { fontSize: 8.5, color: '#333', lineHeight: 1.5, marginBottom: 1.5, marginLeft: 10 },
-  sigSection: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 24 },
+  clause: { fontSize: 8.5, color: '#333', lineHeight: 1.55, marginBottom: 2 },
+  clauseIndent: { fontSize: 8.5, color: '#333', lineHeight: 1.55, marginBottom: 1.5, marginLeft: 10 },
+  sigSection: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 28, paddingTop: 18, borderTopWidth: 0.5, borderTopColor: BORDER },
   sigBox: { alignItems: 'center', width: '28%' },
-  sigLine: { width: '100%', borderBottomWidth: 0.8, borderBottomColor: '#333', marginBottom: 3, marginTop: 24 },
-  sigLabel: { fontSize: 8.5, color: '#555', textAlign: 'center' },
-  sigImage: { width: 72, height: 28, objectFit: 'contain', marginTop: 6 },
-  stamp: { fontSize: 7.5, color: '#aaa', textAlign: 'center', marginTop: 20 },
-  highlight: { color: '#1D4ED8', fontWeight: 700 },
-  tableHeader: { flexDirection: 'row', backgroundColor: '#EFF6FF', paddingVertical: 4, paddingHorizontal: 6, marginBottom: 1 },
-  tableRow: { flexDirection: 'row', paddingVertical: 3, paddingHorizontal: 6, borderBottomWidth: 0.3, borderBottomColor: '#eee' },
+  sigLine: { width: '100%', borderBottomWidth: 0.8, borderBottomColor: '#333', marginBottom: 3, marginTop: 28 },
+  sigLabel: { fontSize: 8.5, color: MUTED, textAlign: 'center' },
+  sigImage: { width: 80, height: 32, objectFit: 'contain', marginTop: 6 },
+  stamp: { fontSize: 7.5, color: '#aaa', textAlign: 'center', marginTop: 16 },
+  highlight: { color: GOLD, fontWeight: 700 },
+  tableHeader: { flexDirection: 'row', backgroundColor: NAVY, paddingVertical: 5, paddingHorizontal: 7 },
+  tableHeaderCell: { flex: 1, fontSize: 8.5, fontWeight: 700, color: '#FFFFFF' },
+  tableRow: { flexDirection: 'row', paddingVertical: 3, paddingHorizontal: 7, borderBottomWidth: 0.3, borderBottomColor: '#eee' },
+  tableRowAlt: { flexDirection: 'row', paddingVertical: 3, paddingHorizontal: 7, backgroundColor: '#F8FAFF', borderBottomWidth: 0.3, borderBottomColor: '#eee' },
   tableCell: { flex: 1, fontSize: 8.5 },
   tableCellCenter: { flex: 1, fontSize: 8.5, textAlign: 'center' },
   tableCellRight: { flex: 1, fontSize: 8.5, textAlign: 'right' },
   bold: { fontWeight: 700 },
   totRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingTop: 4, borderTopWidth: 0.8, borderTopColor: '#333', marginTop: 4 },
+  // Fixed footer
+  footer: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: 50,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 50,
+    borderTopWidth: 0.5, borderTopColor: BORDER,
+  },
+  footerL: { flex: 1, fontSize: 7.5, color: MUTED },
+  footerC: { flex: 1, fontSize: 7.5, color: MUTED, textAlign: 'center' },
+  footerR: { flex: 1, fontSize: 7.5, color: MUTED, textAlign: 'right' },
 })
 
 // ─── Types ────────────────────────────────────────────────────
@@ -286,16 +318,14 @@ interface HeaderProps {
 
 function DocHeader({ title, id, date, agent }: HeaderProps) {
   return (
-    <View style={s.header}>
-      <View>
-        {agent.logo_url && <Image src={agent.logo_url} style={s.logo} />}
-        <Text style={s.agentName}>{agent.company_name ?? agent.name ?? 'Proppsy'}</Text>
-        {agent.phone && <Text style={s.docMeta}>{agent.phone}</Text>}
+    <View fixed style={s.header}>
+      <View style={s.headerLeft}>
+        <Text style={s.headerBrand}>PROPPSY</Text>
+        <Text style={s.headerAgentName}>{agent.company_name ?? agent.name ?? 'Proppsy'}</Text>
       </View>
-      <View>
+      <View style={s.headerRight}>
         <Text style={s.docTitle}>{title}</Text>
-        <Text style={s.docMeta}>เลขที่: <Text style={s.highlight}>{id}</Text></Text>
-        <Text style={s.docMeta}>วันที่: {date}</Text>
+        <Text style={s.docMeta}>เลขที่ {id}  •  {date}</Text>
       </View>
     </View>
   )
@@ -414,6 +444,23 @@ function SigFooter({ owner, customer, agent, agentOnly = false }: SigFooterProps
   )
 }
 
+// ─── Page footer (fixed, every page) ─────────────────────────
+
+function DocFooter({ docLabel, docId }: { docLabel: string; docId: string }) {
+  return (
+    <View fixed style={s.footer}>
+      <Text style={s.footerL}>Proppsy Platform</Text>
+      <Text style={s.footerC}>{docLabel}  •  {docId}</Text>
+      <Text
+        style={s.footerR}
+        render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
+          `หน้า ${pageNumber} / ${totalPages}`
+        }
+      />
+    </View>
+  )
+}
+
 // ─── Invoice / Receipt page (reusable) ───────────────────────
 
 interface InvoiceProps {
@@ -455,9 +502,9 @@ function InvoiceReceiptPage({
       <View style={s.section}>
         <Text style={s.sectionTitle}>รายละเอียด</Text>
         <View style={s.tableHeader}>
-          <Text style={{ ...s.tableCell, flex: 0.5 }}>ลำดับ</Text>
-          <Text style={{ ...s.tableCell, flex: 3 }}>รายละเอียด</Text>
-          <Text style={{ ...s.tableCellRight, flex: 1 }}>จำนวนเงิน</Text>
+          <Text style={{ ...s.tableHeaderCell, flex: 0.5 }}>ลำดับ</Text>
+          <Text style={{ ...s.tableHeaderCell, flex: 3 }}>รายละเอียด</Text>
+          <Text style={{ ...s.tableHeaderCell, flex: 1, textAlign: 'right' }}>จำนวนเงิน</Text>
         </View>
         <View style={s.tableRow}>
           <Text style={{ ...s.tableCell, flex: 0.5 }}>1</Text>
@@ -498,8 +545,7 @@ function InvoiceReceiptPage({
         ownerLabel={isReceipt ? 'ผู้ออกใบเสร็จ' : 'ผู้ออกใบแจ้งหนี้'}
         customerLabel="ผู้ชำระเงิน"
       />
-      <Text style={s.stamp}>{docTitle} • {id} • {date}</Text>
-      <SigFooter owner={owner} customer={customer} agent={agent} />
+      <DocFooter docLabel={docTitle} docId={id} />
     </Page>
   )
 }
@@ -573,8 +619,7 @@ function ReservationContractPage({ c, stock, owner, customer, agent }: PageProps
       <SigSection owner={owner} customer={customer} agent={agent}
         ownerLabel="ผู้ให้เช่า" customerLabel="ผู้จะเช่า"
       />
-      <Text style={s.stamp}>สัญญาจองห้องชุด • {c.id} • {fmtDate(c.created_at)}</Text>
-      <SigFooter owner={owner} customer={customer} agent={agent} />
+      <DocFooter docLabel="สัญญาจอง" docId={c.id} />
     </Page>
   )
 }
@@ -683,8 +728,7 @@ function RentalContractPage({ c, stock, owner, customer, agent }: PageProps) {
       </Text>
 
       <SigSection owner={owner} customer={customer} agent={agent} />
-      <Text style={s.stamp}>สัญญาเช่าที่พักอาศัย • {c.id} • {docDate}</Text>
-      <SigFooter owner={owner} customer={customer} agent={agent} />
+      <DocFooter docLabel="สัญญาเช่า" docId={c.id} />
     </Page>
   )
 }
@@ -712,10 +756,10 @@ function PaymentSchedulePage({ c, stock, owner, customer, agent }: PageProps) {
       <View style={s.section}>
         <Text style={s.sectionTitle}>ตารางชำระค่าเช่า — {c.contract_months} เดือน</Text>
         <View style={s.tableHeader}>
-          <Text style={{ ...s.tableCellCenter, flex: 0.5 }}>ลำดับ</Text>
-          <Text style={{ ...s.tableCell, flex: 2 }}>เดือนที่พักอาศัย</Text>
-          <Text style={{ ...s.tableCellCenter, flex: 2 }}>วันที่ชำระ (วันที่ {payDay} – {payDay + graceDays})</Text>
-          <Text style={{ ...s.tableCellRight, flex: 1.5 }}>จำนวนเงิน</Text>
+          <Text style={{ ...s.tableHeaderCell, flex: 0.5, textAlign: 'center' }}>ลำดับ</Text>
+          <Text style={{ ...s.tableHeaderCell, flex: 2 }}>เดือนที่พักอาศัย</Text>
+          <Text style={{ ...s.tableHeaderCell, flex: 2, textAlign: 'center' }}>วันที่ชำระ (วันที่ {payDay} – {payDay + graceDays})</Text>
+          <Text style={{ ...s.tableHeaderCell, flex: 1.5, textAlign: 'right' }}>จำนวนเงิน</Text>
         </View>
         {schedule.map(({ seq, monthName, due }) => (
           <View key={seq} style={[s.tableRow, seq % 2 === 0 ? { backgroundColor: '#f9fafb' } : {}]}>
@@ -735,8 +779,7 @@ function PaymentSchedulePage({ c, stock, owner, customer, agent }: PageProps) {
       <Text style={{ ...s.clause, marginTop: 6 }}>
         หมายเหตุ: หากพ้นกำหนด {graceDays} วัน นับจากวันที่ครบกำหนดชำระ คิดเบี้ยปรับ {c.penalty_amount ? `${fmt(c.penalty_amount)} บาท / วัน` : 'ตามที่ระบุในสัญญา'}
       </Text>
-      <Text style={s.stamp}>ตารางค่าเช่า • {c.id} • {fmtDate(c.created_at)}</Text>
-      <SigFooter owner={owner} customer={customer} agent={agent} />
+      <DocFooter docLabel="ตารางค่าเช่า" docId={c.id} />
     </Page>
   )
 }
@@ -796,8 +839,7 @@ function CommissionConfirmPage({ c, stock, owner, customer, agent }: PageProps) 
         ownerLabel="เจ้าของทรัพย์ (ยืนยันและยอมรับ)"
         showAgent
       />
-      <Text style={s.stamp}>ยืนยันค่าคอมมิชชัน • {c.id} • {docDate}</Text>
-      <SigFooter agent={agent} agentOnly />
+      <DocFooter docLabel="ยืนยันค่าคอมมิชชัน" docId={c.id} />
     </Page>
   )
 }
@@ -858,8 +900,7 @@ function LegacySinglePage({ c, stock, owner, customer, agent }: PageProps) {
         </View>
       )}
       <SigSection owner={owner} customer={customer} agent={agent} showAgent={isCommission} />
-      <Text style={s.stamp}>{DOC_LABELS[c.doc_type]} • {c.id} • {docDate}</Text>
-      <SigFooter owner={owner} customer={customer} agent={agent} agentOnly={isCommission} />
+      <DocFooter docLabel={DOC_LABELS[c.doc_type]} docId={c.id} />
     </Page>
   )
 }
