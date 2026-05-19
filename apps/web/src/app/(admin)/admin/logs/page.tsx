@@ -1,51 +1,79 @@
 import type { Metadata } from 'next'
-import { ScrollText, Shield, Activity } from 'lucide-react'
+import { ScrollText } from 'lucide-react'
+import { createAdminClient } from '@/lib/supabase/server'
+import AdminLogsFilter from './AdminLogsFilter'
 
-export const metadata: Metadata = { title: 'System Logs — Admin' }
+export const metadata: Metadata = { title: 'Audit Log — Admin' }
 
-const LOG_CATEGORIES = [
-  { label: 'Auth Events', icon: Shield, desc: 'Login, logout, failed attempts', color: 'blue' },
-  { label: 'Admin Actions', icon: Activity, desc: 'User approvals, credit adjustments, role changes', color: 'yellow' },
-  { label: 'Edge Function Logs', icon: ScrollText, desc: 'Supabase Edge Function executions', color: 'purple' },
-]
+export default async function AdminLogsPage() {
+  const admin = await createAdminClient()
 
-export default function AdminLogsPage() {
+  const { data: events } = await admin
+    .from('contract_timeline_events')
+    .select('id, contract_id, agent_uid, event_type, description, created_at')
+    .order('created_at', { ascending: false })
+    .limit(200)
+
+  const eventsData = events ?? []
+
+  // Collect unique agent_uids then fetch profiles
+  const agentUids = [...new Set(eventsData.map((e) => e.agent_uid).filter(Boolean))]
+  const { data: profileRows } = agentUids.length
+    ? await admin
+        .from('profiles')
+        .select('id, nickname, first_name_th, last_name_th')
+        .in('id', agentUids)
+    : { data: [] }
+
+  const profileMap = Object.fromEntries(
+    (profileRows ?? []).map((p) => [
+      p.id,
+      p.nickname ||
+        [p.first_name_th, p.last_name_th].filter(Boolean).join(' ') ||
+        p.id.slice(0, 8),
+    ])
+  )
+
+  // Stats
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const todayCount = eventsData.filter((e) => e.created_at.slice(0, 10) === todayStr).length
+  const uniqueAgents = new Set(eventsData.map((e) => e.agent_uid)).size
+
+  // Enrich events with agent name
+  const enrichedEvents = eventsData.map((e) => ({
+    ...e,
+    agentName: profileMap[e.agent_uid] ?? e.agent_uid?.slice(0, 8) ?? '—',
+  }))
+
   return (
     <div className="p-4 lg:p-8 pt-6">
+      {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-9 h-9 bg-gray-50 rounded-xl flex items-center justify-center flex-shrink-0">
             <ScrollText className="w-5 h-5 text-gray-600" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900">System Logs</h1>
+          <h1 className="text-xl font-bold text-gray-900">Audit Log</h1>
         </div>
-        <p className="text-sm text-gray-400 ml-12">Audit logs, admin actions และ system events</p>
+        <p className="text-sm text-gray-400 ml-12">ประวัติ event จากสัญญา — contract_timeline_events</p>
       </div>
 
-      {/* Log category cards */}
-      <div className="grid sm:grid-cols-3 gap-3 mb-8">
-        {LOG_CATEGORIES.map((cat) => {
-          const Icon = cat.icon
-          return (
-            <div key={cat.label} className="bg-white rounded-xl border border-gray-100 p-5 opacity-60">
-              <Icon className="w-6 h-6 text-gray-400 mb-3" />
-              <p className="font-medium text-gray-700 text-sm">{cat.label}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{cat.desc}</p>
-            </div>
-          )
-        })}
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {[
+          { label: 'events ทั้งหมด (200 ล่าสุด)', value: eventsData.length },
+          { label: 'วันนี้', value: todayCount },
+          { label: 'เอเจนต์ที่เกี่ยวข้อง', value: uniqueAgents },
+        ].map((s) => (
+          <div key={s.label} className="bg-white rounded-xl border border-gray-100 p-4">
+            <p className="text-2xl font-bold text-gray-900">{s.value.toLocaleString()}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
+          </div>
+        ))}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
-        <ScrollText className="w-12 h-12 mx-auto mb-4 text-gray-200" />
-        <p className="text-gray-500 font-medium">Audit Log System</p>
-        <p className="text-gray-400 text-sm mt-1">
-          บันทึกทุก action ของแอดมิน — การอนุมัติ การปรับเครดิต การเปลี่ยนสิทธิ์
-        </p>
-        <span className="inline-flex items-center gap-1 mt-3 px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
-          Coming Soon
-        </span>
-      </div>
+      {/* Client component with filter chips + table */}
+      <AdminLogsFilter events={enrichedEvents} />
     </div>
   )
 }
