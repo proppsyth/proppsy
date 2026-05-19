@@ -1,8 +1,8 @@
 import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { getContractPreviewHtml } from '../../actions'
+import { generateContractPdf } from '../../actions'
 import { DOC_TYPE_LABELS } from '@/types'
 import type { ContractDocType } from '@/types'
 import PreviewToolbar from './PreviewToolbar'
@@ -22,74 +22,64 @@ export default async function ContractPreviewPage({
 
   const { data: contract } = await supabase
     .from('contracts')
-    .select('id, doc_type, template_slug, docx_url, sign_token')
+    .select('id, doc_type, template_slug, docx_url, pdf_url, sign_token, is_finalized, finalized_pdf_url')
     .eq('id', id)
     .eq('agent_uid', user.id)
     .single()
 
   if (!contract) notFound()
 
-  const { html, error, missing } = await getContractPreviewHtml(id)
-
   const docLabel = DOC_TYPE_LABELS[contract.doc_type as ContractDocType] ?? contract.doc_type
 
+  let pdfUrl: string | null = null
+  let pdfError: string | null = null
+
+  // Finalized: use the locked PDF. Otherwise: always regenerate for freshness.
+  const c = contract as typeof contract & {
+    finalized_pdf_url?: string | null
+    pdf_url?: string | null
+    docx_url?: string | null
+  }
+
+  if (c.is_finalized && c.finalized_pdf_url) {
+    pdfUrl = c.finalized_pdf_url
+  } else {
+    const result = await generateContractPdf(id)
+    if (result.error) pdfError = result.error
+    else pdfUrl = result.url ?? null
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="h-screen flex flex-col bg-gray-900">
       <PreviewToolbar
         contractId={id}
         docLabel={docLabel}
-        docxUrl={contract.docx_url ?? null}
+        docxUrl={c.docx_url ?? null}
+        pdfUrl={pdfUrl}
         signToken={contract.sign_token ?? null}
       />
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        {error ? (
-          <div className="bg-white rounded-xl border border-red-200 p-8 text-center">
-            <p className="text-red-600 font-medium mb-2">{error}</p>
-            {missing && missing.length > 0 && (
-              <div className="mt-3 text-left inline-block">
-                <p className="text-sm text-gray-600 mb-2">ข้อมูลที่ขาด:</p>
-                <ul className="list-disc list-inside text-sm text-red-600 space-y-1">
-                  {missing.map(m => <li key={m}>{m}</li>)}
-                </ul>
-              </div>
-            )}
-            <div className="mt-4">
-              <Link href={`/contracts/${id}`} className="text-sm text-blue-600 hover:underline">
-                กลับไปแก้ไขข้อมูล →
-              </Link>
-            </div>
+      {pdfError ? (
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="bg-white rounded-xl border border-red-200 p-8 text-center max-w-md w-full">
+            <p className="text-red-600 font-medium mb-4">{pdfError}</p>
+            <Link href={`/contracts/${id}`} className="text-sm text-blue-600 hover:underline">
+              กลับไปแก้ไขข้อมูล →
+            </Link>
           </div>
-        ) : (
-          <>
-            <div
-              className="bg-white shadow-xl mx-auto print:shadow-none"
-              style={{ maxWidth: '210mm', minHeight: '297mm' }}
-            >
-              <style>{`
-                @media print {
-                  body { margin: 0; }
-                  .print\\:hidden { display: none !important; }
-                  .print\\:shadow-none { box-shadow: none !important; }
-                  @page { size: A4; margin: 15mm; }
-                }
-              `}</style>
-              <div
-                className="contract-preview p-8 sm:p-12"
-                style={{ fontFamily: 'Sarabun, sans-serif', lineHeight: 1.7 }}
-                dangerouslySetInnerHTML={{ __html: html ?? '' }}
-              />
-            </div>
-
-            <div className="mt-6 max-w-xl mx-auto bg-gray-50 border border-gray-200 rounded-xl p-4 text-xs text-gray-500 space-y-2 print:hidden">
-              <p className="font-semibold text-gray-700">หมายเหตุ (Proppsy)</p>
-              <p>เอกสารฉบับนี้ Proppsy ออกให้กับฟรีแลนซ์โดยอัตโนมัติ</p>
-              <p>หากท่านเป็นบริษัทจดทะเบียน กรุณาหักภาษี ณ ที่จ่ายในชื่อของฟรีแลนซ์ มิใช่ Proppsy</p>
-              <p>Proppsy ทำหน้าที่เป็นเพียงตัวกลางเชื่อมโยงระหว่างฟรีแลนซ์ และผู้ว่าจ้าง และไม่ได้เป็นคู่สัญญาในข้อตกลงใด ๆ</p>
-            </div>
-          </>
-        )}
-      </div>
+        </div>
+      ) : pdfUrl ? (
+        <iframe
+          src={pdfUrl}
+          className="flex-1 w-full"
+          style={{ border: 'none' }}
+          title={docLabel}
+        />
+      ) : (
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-gray-400 text-sm">ไม่พบเอกสาร</p>
+        </div>
+      )}
     </div>
   )
 }

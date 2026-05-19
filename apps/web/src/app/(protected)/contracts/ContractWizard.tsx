@@ -63,23 +63,30 @@ interface WizardState {
   parent_contract_label: string
 }
 
-const INIT: WizardState = {
-  doc_type: 'reservation', language: 'th',
-  stock_id: '', stock_label: '',
-  owner_id: '', owner_label: '',
-  customer_id: '', customer_label: '',
-  rent_price: '', deposit_months: '2', deposit_amount: '',
-  contract_months: '12', move_in_date: '', end_date: '',
-  cleaning_fee: '', ac_count: '', ac_wash_per_unit: '',
-  penalty_amount: '', commission_net: '',
-  vat_7: false, wht_3: false, occupant_count: '1',
-  water_unit_price: '', electric_unit_price: '', internet_fee: '',
-  common_fee: '', parking_fee: '',
-  payment_date: '', payment_method: 'transfer', bank_ref: '',
-  reservation_expire_date: '', payment_grace_days: '5', payment_day_of_month: '',
-  commission_rate_pct: '', commission_from_owner: '', commission_from_customer: '',
-  extra_vars: {},
-  parent_contract_id: '', parent_contract_label: '',
+// Dynamic init: reservation defaults to today's date and 30-day expiry
+function makeInitState(): WizardState {
+  const today = new Date().toISOString().split('T')[0]!
+  const expiry = new Date()
+  expiry.setDate(expiry.getDate() + 30)
+  const expiryDate = expiry.toISOString().split('T')[0]!
+  return {
+    doc_type: 'reservation', language: 'th',
+    stock_id: '', stock_label: '',
+    owner_id: '', owner_label: '',
+    customer_id: '', customer_label: '',
+    rent_price: '', deposit_months: '1', deposit_amount: '',
+    contract_months: '12', move_in_date: today, end_date: '',
+    cleaning_fee: '', ac_count: '', ac_wash_per_unit: '',
+    penalty_amount: '', commission_net: '',
+    vat_7: false, wht_3: false, occupant_count: '1',
+    water_unit_price: '', electric_unit_price: '', internet_fee: '',
+    common_fee: '', parking_fee: '',
+    payment_date: today, payment_method: 'transfer', bank_ref: '',
+    reservation_expire_date: expiryDate, payment_grace_days: '5', payment_day_of_month: '',
+    commission_rate_pct: '', commission_from_owner: '', commission_from_customer: '',
+    extra_vars: {},
+    parent_contract_id: '', parent_contract_label: '',
+  }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -129,7 +136,7 @@ function personLabel(r: OwnerSearchResult | CustomerSearchResult): string {
 export default function ContractWizard() {
   const router = useRouter()
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
-  const [state, setState] = useState<WizardState>(() => ({ ...INIT }))
+  const [state, setState] = useState<WizardState>(makeInitState)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const [showErrors, setShowErrors] = useState(false)
@@ -161,32 +168,38 @@ export default function ContractWizard() {
   // ─── Field helpers ──────────────────────────────────────────
 
   function handleRentChange(v: string) {
-    set('rent_price', v)
-    const rent = parseFloat(v)
-    if (rent > 0) {
-      const isResPayment = state.doc_type === 'invoice_reservation' || state.doc_type === 'receipt_reservation'
-      set('deposit_amount', isResPayment ? String(rent) : String(rent * (parseFloat(state.deposit_months) || 2)))
-    }
+    setState(s => {
+      const rent = parseFloat(v)
+      const depositMonths = parseFloat(s.deposit_months) || 1
+      const depositAmount = rent > 0 ? String(rent * depositMonths) : s.deposit_amount
+      return { ...s, rent_price: v, deposit_amount: depositAmount }
+    })
   }
 
   function handleDepositMonthsChange(v: string) {
-    set('deposit_months', v)
-    const rent = parseFloat(state.rent_price)
-    const months = parseFloat(v) || 2
-    if (rent > 0) set('deposit_amount', String(rent * months))
+    setState(s => {
+      const rent = parseFloat(s.rent_price)
+      const months = parseFloat(v) || 1
+      return { ...s, deposit_months: v, deposit_amount: rent > 0 ? String(rent * months) : s.deposit_amount }
+    })
   }
 
   function handleMoveInChange(v: string) {
-    set('move_in_date', v)
-    const months = parseInt(state.contract_months) || 12
-    if (v) {
-      const d = new Date(v)
-      d.setMonth(d.getMonth() + months)
-      set('end_date', d.toISOString().split('T')[0]!)
-      if (!state.payment_day_of_month) {
-        set('payment_day_of_month', String(new Date(v).getDate()))
+    setState(s => {
+      const months = parseInt(s.contract_months) || 12
+      const next = { ...s, move_in_date: v }
+      if (v) {
+        const d = new Date(v)
+        d.setMonth(d.getMonth() + months)
+        next.end_date = d.toISOString().split('T')[0]!
+        if (!s.payment_day_of_month) {
+          next.payment_day_of_month = String(new Date(v).getDate())
+        }
+        // Auto-fill payment_date from contract date
+        next.payment_date = v
       }
-    }
+      return next
+    })
   }
 
   function handleContractMonthsChange(v: string) {
@@ -208,12 +221,18 @@ export default function ContractWizard() {
     }
     setState(s => {
       const next = { ...s, stock_id: r.id, stock_label: stockLabel(r) }
-      if (r.owner_id) next.owner_id = r.owner_id
+      if (r.owner_id) {
+        next.owner_id = r.owner_id
+        // Show owner name if available from joined data, else fall back to ID
+        const ownerName = r.owner_nickname
+          || [r.owner_first_name_th, r.owner_last_name_th].filter(Boolean).join(' ')
+          || r.owner_id
+        next.owner_label = ownerName
+      }
       if (r.rent_price) {
         const rent = r.rent_price
         next.rent_price = String(rent)
-        const isResPayment = s.doc_type === 'invoice_reservation' || s.doc_type === 'receipt_reservation'
-        next.deposit_amount = isResPayment ? String(rent) : String(rent * (parseFloat(s.deposit_months) || 2))
+        next.deposit_amount = String(rent * (parseFloat(s.deposit_months) || 1))
       }
       return next
     })
@@ -511,7 +530,7 @@ export default function ContractWizard() {
                   <Field label="ค่าล้างแอร์ / เครื่อง (บาท)" value={state.ac_wash_per_unit} onChange={v => set('ac_wash_per_unit', v)} type="number" placeholder="0" />
                   <Field label="ค่าปรับผิดนัด (บาท)" value={state.penalty_amount} onChange={v => set('penalty_amount', v)} type="number" placeholder="0" />
                 </div>
-                <div className="flex flex-wrap gap-3 mt-4">
+                <div className="flex items-center gap-3 mt-4">
                   <Toggle label="VAT 7%" checked={state.vat_7} onChange={v => set('vat_7', v)} />
                   <Toggle label="หัก ณ ที่จ่าย 3%" checked={state.wht_3} onChange={v => set('wht_3', v)} />
                 </div>
@@ -548,7 +567,7 @@ export default function ContractWizard() {
                   <Field label="วันที่ทำสัญญาจอง" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" required hasError={showErrors && !state.move_in_date} />
                   <Field label="วันหมดอายุการจอง" value={state.reservation_expire_date} onChange={v => set('reservation_expire_date', v)} type="date" />
                 </div>
-                <div className="flex flex-wrap gap-3 mt-4">
+                <div className="flex items-center gap-3 mt-4">
                   <Toggle label="VAT 7%" checked={state.vat_7} onChange={v => set('vat_7', v)} />
                   <Toggle label="หัก ณ ที่จ่าย 3%" checked={state.wht_3} onChange={v => set('wht_3', v)} />
                 </div>
@@ -599,7 +618,7 @@ export default function ContractWizard() {
                 <Field label="ค่าคอมจากเจ้าของ (บาท)" value={state.commission_from_owner} onChange={v => set('commission_from_owner', v)} type="number" placeholder="0" />
                 <Field label="ค่าคอมจากลูกค้า (บาท)" value={state.commission_from_customer} onChange={v => set('commission_from_customer', v)} type="number" placeholder="0" />
               </div>
-              <div className="flex gap-4 mt-4">
+              <div className="flex items-center gap-3 mt-4">
                 <Toggle label="VAT 7%" checked={state.vat_7} onChange={v => set('vat_7', v)} />
                 <Toggle label="หัก ณ ที่จ่าย 3%" checked={state.wht_3} onChange={v => set('wht_3', v)} />
               </div>

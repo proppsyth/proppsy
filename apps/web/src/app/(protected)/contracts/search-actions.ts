@@ -13,6 +13,10 @@ export interface StockSearchResult {
   status: string
   rent_price?: number | null
   owner_id?: string | null
+  // Joined owner display fields
+  owner_nickname?: string | null
+  owner_first_name_th?: string | null
+  owner_last_name_th?: string | null
 }
 
 export interface OwnerSearchResult {
@@ -180,7 +184,7 @@ export async function searchStocks(query: string): Promise<StockSearchResult[]> 
   const q = query.trim()
   let req = supabase
     .from('stock')
-    .select('id, project_name, unit_no, room_type, building, floor, status, rent_price, owner_id')
+    .select('id, project_name, unit_no, room_type, building, floor, status, rent_price, owner_id, owner:owners(nickname, first_name_th, last_name_th)')
     .eq('agent_uid', user.id)
     .in('status', ['available', 'reserved'])
     .order('created_at', { ascending: false })
@@ -193,7 +197,18 @@ export async function searchStocks(query: string): Promise<StockSearchResult[]> 
   }
 
   const { data } = await req
-  return (data ?? []).map(r => ({ kind: 'stock' as const, ...r }))
+  return (data ?? []).map(r => {
+    const o = (r as typeof r & { owner?: { nickname?: string; first_name_th?: string; last_name_th?: string } | null }).owner
+    return {
+      kind: 'stock' as const,
+      id: r.id, project_name: r.project_name, unit_no: r.unit_no, room_type: r.room_type,
+      building: r.building, floor: r.floor, status: r.status,
+      rent_price: r.rent_price, owner_id: r.owner_id,
+      owner_nickname: o?.nickname ?? null,
+      owner_first_name_th: o?.first_name_th ?? null,
+      owner_last_name_th: o?.last_name_th ?? null,
+    }
+  })
 }
 
 export async function searchOwners(query: string): Promise<OwnerSearchResult[]> {

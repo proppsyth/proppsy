@@ -9,8 +9,8 @@ import ContractActions from './ContractActions'
 import FurnitureChecklist from './FurnitureChecklist'
 import SignersPanel from './SignersPanel'
 import CreateChildDocPanel from '../CreateChildDocPanel'
+import CreateLeasePanel from '../CreateLeasePanel'
 import { TEMPLATE_SUPPORTED_TYPES } from '@/lib/contracts/templateRegistry'
-import { createLeaseFromReservation } from '../actions'
 
 export const metadata: Metadata = { title: 'รายละเอียดสัญญา' }
 
@@ -65,15 +65,6 @@ export default async function ContractDetailPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-
-  // Inline server action — captures `id` from component scope
-  async function createLeaseAction() {
-    'use server'
-    const result = await createLeaseFromReservation(id)
-    if (!result.error && result.id) {
-      redirect(`/contracts/${result.id}`)
-    }
-  }
 
   const [{ data: contract }, { data: furnitureItems }, { data: signers }, { data: relatedDocs }] = await Promise.all([
     supabase
@@ -271,23 +262,27 @@ export default async function ContractDetailPage({
             </Section>
           )}
 
-          {/* ── Reservation: One-Click Create Lease CTA ── */}
+          {/* ── Reservation: Create Lease Panel ── */}
           {isReservation && contract.status !== 'converted_to_lease' && isActive && (
-            <Section title="ขั้นตอนถัดไป">
-              <div className="flex items-start gap-2 mb-3 p-3 bg-amber-50 rounded-lg text-xs text-amber-700">
-                <GitBranch className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                <span>เมื่อลูกค้าพร้อมทำสัญญาเช่า กดปุ่มด้านล่าง ระบบจะสร้างสัญญาเช่าพร้อมข้อมูลทั้งหมดทันที</span>
-              </div>
-              <form action={createLeaseAction}>
-                <button
-                  type="submit"
-                  className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition w-full"
-                >
-                  <GitBranch className="w-4 h-4" />
-                  สร้างสัญญาเช่าจากใบจองนี้ (1 คลิก)
-                </button>
-              </form>
-            </Section>
+            <CreateLeasePanel
+              reservation={{
+                reservationId:     id,
+                rentPrice:         contract.rent_price ?? null,
+                depositMonths:     contract.deposit_months ?? null,
+                depositAmount:     contract.deposit_amount ?? null,
+                waterUnitPrice:    (contract as { water_unit_price?: number | null }).water_unit_price ?? null,
+                electricUnitPrice: (contract as { electric_unit_price?: number | null }).electric_unit_price ?? null,
+                internetFee:       (contract as { internet_fee?: number | null }).internet_fee ?? null,
+                commonFee:         (contract as { common_fee?: number | null }).common_fee ?? null,
+                parkingFee:        (contract as { parking_fee?: number | null }).parking_fee ?? null,
+                cleaningFee:       contract.cleaning_fee ?? null,
+                acCount:           contract.ac_count ?? null,
+                acWashPerUnit:     contract.ac_wash_per_unit ?? null,
+                paymentGraceDays:  (contract as { payment_grace_days?: number | null }).payment_grace_days ?? null,
+                paymentDayOfMonth: (contract as { payment_day_of_month?: number | null }).payment_day_of_month ?? null,
+                occupantCount:     (contract as { occupant_count?: number | null }).occupant_count ?? null,
+              }}
+            />
           )}
 
           {/* ── Lease: back-link to source reservation ── */}

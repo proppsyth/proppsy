@@ -205,8 +205,31 @@ export async function createContract(
 
 // ─── One-Click: Create Lease From Reservation ────────────────
 
+export type LeaseExtras = {
+  move_in_date?: string | null
+  contract_months?: number | null
+  rent_price?: number | null
+  deposit_months?: number | null
+  deposit_amount?: number | null
+  cleaning_fee?: number | null
+  ac_count?: number | null
+  ac_wash_per_unit?: number | null
+  occupant_count?: number | null
+  payment_grace_days?: number | null
+  payment_day_of_month?: number | null
+  penalty_amount?: number | null
+  water_unit_price?: number | null
+  electric_unit_price?: number | null
+  internet_fee?: number | null
+  common_fee?: number | null
+  parking_fee?: number | null
+  language_version?: string | null
+  template_slug?: string | null
+}
+
 export async function createLeaseFromReservation(
-  reservationId: string
+  reservationId: string,
+  extras: LeaseExtras = {}
 ): Promise<{ error?: string; id?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -243,6 +266,16 @@ export async function createLeaseFromReservation(
 
   const id = await nextContractId()
 
+  // Compute end_date from move_in_date + contract_months if both provided
+  const moveIn = extras.move_in_date ?? null
+  const contractMonths = extras.contract_months ?? 12
+  let endDate: string | null = null
+  if (moveIn) {
+    const d = new Date(moveIn)
+    d.setMonth(d.getMonth() + contractMonths)
+    endDate = d.toISOString().split('T')[0]!
+  }
+
   const { error } = await supabase.from('contracts').insert({
     id,
     agent_uid: user.id,
@@ -252,34 +285,33 @@ export async function createLeaseFromReservation(
     reservation_id: reservationId,
     master_contract_id: id,
     contract_relation_type: 'created_from_reservation',
-    // Inherit all financial/property data from reservation
     stock_id:             reservation.stock_id,
     owner_id:             reservation.owner_id,
     customer_id:          reservation.customer_id,
     doc_type:             'rental' as ContractDocType,
-    language_version:     reservation.language_version ?? 'th',
-    template_slug:        null,
-    rent_price:           reservation.rent_price,
-    deposit_months:       reservation.deposit_months ?? 2,
-    deposit_amount:       reservation.deposit_amount,
-    contract_months:      12,
-    move_in_date:         null,
-    end_date:             null,
-    cleaning_fee:         reservation.cleaning_fee,
-    ac_count:             reservation.ac_count,
-    ac_wash_per_unit:     reservation.ac_wash_per_unit,
-    penalty_amount:       null,
+    language_version:     extras.language_version ?? reservation.language_version ?? 'th',
+    template_slug:        extras.template_slug ?? null,
+    rent_price:           extras.rent_price ?? reservation.rent_price,
+    deposit_months:       extras.deposit_months ?? reservation.deposit_months ?? 2,
+    deposit_amount:       extras.deposit_amount ?? reservation.deposit_amount,
+    contract_months:      contractMonths,
+    move_in_date:         moveIn,
+    end_date:             endDate,
+    cleaning_fee:         extras.cleaning_fee ?? reservation.cleaning_fee,
+    ac_count:             extras.ac_count ?? reservation.ac_count,
+    ac_wash_per_unit:     extras.ac_wash_per_unit ?? reservation.ac_wash_per_unit,
+    penalty_amount:       extras.penalty_amount ?? null,
     commission_net:       reservation.commission_net,
     vat_7:                reservation.vat_7 ?? false,
     wht_3:                reservation.wht_3 ?? false,
-    occupant_count:       reservation.occupant_count ?? 1,
-    water_unit_price:     reservation.water_unit_price,
-    electric_unit_price:  reservation.electric_unit_price,
-    internet_fee:         reservation.internet_fee,
-    common_fee:           reservation.common_fee,
-    parking_fee:          reservation.parking_fee,
-    payment_grace_days:   reservation.payment_grace_days ?? 5,
-    payment_day_of_month: reservation.payment_day_of_month,
+    occupant_count:       extras.occupant_count ?? reservation.occupant_count ?? 1,
+    water_unit_price:     extras.water_unit_price ?? reservation.water_unit_price,
+    electric_unit_price:  extras.electric_unit_price ?? reservation.electric_unit_price,
+    internet_fee:         extras.internet_fee ?? reservation.internet_fee,
+    common_fee:           extras.common_fee ?? reservation.common_fee,
+    parking_fee:          extras.parking_fee ?? reservation.parking_fee,
+    payment_grace_days:   extras.payment_grace_days ?? reservation.payment_grace_days ?? 5,
+    payment_day_of_month: extras.payment_day_of_month ?? reservation.payment_day_of_month,
     commission_rate_pct:  reservation.commission_rate_pct,
     commission_from_owner: reservation.commission_from_owner,
     commission_from_customer: reservation.commission_from_customer,

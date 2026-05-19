@@ -1,18 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft, Download, Printer, PenLine } from 'lucide-react'
+import { ArrowLeft, Download, FileText, PenLine } from 'lucide-react'
 
 interface Props {
   contractId: string
   docLabel: string
+  pdfUrl?: string | null
   docxUrl?: string | null
   signToken?: string | null
 }
 
-export default function PreviewToolbar({ contractId, docLabel, docxUrl, signToken }: Props) {
+export default function PreviewToolbar({ contractId, docLabel, pdfUrl, docxUrl, signToken }: Props) {
   return (
-    <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm print:hidden">
+    <div className="bg-white border-b border-gray-200 shadow-sm print:hidden">
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
         <Link
           href={`/contracts/${contractId}`}
@@ -28,24 +29,39 @@ export default function PreviewToolbar({ contractId, docLabel, docxUrl, signToke
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {docxUrl && (
+          {pdfUrl && (
             <a
-              href={docxUrl}
+              href={pdfUrl}
+              target="_blank"
+              rel="noreferrer"
               download
               className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition"
             >
               <Download className="w-3.5 h-3.5" />
-              ดาวน์โหลด .docx
+              ดาวน์โหลด PDF
             </a>
           )}
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            พิมพ์
-          </button>
+          {pdfUrl && (
+            <a
+              href={pdfUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              เปิด / พิมพ์
+            </a>
+          )}
+          {docxUrl && (
+            <a
+              href={docxUrl}
+              download
+              className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-500 text-xs font-medium rounded-lg hover:bg-gray-50 transition"
+            >
+              <Download className="w-3 h-3" />
+              .docx
+            </a>
+          )}
           {signToken && (
             <Link
               href={`/sign/${signToken}`}
