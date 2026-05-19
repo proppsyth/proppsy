@@ -3,6 +3,7 @@
 import { createServiceClient, createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { SignerRole, ContractSigner } from '@/types'
+import { handleAllSignedIfComplete } from '@/lib/contracts/signingEngine'
 
 // ─── Public: fetch signer + contract for sign page ────────────────────────
 
@@ -53,7 +54,7 @@ export async function recordSignerViewed(
     .from('contracts')
     .update({ status: 'viewed', viewed_at: now })
     .eq('id', signer.contract_id)
-    .in('status', ['sent'])
+    .in('status', ['sent', 'sent_for_sign'])
 
   await supabase.from('contract_sign_events').insert({
     contract_id: signer.contract_id,
@@ -133,48 +134,8 @@ export async function submitSignature(params: {
     }
   }
 
-  // Determine new contract status
-  const { data: remaining } = await supabase
-    .from('contract_signers')
-    .select('id, status')
-    .eq('contract_id', signer.contract_id)
-    .neq('id', signer.id)
-
-  const allSigned = (remaining ?? []).every(s => s.status === 'signed')
-  const newStatus = allSigned ? 'signed' : 'partially_signed'
-
-  const contractUpdate: Record<string, unknown> = {
-    status: newStatus,
-    ...(allSigned ? { signed_at: now } : {}),
-  }
-
-  // Finalize contract when all signers have signed
-  if (allSigned) {
-    contractUpdate.is_finalized = true
-    contractUpdate.finalized_at = now
-  }
-
-  await supabase
-    .from('contracts')
-    .update(contractUpdate)
-    .eq('id', signer.contract_id)
-
-  // Auto-sync property status when contract is finalized
-  if (allSigned) {
-    const { data: finalContract } = await supabase
-      .from('contracts')
-      .select('doc_type, stock_id')
-      .eq('id', signer.contract_id)
-      .single()
-
-    const rentingDocTypes = ['rental', 'renewal']
-    if (finalContract?.stock_id && rentingDocTypes.includes(finalContract.doc_type)) {
-      await supabase
-        .from('stock')
-        .update({ status: 'rented', is_published: false, published_at: null })
-        .eq('id', finalContract.stock_id)
-    }
-  }
+  // Delegate all-signed detection + finalization to the signing engine
+  await handleAllSignedIfComplete(supabase, signer.contract_id, signer.id, now)
 
   await supabase.from('contract_sign_events').insert({
     contract_id: signer.contract_id,

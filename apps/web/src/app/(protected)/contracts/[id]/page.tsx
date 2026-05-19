@@ -9,15 +9,19 @@ import ContractActions from './ContractActions'
 import FurnitureChecklist from './FurnitureChecklist'
 import SignersPanel from './SignersPanel'
 import { TEMPLATE_SUPPORTED_TYPES } from '@/lib/contracts/templateRegistry'
+import { createLeaseFromReservation } from '../actions'
 
 export const metadata: Metadata = { title: 'รายละเอียดสัญญา' }
 
 const STATUS_COLORS: Record<ContractStatus, string> = {
   draft:            'bg-gray-100 text-gray-600',
   sent:             'bg-yellow-100 text-yellow-700',
+  sent_for_sign:    'bg-amber-100 text-amber-700',
   viewed:           'bg-blue-100 text-blue-700',
   partially_signed: 'bg-orange-100 text-orange-700',
   signed:           'bg-green-100 text-green-700',
+  finalized:        'bg-teal-100 text-teal-700',
+  active:           'bg-emerald-100 text-emerald-700',
   completed:        'bg-emerald-100 text-emerald-700',
   cancelled:        'bg-red-100 text-red-600',
   terminated:       'bg-rose-100 text-rose-700',
@@ -27,14 +31,18 @@ const STATUS_COLORS: Record<ContractStatus, string> = {
 const STATUS_LABELS_TH: Record<ContractStatus, string> = {
   draft:            'ร่าง',
   sent:             'ส่งแล้ว',
+  sent_for_sign:    'รอลงนาม',
   viewed:           'เปิดดูแล้ว',
   partially_signed: 'ลงนามบางส่วน',
   signed:           'ลงนามครบแล้ว',
+  finalized:        'ล็อกแล้ว',
+  active:           'ใช้งาน',
   completed:        'เสร็จสมบูรณ์',
   cancelled:        'ยกเลิก',
   terminated:       'บอกเลิกแล้ว',
   renewed:          'ต่อสัญญาแล้ว',
 }
+
 
 function fmt(n: number): string {
   return new Intl.NumberFormat('th-TH').format(n)
@@ -54,6 +62,15 @@ export default async function ContractDetailPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  // Inline server action — captures `id` from component scope
+  async function createLeaseAction() {
+    'use server'
+    const result = await createLeaseFromReservation(id)
+    if (!result.error && result.id) {
+      redirect(`/contracts/${result.id}`)
+    }
+  }
 
   const [{ data: contract }, { data: furnitureItems }, { data: signers }, { data: relatedDocs }] = await Promise.all([
     supabase
@@ -92,6 +109,7 @@ export default async function ContractDetailPage({
     terminated_at?: string | null
     contract_category?: string | null
     master_contract_id?: string | null
+    reservation_id?: string | null
   }
 
   const docDate          = fmtDate(contract.created_at)
@@ -107,6 +125,7 @@ export default async function ContractDetailPage({
   const isActive         = !['cancelled', 'terminated', 'completed', 'renewed'].includes(contract.status)
   const effectiveEndDate = contractMeta.effective_end_date
   const masterContractId = contractMeta.master_contract_id
+  const reservationId    = contractMeta.reservation_id
 
   return (
     <div className="w-full p-4 lg:p-8 pt-6 max-w-4xl overflow-x-hidden">
@@ -249,21 +268,34 @@ export default async function ContractDetailPage({
             </Section>
           )}
 
-          {/* ── Reservation: Create Lease CTA ── */}
+          {/* ── Reservation: One-Click Create Lease CTA ── */}
           {isReservation && isActive && (
             <Section title="ขั้นตอนถัดไป">
               <div className="flex items-start gap-2 mb-3 p-3 bg-amber-50 rounded-lg text-xs text-amber-700">
                 <GitBranch className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                <span>เมื่อลูกค้าพร้อมทำสัญญาเช่า กดสร้างสัญญาเช่าจากใบจองนี้ได้เลย ข้อมูลจะถูกดึงมาให้อัตโนมัติ</span>
+                <span>เมื่อลูกค้าพร้อมทำสัญญาเช่า กดปุ่มด้านล่าง ระบบจะสร้างสัญญาเช่าพร้อมข้อมูลทั้งหมดทันที</span>
               </div>
-              <Link
-                href={`/contracts/new?from_reservation=${contract.id}`}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition w-full"
-              >
-                <Plus className="w-4 h-4" />
-                สร้างสัญญาเช่าจากใบจองนี้
-              </Link>
+              <form action={createLeaseAction}>
+                <button
+                  type="submit"
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition w-full"
+                >
+                  <Plus className="w-4 h-4" />
+                  สร้างสัญญาเช่าจากใบจองนี้ (1 คลิก)
+                </button>
+              </form>
             </Section>
+          )}
+
+          {/* ── Lease: back-link to source reservation ── */}
+          {isMasterLease && reservationId && (
+            <div className="mb-2 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 rounded-xl px-3 py-2.5">
+              <GitBranch className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>สร้างจากใบจอง:</span>
+              <Link href={`/contracts/${reservationId}`} className="font-semibold hover:underline">
+                {reservationId}
+              </Link>
+            </div>
           )}
 
           {/* ── Child doc: back-link to master lease ── */}
@@ -395,6 +427,7 @@ export default async function ContractDetailPage({
           <ContractActions
             contractId={contract.id}
             status={contract.status as ContractStatus}
+            contractCategory={contractMeta.contract_category ?? null}
             pdfUrl={contract.pdf_url}
             docxUrl={contract.docx_url ?? null}
             finalizedDocxUrl={(contract as { finalized_docx_url?: string }).finalized_docx_url ?? null}

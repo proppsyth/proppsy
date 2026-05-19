@@ -6,13 +6,14 @@ import {
 } from 'lucide-react'
 import type { ContractStatus } from '@/types'
 import {
-  updateContractStatus, generateContractDocx, generateContractPdf, finalizeManually,
+  updateContractStatus, generateContractDocx, generateContractPdf, finalizeManually, activateLease,
 } from '../actions'
 import Link from 'next/link'
 
 interface Props {
   contractId: string
   status: ContractStatus
+  contractCategory?: string | null
   pdfUrl?: string | null
   docxUrl?: string | null
   finalizedDocxUrl?: string | null
@@ -23,13 +24,15 @@ interface Props {
 }
 
 export default function ContractActions({
-  contractId, status, pdfUrl, docxUrl, finalizedDocxUrl, finalizedPdfUrl,
+  contractId, status, contractCategory, pdfUrl, docxUrl, finalizedDocxUrl, finalizedPdfUrl,
   templateSlug, isFinalized, finalizedAt,
 }: Props) {
   const [isStatusPending, startStatus] = useTransition()
   const [isDocxPending, startDocx] = useTransition()
   const [isPdfPending, startPdf] = useTransition()
   const [isFinalizePending, startFinalize] = useTransition()
+  const [isActivatePending, startActivate] = useTransition()
+  const [activateError, setActivateError] = useState('')
 
   const [statusError, setStatusError] = useState('')
   const [docxError, setDocxError] = useState('')
@@ -147,8 +150,10 @@ export default function ContractActions({
     })
   }
 
+  const isLease   = contractCategory === 'lease'
   const canSend   = status === 'draft'
-  const canCancel = ['draft', 'sent', 'viewed', 'partially_signed'].includes(status)
+  const canCancel = ['draft', 'sent', 'sent_for_sign', 'viewed', 'partially_signed'].includes(status)
+  const canActivate = isLease && ['signed', 'finalized'].includes(status) && !isFinalized
 
   return (
     <div className="space-y-3">
@@ -241,21 +246,39 @@ export default function ContractActions({
       </div>
 
       {/* Status Actions */}
-      {(canSend || canCancel) && (
+      {(canSend || canCancel || canActivate) && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
             <h2 className="text-sm font-semibold text-gray-700">เปลี่ยนสถานะ</h2>
           </div>
           <div className="p-4 space-y-2">
+            {canActivate && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActivateError('')
+                  startActivate(async () => {
+                    const res = await activateLease(contractId)
+                    if (res.error) setActivateError(res.error)
+                  })
+                }}
+                disabled={isActivatePending}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
+              >
+                {isActivatePending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                เปิดใช้งานสัญญาเช่า
+              </button>
+            )}
+            {activateError && <p className="text-xs text-red-600">{activateError}</p>}
             {canSend && (
               <button
                 type="button"
-                onClick={() => changeStatus('sent')}
+                onClick={() => changeStatus('sent_for_sign')}
                 disabled={isStatusPending}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
               >
                 {isStatusPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                ส่งให้ลูกค้าแล้ว
+                ส่งรอลงนาม
               </button>
             )}
             {canCancel && (
@@ -277,7 +300,9 @@ export default function ContractActions({
       {/* Manual Finalization */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
-          <h2 className="text-sm font-semibold text-gray-700">ล็อกสัญญาด้วยตนเอง</h2>
+          <h2 className="text-sm font-semibold text-gray-700">
+            {isLease ? 'ล็อกและเปิดใช้งาน (ออฟไลน์)' : 'ล็อกสัญญาด้วยตนเอง'}
+          </h2>
         </div>
         <div className="p-4">
           {showFinalizeConfirm ? (
@@ -285,8 +310,9 @@ export default function ContractActions({
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                 <p className="text-xs font-semibold text-amber-800 mb-1">ยืนยันการล็อกสัญญา?</p>
                 <p className="text-xs text-amber-700 leading-relaxed">
-                  ใช้สำหรับสัญญาที่ลงนามกระดาษหรือออฟไลน์แล้ว เมื่อล็อกแล้วจะไม่สามารถแก้ไขได้อีก
-                  เวอร์ชัน .docx และ PDF ปัจจุบันจะถูกบันทึกเป็นเอกสารสุดท้าย
+                  {isLease
+                    ? 'สำหรับสัญญาเช่าที่ลงนามกระดาษแล้ว เมื่อล็อก ทรัพย์จะเปลี่ยนเป็นเช่าแล้ว และสัญญาจะล็อกถาวร'
+                    : 'ใช้สำหรับสัญญาที่ลงนามกระดาษหรือออฟไลน์แล้ว เมื่อล็อกแล้วจะไม่สามารถแก้ไขได้อีก'}
                 </p>
               </div>
               {finalizeError && <p className="text-xs text-red-600">{finalizeError}</p>}
@@ -323,7 +349,7 @@ export default function ContractActions({
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 text-sm font-medium rounded-xl transition"
             >
               <ClipboardCheck className="w-4 h-4" />
-              ล็อกสัญญา (ลงนามออฟไลน์แล้ว)
+              {isLease ? 'ล็อกและเปิดใช้งาน (ลงนามออฟไลน์)' : 'ล็อกสัญญา (ลงนามออฟไลน์แล้ว)'}
             </button>
           )}
         </div>

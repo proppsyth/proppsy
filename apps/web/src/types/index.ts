@@ -5,7 +5,7 @@
 export type Role = 'admin' | 'manager' | 'user'
 export type AccountStatus = 'pending' | 'approved' | 'rejected'
 export type Plan = 'starter' | 'professional' | 'business'
-export type StockStatus = 'available' | 'rented' | 'sold' | 'unavailable'
+export type StockStatus = 'available' | 'reserved' | 'pending_move_in' | 'rented' | 'sold' | 'unavailable'
 export type ListingType = 'rent' | 'sale' | 'both'
 export type RoomType = 'Studio' | '1BR' | '2BR' | '3BR' | 'Penthouse' | 'อื่นๆ'
 export type ContractDocType =
@@ -19,9 +19,9 @@ export type ContractDocType =
 export type ContractCategory = 'reservation' | 'lease' | 'child'
 export type PaymentMethod = 'cash' | 'transfer' | 'cheque'
 export type ContractStatus =
-  | 'draft' | 'sent' | 'viewed' | 'partially_signed'
-  | 'signed' | 'completed' | 'cancelled'
-  | 'terminated' | 'renewed'
+  | 'draft' | 'sent' | 'sent_for_sign' | 'viewed' | 'partially_signed'
+  | 'signed' | 'finalized' | 'active' | 'completed'
+  | 'cancelled' | 'terminated' | 'renewed'
 export type SignerRole = 'tenant' | 'owner' | 'co_agent' | 'witness'
 export type SignerStatus = 'pending' | 'viewed' | 'signed' | 'declined'
 export type CustomerSource = 'line_oa' | 'referral' | 'walk_in' | 'online' | 'facebook' | 'instagram' | 'tiktok' | 'website' | 'other' | 'public_listing'
@@ -289,16 +289,42 @@ export interface Contract {
   // Contract relations
   parent_contract_id?: string | null
   master_contract_id?: string | null
+  reservation_id?: string | null
   contract_relation_type?: string | null
   contract_category?: ContractCategory | null
   effective_end_date?: string | null
   terminated_at?: string | null
+  finalized_snapshot?: Record<string, unknown> | null
   created_at: string
   updated_at: string
   // Joined
   stock?: Stock
   owner?: Owner
   customer?: Customer
+}
+
+export interface DocumentPackage {
+  id: string  // PKG-XXXX
+  agent_uid: string
+  master_contract_id?: string | null
+  label?: string | null
+  status: 'draft' | 'generating' | 'ready' | 'sent'
+  created_at: string
+  updated_at: string
+  items?: DocumentPackageItem[]
+}
+
+export interface DocumentPackageItem {
+  id: string
+  package_id: string
+  contract_id?: string | null
+  doc_type: string
+  label?: string | null
+  sort_order: number
+  pdf_url?: string | null
+  docx_url?: string | null
+  status: 'pending' | 'generated' | 'failed'
+  created_at: string
 }
 
 export interface ContractTimelineEvent {
@@ -409,10 +435,12 @@ export const CONTRACT_CATEGORY_LABELS: Record<ContractCategory, string> = {
 }
 
 export const STATUS_LABELS: Record<StockStatus, string> = {
-  available: 'ว่าง',
-  rented: 'เช่าแล้ว',
-  sold: 'ขายแล้ว',
-  unavailable: 'ไม่ว่าง',
+  available:       'ว่าง',
+  reserved:        'จอง',
+  pending_move_in: 'รอเข้าอยู่',
+  rented:          'เช่าแล้ว',
+  sold:            'ขายแล้ว',
+  unavailable:     'ไม่ว่าง',
 }
 
 export const ROLE_LABELS: Record<Role, string> = {

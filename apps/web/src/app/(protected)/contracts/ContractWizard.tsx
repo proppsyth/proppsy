@@ -87,10 +87,11 @@ const INIT: WizardState = {
 
 // Standalone (top-level) doc types only — child-only types (renewal, termination,
 // cancellation, notice, end_contract, warning) are only accessible from a lease detail page.
+// 'rental' is intentionally excluded: leases must be created from a reservation (1-click flow).
 const DOC_GROUPS = [
   {
     label: 'สัญญาหลัก (มี template .docx)',
-    types: ['rental', 'reservation', 'co_agent'] as ContractDocType[],
+    types: ['reservation', 'co_agent'] as ContractDocType[],
     highlight: true,
   },
   {
