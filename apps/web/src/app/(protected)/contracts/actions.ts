@@ -953,6 +953,7 @@ export async function generateContractPdf(
         status:       (contract as { status?: string }).status ?? 'draft',
         isFinalized:  contract.is_finalized ?? false,
         generatedAt:  new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
+        agentName:    profile?.company_name ?? profile?.name ?? undefined,
         signers: [
           { label: 'ผู้ให้เช่า (Landlord)', name: ownerName },
           { label: 'ผู้เช่า (Tenant)',       name: customerName },

@@ -24,70 +24,77 @@ Font.register({
 
 // ─── Styles ───────────────────────────────────────────────────
 
-// Design tokens shared with mammothToPdf
-const NAVY  = '#1B3A5C'
-const GOLD  = '#C9A227'
-const MUTED = '#64748B'
-const BORDER = '#CBD5E1'
+// Minimal white design tokens (matching mammothToPdf)
+const TEXT   = '#111111'
+const SUB    = '#555555'
+const LIGHT  = '#888888'
+const BORDER = '#D4D4D4'
+const RULE   = '#EBEBEB'
+const HBGCLR = '#F8F8F8'
 
 const s = StyleSheet.create({
-  page: { fontFamily: 'Sarabun', fontSize: 9.5, paddingTop: 80, paddingBottom: 62, paddingHorizontal: 50, color: '#1a1a1a' },
-  // Fixed navy header
+  page: {
+    fontFamily: 'Sarabun', fontSize: 9.5, lineHeight: 1.7,
+    paddingTop: 72, paddingBottom: 52, paddingHorizontal: 50,
+    color: TEXT,
+  },
+  // White header with bottom border
   header: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: 64,
-    backgroundColor: NAVY, flexDirection: 'row', justifyContent: 'space-between',
+    position: 'absolute', top: 0, left: 0, right: 0, height: 56,
+    backgroundColor: HBGCLR, flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', paddingHorizontal: 50, paddingVertical: 10,
+    borderBottomWidth: 0.5, borderBottomColor: BORDER,
   },
   headerLeft: {},
-  headerBrand: { fontSize: 7, fontWeight: 700, color: GOLD, letterSpacing: 1.5, marginBottom: 2 },
-  headerAgentName: { fontSize: 9, color: '#FFFFFF', fontWeight: 700 },
+  headerBrand: { fontSize: 7, fontWeight: 700, color: LIGHT, letterSpacing: 1.5, marginBottom: 2 },
+  headerAgentName: { fontSize: 9, color: TEXT, fontWeight: 700 },
   headerRight: { alignItems: 'flex-end' },
-  docTitle: { fontSize: 11.5, fontWeight: 700, color: '#FFFFFF' },
-  docMeta: { fontSize: 8, color: '#CBD5E1', marginTop: 2, textAlign: 'right' },
+  docTitle: { fontSize: 11, fontWeight: 700, color: TEXT },
+  docMeta: { fontSize: 7.5, color: LIGHT, marginTop: 2, textAlign: 'right' },
   logo: { width: 40, height: 40, objectFit: 'contain' },
   agentName: { fontSize: 9.5, fontWeight: 700, marginTop: 3 },
   section: { marginBottom: 10 },
   sectionTitle: {
     fontSize: 9.5, fontWeight: 700,
-    backgroundColor: '#F0F4F8', color: NAVY,
+    backgroundColor: HBGCLR, color: TEXT,
     paddingVertical: 5, paddingLeft: 10,
     marginBottom: 6,
-    borderLeftWidth: 3, borderLeftColor: GOLD,
+    borderLeftWidth: 2.5, borderLeftColor: '#AAAAAA',
   },
   row: { flexDirection: 'row', marginBottom: 2.5 },
-  label: { width: '36%', color: MUTED, fontSize: 8.5 },
+  label: { width: '36%', color: SUB, fontSize: 8.5 },
   value: { flex: 1, fontWeight: 700 },
   divider: { borderBottomWidth: 0.5, borderBottomColor: BORDER, marginVertical: 8 },
-  finRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3, paddingBottom: 3, borderBottomWidth: 0.5, borderBottomColor: '#eee' },
-  finLabel: { color: MUTED, fontSize: 8.5, flex: 1 },
+  finRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3, paddingBottom: 3, borderBottomWidth: 0.5, borderBottomColor: RULE },
+  finLabel: { color: SUB, fontSize: 8.5, flex: 1 },
   finValue: { fontWeight: 700, textAlign: 'right' },
-  clause: { fontSize: 8.5, color: '#333', lineHeight: 1.55, marginBottom: 2 },
-  clauseIndent: { fontSize: 8.5, color: '#333', lineHeight: 1.55, marginBottom: 1.5, marginLeft: 10 },
+  clause: { fontSize: 8.5, color: '#333333', lineHeight: 1.7, marginBottom: 2 },
+  clauseIndent: { fontSize: 8.5, color: '#333333', lineHeight: 1.7, marginBottom: 1.5, marginLeft: 10 },
   sigSection: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 28, paddingTop: 18, borderTopWidth: 0.5, borderTopColor: BORDER },
   sigBox: { alignItems: 'center', width: '28%' },
-  sigLine: { width: '100%', borderBottomWidth: 0.8, borderBottomColor: '#333', marginBottom: 3, marginTop: 28 },
-  sigLabel: { fontSize: 8.5, color: MUTED, textAlign: 'center' },
+  sigLine: { width: '100%', borderBottomWidth: 0.8, borderBottomColor: '#AAAAAA', marginBottom: 3, marginTop: 28 },
+  sigLabel: { fontSize: 8.5, color: SUB, textAlign: 'center' },
   sigImage: { width: 80, height: 32, objectFit: 'contain', marginTop: 6 },
-  stamp: { fontSize: 7.5, color: '#aaa', textAlign: 'center', marginTop: 16 },
-  highlight: { color: GOLD, fontWeight: 700 },
-  tableHeader: { flexDirection: 'row', backgroundColor: NAVY, paddingVertical: 5, paddingHorizontal: 7 },
-  tableHeaderCell: { flex: 1, fontSize: 8.5, fontWeight: 700, color: '#FFFFFF' },
-  tableRow: { flexDirection: 'row', paddingVertical: 3, paddingHorizontal: 7, borderBottomWidth: 0.3, borderBottomColor: '#eee' },
-  tableRowAlt: { flexDirection: 'row', paddingVertical: 3, paddingHorizontal: 7, backgroundColor: '#F8FAFF', borderBottomWidth: 0.3, borderBottomColor: '#eee' },
+  stamp: { fontSize: 7.5, color: '#AAAAAA', textAlign: 'center', marginTop: 16 },
+  highlight: { color: TEXT, fontWeight: 700 },
+  tableHeader: { flexDirection: 'row', backgroundColor: '#EFEFEF', paddingVertical: 5, paddingHorizontal: 7, borderBottomWidth: 0.5, borderBottomColor: BORDER },
+  tableHeaderCell: { flex: 1, fontSize: 8.5, fontWeight: 700, color: TEXT },
+  tableRow: { flexDirection: 'row', paddingVertical: 3, paddingHorizontal: 7, borderBottomWidth: 0.3, borderBottomColor: RULE },
+  tableRowAlt: { flexDirection: 'row', paddingVertical: 3, paddingHorizontal: 7, backgroundColor: HBGCLR, borderBottomWidth: 0.3, borderBottomColor: RULE },
   tableCell: { flex: 1, fontSize: 8.5 },
   tableCellCenter: { flex: 1, fontSize: 8.5, textAlign: 'center' },
   tableCellRight: { flex: 1, fontSize: 8.5, textAlign: 'right' },
   bold: { fontWeight: 700 },
-  totRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingTop: 4, borderTopWidth: 0.8, borderTopColor: '#333', marginTop: 4 },
+  totRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingTop: 4, borderTopWidth: 0.8, borderTopColor: BORDER, marginTop: 4 },
   // Fixed footer
   footer: {
-    position: 'absolute', bottom: 0, left: 0, right: 0, height: 50,
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: 44,
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 50,
     borderTopWidth: 0.5, borderTopColor: BORDER,
   },
-  footerL: { flex: 1, fontSize: 7.5, color: MUTED },
-  footerC: { flex: 1, fontSize: 7.5, color: MUTED, textAlign: 'center' },
-  footerR: { flex: 1, fontSize: 7.5, color: MUTED, textAlign: 'right' },
+  footerL: { flex: 1, fontSize: 7.5, color: LIGHT },
+  footerC: { flex: 1, fontSize: 7.5, color: LIGHT, textAlign: 'center' },
+  footerR: { flex: 1, fontSize: 7.5, color: LIGHT, textAlign: 'right' },
 })
 
 // ─── Types ────────────────────────────────────────────────────

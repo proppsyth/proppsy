@@ -1,5 +1,6 @@
-// Premium PDF renderer — mammoth HTML → polished A4 React PDF document.
-// Design: deep navy + gold palette, Sarabun Thai font, fixed header/footer, signature block.
+// Premium minimal PDF renderer — mammoth HTML → formal A4 legal document.
+// Design: clean white, dark typography, no heavy colors — formal document standard.
+// Multi-script: Sarabun (Thai+Latin) + NotoSansSC (Chinese CJK), auto-split per character.
 
 import path from 'path'
 import React from 'react'
@@ -26,242 +27,180 @@ Font.register({
   ],
 })
 
+// NotoSansSC covers Chinese (SC = Simplified Chinese).
+// Falls back gracefully if the file is missing.
+const notoSCRegular = path.join(fontsDir, 'NotoSansSC-Regular.otf')
+const notoSCBold    = path.join(fontsDir, 'NotoSansSC-Bold.otf')
+try {
+  const fs = require('fs') as typeof import('fs')
+  if (fs.existsSync(notoSCRegular)) {
+    Font.register({
+      family: 'NotoSansSC',
+      fonts: [
+        { src: notoSCRegular, fontWeight: 400 },
+        { src: fs.existsSync(notoSCBold) ? notoSCBold : notoSCRegular, fontWeight: 700 },
+      ],
+    })
+  }
+} catch { /* NotoSansSC unavailable — Chinese characters will show as boxes */ }
+
+// Disable hyphenation (Thai text does not use hyphens)
+Font.registerHyphenationCallback(word => [word])
+
 // ─── Design Tokens ────────────────────────────────────────────
 
 const C = {
-  navy:      '#1B3A5C',
-  navyLight: '#2D5180',
-  gold:      '#C9A227',
-  text:      '#1a1a1a',
-  muted:     '#64748B',
-  border:    '#CBD5E1',
-  sectionBg: '#F0F4F8',
-  stripeBg:  '#F8FAFF',
-  white:     '#FFFFFF',
+  text:    '#111111',
+  sub:     '#555555',
+  light:   '#888888',
+  border:  '#D4D4D4',
+  rule:    '#EBEBEB',
+  bg:      '#FFFFFF',
+  headerBg:'#F8F8F8',
 }
 
-// Header height determines paddingTop; footer height determines paddingBottom.
-const HEADER_H = 64
-const FOOTER_H = 50
+const HEADER_H = 56
+const FOOTER_H = 44
 
 // ─── Styles ───────────────────────────────────────────────────
 
 const s = StyleSheet.create({
   page: {
-    fontFamily:       'Sarabun',
-    fontSize:         9.5,
-    color:            C.text,
-    backgroundColor:  C.white,
-    paddingTop:       HEADER_H + 14,
-    paddingBottom:    FOOTER_H + 14,
-    paddingHorizontal: 52,
-    lineHeight:       1.65,
+    fontFamily:        'Sarabun',
+    fontSize:          9.5,
+    color:             C.text,
+    backgroundColor:   C.bg,
+    paddingTop:        HEADER_H + 18,
+    paddingBottom:     FOOTER_H + 16,
+    paddingHorizontal: 56,
+    lineHeight:        1.8,
   },
 
-  // ── Fixed Header (every page) ──────────────────────────────
+  // ── Fixed header ──────────────────────────────────────────
   header: {
-    position:        'absolute',
-    top: 0, left: 0, right: 0,
-    height:          HEADER_H,
-    backgroundColor: C.navy,
-    flexDirection:   'row',
-    alignItems:      'center',
-    paddingHorizontal: 52,
-    paddingVertical: 10,
+    position: 'absolute', top: 0, left: 0, right: 0,
+    height:   HEADER_H,
+    backgroundColor: C.headerBg,
+    borderBottomWidth: 1, borderBottomColor: C.border,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 56,
   },
   headerLeft: { flex: 1 },
-  headerBrand: {
-    fontSize:    7,
-    fontWeight:  700,
-    color:       C.gold,
-    letterSpacing: 1.5,
-    marginBottom: 2,
-  },
-  headerTitle: {
-    fontSize:   11.5,
-    fontWeight: 700,
-    color:      C.white,
-  },
+  hBrand: { fontSize: 7, fontWeight: 700, color: C.sub, letterSpacing: 1.8, marginBottom: 2 },
+  hAgent: { fontSize: 8.5, color: C.text, fontWeight: 700 },
   headerRight: { alignItems: 'flex-end' },
-  headerDocNo: {
-    fontSize:   9,
-    fontWeight: 700,
-    color:      C.white,
-    marginBottom: 4,
-  },
-  badge: {
-    paddingHorizontal: 7,
-    paddingVertical:   2,
-    borderRadius:      3,
-    alignSelf:         'flex-end',
-  },
-  badgeDraft:     { backgroundColor: '#F59E0B' },
-  badgeFinal:     { backgroundColor: C.gold },
-  badgeActive:    { backgroundColor: '#10B981' },
-  badgeText:      { fontSize: 6.5, fontWeight: 700, color: '#1a1a1a' },
+  hTitle: { fontSize: 10.5, fontWeight: 700, color: C.text },
+  hMeta:  { fontSize: 7.5, color: C.sub, marginTop: 3 },
 
-  // ── Fixed Footer (every page) ──────────────────────────────
+  // ── Fixed footer ──────────────────────────────────────────
   footer: {
-    position:    'absolute',
-    bottom: 0, left: 0, right: 0,
-    height:      FOOTER_H,
-    flexDirection: 'row',
-    alignItems:  'center',
-    paddingHorizontal: 52,
-    borderTopWidth:  0.5,
-    borderTopColor:  C.border,
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    height: FOOTER_H,
+    borderTopWidth: 1, borderTopColor: C.border,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 56,
   },
-  footerL: { flex: 1, fontSize: 7.5, color: C.muted },
-  footerC: { flex: 1, fontSize: 7.5, color: C.muted, textAlign: 'center' },
-  footerR: { flex: 1, fontSize: 7.5, color: C.muted, textAlign: 'right' },
+  fL: { flex: 1, fontSize: 7.5, color: C.light },
+  fC: { flex: 1, fontSize: 7.5, color: C.light, textAlign: 'center' },
+  fR: { flex: 1, fontSize: 7.5, color: C.light, textAlign: 'right' },
 
-  // ── Content typography ─────────────────────────────────────
+  // ── Typography ────────────────────────────────────────────
   h1: {
-    fontSize:     13,
-    fontWeight:   700,
-    textAlign:    'center',
-    color:        C.navy,
-    marginTop:    4,
-    marginBottom: 10,
+    fontFamily:   'Sarabun',
+    fontSize:     13, fontWeight: 700,
+    color:        C.text, textAlign: 'center',
+    marginTop:    6, marginBottom: 12,
   },
-  h2Wrap: { marginTop: 16, marginBottom: 6 },
+  h2Wrap: { marginTop: 18, marginBottom: 8 },
   h2: {
-    fontSize:        9.5,
-    fontWeight:      700,
-    color:           C.navy,
-    backgroundColor: C.sectionBg,
-    paddingVertical: 5,
-    paddingLeft:     10,
-    borderLeftWidth: 3,
-    borderLeftColor: C.gold,
+    fontFamily:  'Sarabun',
+    fontSize:    9.5, fontWeight: 700,
+    color:       C.text,
+    paddingBottom: 4,
+    borderBottomWidth: 0.8, borderBottomColor: C.border,
   },
   h3: {
-    fontSize:     9.5,
-    fontWeight:   700,
-    color:        C.text,
-    marginTop:    10,
-    marginBottom: 3,
+    fontFamily:  'Sarabun',
+    fontSize:    9.5, fontWeight: 700,
+    color:       C.text, marginTop: 10, marginBottom: 3,
   },
   p: {
-    fontSize:     9.5,
-    lineHeight:   1.72,
-    marginBottom: 5,
-    textAlign:    'justify',
+    fontFamily:  'Sarabun',
+    fontSize:    9.5, lineHeight: 1.8,
+    color:       C.text, marginBottom: 5,
+    textAlign:   'justify',
   },
-  pBlank:  { height: 5 },
-  bold:    { fontWeight: 700 },
+  pBlank: { height: 6 },
+  bold: { fontWeight: 700 },
 
-  // ── Tables ─────────────────────────────────────────────────
-  tableWrap: {
-    marginVertical: 8,
-    borderWidth:    0.5,
-    borderColor:    C.border,
-  },
+  // ── Tables ────────────────────────────────────────────────
+  tableWrap: { marginVertical: 10 },
   tHead: {
-    flexDirection:   'row',
-    backgroundColor: C.navy,
-  },
-  tHeadCell: {
-    flex:             1,
-    fontSize:         8.5,
-    fontWeight:       700,
-    color:            C.white,
-    paddingVertical:  5,
-    paddingHorizontal: 8,
+    flexDirection: 'row',
+    backgroundColor: C.headerBg,
+    borderTopWidth: 0.8,    borderTopColor:    C.border,
+    borderBottomWidth: 0.8, borderBottomColor: C.border,
+    borderLeftWidth: 0.8,   borderLeftColor:   C.border,
   },
   tRow: {
-    flexDirection:   'row',
-    borderTopWidth:  0.3,
-    borderTopColor:  C.border,
+    flexDirection: 'row',
+    borderBottomWidth: 0.5, borderBottomColor: C.rule,
+    borderLeftWidth: 0.8,   borderLeftColor:   C.border,
   },
   tRowAlt: {
-    flexDirection:   'row',
-    backgroundColor: C.stripeBg,
-    borderTopWidth:  0.3,
-    borderTopColor:  C.border,
+    flexDirection: 'row',
+    backgroundColor: '#FAFAFA',
+    borderBottomWidth: 0.5, borderBottomColor: C.rule,
+    borderLeftWidth: 0.8,   borderLeftColor:   C.border,
+  },
+  tHCell: {
+    flex: 1, fontSize: 8.5, fontWeight: 700, color: C.text,
+    paddingVertical: 5, paddingHorizontal: 8,
+    borderRightWidth: 0.5, borderRightColor: C.border,
   },
   tCell: {
-    flex:             1,
-    fontSize:         8.5,
-    paddingVertical:  4,
-    paddingHorizontal: 8,
+    flex: 1, fontSize: 8.5, color: C.text,
+    paddingVertical: 4, paddingHorizontal: 8,
+    borderRightWidth: 0.5, borderRightColor: C.border,
+    lineHeight: 1.6,
   },
 
-  // ── Lists ──────────────────────────────────────────────────
+  // ── Lists ─────────────────────────────────────────────────
   listWrap: { marginVertical: 4 },
-  listItem: {
-    flexDirection: 'row',
-    marginBottom:  3,
-    paddingLeft:   4,
-  },
-  bullet: {
-    fontSize:    9.5,
-    marginRight: 6,
-    color:       C.gold,
-    width:       12,
-  },
-  listText: {
-    flex:       1,
-    fontSize:   9.5,
-    lineHeight: 1.65,
-  },
+  listRow:  { flexDirection: 'row', marginBottom: 3, paddingLeft: 8 },
+  listBullet: { fontFamily: 'Sarabun', width: 14, fontSize: 9.5, color: C.sub },
+  listText: { flex: 1, fontFamily: 'Sarabun', fontSize: 9.5, lineHeight: 1.8, color: C.text },
 
-  // ── Horizontal rule ────────────────────────────────────────
-  hr: {
-    borderBottomWidth: 0.5,
-    borderBottomColor: C.border,
-    marginVertical:    10,
+  // ── Signature ─────────────────────────────────────────────
+  sigWrap: {
+    marginTop: 40, paddingTop: 24,
+    borderTopWidth: 0.8, borderTopColor: C.border,
   },
-
-  // ── Signature block ────────────────────────────────────────
-  sigSection: {
-    marginTop:      36,
-    paddingTop:     20,
-    borderTopWidth: 1,
-    borderTopColor: C.border,
+  sigHeading: {
+    fontFamily: 'Sarabun', fontSize: 9, fontWeight: 700,
+    color: C.sub, textAlign: 'center',
+    letterSpacing: 0.5, marginBottom: 30,
   },
-  sigTitle: {
-    fontSize:     9,
-    fontWeight:   700,
-    color:        C.navy,
-    textAlign:    'center',
-    marginBottom: 28,
-    letterSpacing: 0.5,
-  },
-  sigRow: {
-    flexDirection:  'row',
-    justifyContent: 'space-around',
-  },
-  sigBox:    { alignItems: 'center', width: '30%' },
-  sigSpacer: { height: 40 },
-  sigImg: {
-    width:     84,
-    height:    34,
-    objectFit: 'contain',
-    marginBottom: 4,
-  },
+  sigRow: { flexDirection: 'row', justifyContent: 'space-around' },
+  sigBox: { alignItems: 'center', width: '30%' },
+  sigSpace: { height: 44 },
+  sigImg: { width: 88, height: 36, objectFit: 'contain', marginBottom: 4 },
   sigLine: {
-    width:             '100%',
-    borderBottomWidth: 0.8,
-    borderBottomColor: '#444',
-    marginBottom:      5,
+    width: '100%',
+    borderBottomWidth: 1, borderBottomColor: C.text,
+    marginBottom: 5,
   },
-  sigLabel: {
-    fontSize:  8.5,
-    color:     C.muted,
-    textAlign: 'center',
-    marginBottom: 2,
+  sigRole: {
+    fontFamily: 'Sarabun', fontSize: 8.5, color: C.sub,
+    textAlign: 'center', marginBottom: 2,
   },
   sigName: {
-    fontSize:   8.5,
-    fontWeight: 700,
-    textAlign:  'center',
+    fontFamily: 'Sarabun', fontSize: 8.5, fontWeight: 700,
+    color: C.text, textAlign: 'center',
   },
   sigDate: {
-    fontSize:   7.5,
-    color:      C.muted,
-    textAlign:  'center',
-    marginTop:  3,
+    fontFamily: 'Sarabun', fontSize: 7.5, color: C.light,
+    textAlign: 'center', marginTop: 4,
   },
 })
 
@@ -277,6 +216,7 @@ export interface PdfSigner {
 export interface PdfMeta {
   contractId:   string
   docTypeLabel: string
+  agentName?:   string
   status?:      string
   isFinalized?: boolean
   generatedAt?: string
@@ -287,44 +227,154 @@ type Segment = { text: string; bold: boolean }
 
 type Block =
   | { kind: 'h'; level: 1 | 2 | 3; text: string }
-  | { kind: 'p'; segments: Segment[] }
+  | { kind: 'p'; segs: Segment[] }
   | { kind: 'table'; head: string[]; rows: string[][] }
   | { kind: 'list'; ordered: boolean; items: string[] }
 
-// ─── HTML → Blocks parser ─────────────────────────────────────
+// ─── Script-aware text rendering ─────────────────────────────
+// Chinese (CJK) characters use NotoSansSC; Thai/Latin use Sarabun.
 
-function stripTags(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
+const CJK_RE = /[一-鿿㐀-䶿豈-﫿　-〿！-｠￠-￦]/
+
+function hasCJK(text: string): boolean {
+  return CJK_RE.test(text)
+}
+
+type ScriptRun = { text: string; cjk: boolean }
+
+function splitScripts(text: string): ScriptRun[] {
+  if (!text) return []
+  const runs: ScriptRun[] = []
+  let buf = ''
+  let isCjk = CJK_RE.test(text[0] ?? ' ')
+  for (const ch of text) {
+    const c = CJK_RE.test(ch)
+    if (c !== isCjk) {
+      if (buf) runs.push({ text: buf, cjk: isCjk })
+      buf = ch; isCjk = c
+    } else {
+      buf += ch
+    }
+  }
+  if (buf) runs.push({ text: buf, cjk: isCjk })
+  return runs
+}
+
+// Render a single text string, switching fonts for CJK runs.
+function RichText({
+  text,
+  style,
+  bold,
+}: {
+  text: string
+  style?: object
+  bold?: boolean
+}): React.ReactElement {
+  const weight = bold ? 700 : 400
+  if (!hasCJK(text)) {
+    return (
+      <Text style={{ fontFamily: 'Sarabun', fontWeight: weight, ...(style ?? {}) }}>
+        {text}
+      </Text>
+    )
+  }
+  const runs = splitScripts(text)
+  return (
+    <Text style={{ fontFamily: 'Sarabun', fontWeight: weight, ...(style ?? {}) }}>
+      {runs.map((run, i) => (
+        <Text
+          key={i}
+          style={{ fontFamily: run.cjk ? 'NotoSansSC' : 'Sarabun', fontWeight: weight }}
+        >
+          {run.text}
+        </Text>
+      ))}
+    </Text>
+  )
+}
+
+// ─── HTML Parser ──────────────────────────────────────────────
+
+function decodeEntities(text: string): string {
+  return text
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&nbsp;/g, ' ')
     .replace(/&#160;/g, ' ')
-    .trim()
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
 }
 
+function stripTags(html: string): string {
+  return decodeEntities(
+    html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+  )
+}
+
+// Robust inline segment parser: handles <strong>, <b>, <span>, <em>, etc.
+// Splits by bold/non-bold; strips all other inline tags but keeps their text.
 function parseSegments(html: string): Segment[] {
-  const segs: Segment[] = []
-  const re = /<(?:strong|b)[^>]*>([\s\S]*?)<\/(?:strong|b)>|([^<]+)/gi
-  let m: RegExpExecArray | null
-  while ((m = re.exec(html)) !== null) {
-    if (m[1] !== undefined) {
-      const t = stripTags(m[1] ?? '')
-      if (t) segs.push({ text: t, bold: true })
-    } else if (m[2]) {
-      const t = stripTags(m[2] ?? '')
-      if (t) segs.push({ text: t, bold: false })
+  // Split at bold tag boundaries
+  const parts = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .split(/(<(?:strong|b)[^>]*>[\s\S]*?<\/(?:strong|b)>)/gi)
+
+  return parts.flatMap((part): Segment[] => {
+    if (/^<(?:strong|b)/i.test(part)) {
+      const text = decodeEntities(part.replace(/<[^>]+>/g, '').replace(/\s{2,}/g, ' ').trim())
+      return text ? [{ text, bold: true }] : []
+    }
+    // Strip all remaining tags (span, em, u, a, etc.) and keep their text
+    const text = decodeEntities(part.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim())
+    return text ? [{ text, bold: false }] : []
+  })
+}
+
+// Find balanced closing tag position in html starting from `from`.
+function findClose(html: string, tagName: string, from: number): number {
+  let depth = 1
+  let i = from
+  const open  = `<${tagName}`
+  const close = `</${tagName}`
+  while (depth > 0 && i < html.length) {
+    const nextO = html.indexOf(open,  i)
+    const nextC = html.indexOf(close, i)
+    if (nextC === -1) return -1
+    if (nextO !== -1 && nextO < nextC) {
+      // Verify the character after `<tagname` is space/> to avoid <tablenew> matching <table>
+      const charAfter = html[nextO + open.length]
+      if (charAfter === '>' || charAfter === ' ' || charAfter === '\n' || charAfter === '\r') {
+        depth++
+      }
+      i = nextO + open.length
+    } else {
+      depth--
+      i = nextC + close.length
     }
   }
-  return segs
+  return i - 1 // approximate position of end of </tag>
 }
 
-function parseTable(html: string): { head: string[]; rows: string[][] } {
+function parseTableCells(rowHtml: string): string[] {
+  const cells: string[] = []
+  const re = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi
+  let m: RegExpExecArray | null
+  while ((m = re.exec(rowHtml)) !== null) {
+    cells.push(stripTags(m[1] ?? ''))
+  }
+  return cells
+}
+
+function parseTable(tableHtml: string): { head: string[]; rows: string[][] } {
   const head: string[] = []
   const rows: string[][] = []
-  const theadM = /<thead[^>]*>([\s\S]*?)<\/thead>/i.exec(html)
+
+  const theadM = /<thead[^>]*>([\s\S]*?)<\/thead>/i.exec(tableHtml)
   if (theadM) {
     const thRe = /<th[^>]*>([\s\S]*?)<\/th>/gi
     let m: RegExpExecArray | null
@@ -332,19 +382,18 @@ function parseTable(html: string): { head: string[]; rows: string[][] } {
       head.push(stripTags(m[1] ?? ''))
     }
   }
-  const bodyHtml = html.replace(/<thead[^>]*>[\s\S]*?<\/thead>/i, '')
+
+  const bodyHtml = theadM
+    ? tableHtml.slice(0, theadM.index) + tableHtml.slice((theadM.index ?? 0) + (theadM[0]?.length ?? 0))
+    : tableHtml
+
   const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi
   let trM: RegExpExecArray | null
   while ((trM = trRe.exec(bodyHtml)) !== null) {
-    const row: string[] = []
-    const tdRe = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi
-    let tdM: RegExpExecArray | null
-    while ((tdM = tdRe.exec(trM[1] ?? '')) !== null) {
-      row.push(stripTags(tdM[1] ?? ''))
-    }
-    if (row.length > 0) {
-      if (head.length === 0 && rows.length === 0) head.push(...row)
-      else rows.push(row)
+    const cells = parseTableCells(trM[1] ?? '')
+    if (cells.length > 0) {
+      if (head.length === 0 && rows.length === 0) head.push(...cells)
+      else rows.push(cells)
     }
   }
   return { head, rows }
@@ -352,35 +401,73 @@ function parseTable(html: string): { head: string[]; rows: string[][] } {
 
 function parseBlocks(html: string): Block[] {
   const blocks: Block[] = []
-  const re = /<(h[1-6]|p|table|ul|ol)([^>]*)>([\s\S]*?)<\/\1>/gi
-  let m: RegExpExecArray | null
-  while ((m = re.exec(html)) !== null) {
-    const tag = (m[1] ?? '').toLowerCase()
-    const content = m[3] ?? ''
-    if (tag === 'h1') {
+  // Use explicit tag matching with nesting awareness
+  let i = 0
+  const BLOCK_TAGS = new Set(['h1','h2','h3','h4','h5','h6','p','table','ul','ol'])
+
+  while (i < html.length) {
+    const lt = html.indexOf('<', i)
+    if (lt === -1) break
+
+    // Extract opening tag
+    const gt = html.indexOf('>', lt)
+    if (gt === -1) { i = lt + 1; continue }
+
+    const rawTag = html.slice(lt + 1, gt).trim()
+    if (rawTag.startsWith('/') || rawTag.startsWith('!')) { i = gt + 1; continue }
+
+    const tagName = rawTag.split(/[\s/>]/)[0]?.toLowerCase() ?? ''
+    if (!BLOCK_TAGS.has(tagName)) { i = gt + 1; continue }
+
+    // Find balanced close
+    const contentStart = gt + 1
+    const closeEnd = findClose(html, tagName, contentStart)
+    const closeTagLen = `</${tagName}>`.length
+    const contentEnd = closeEnd === -1 ? html.length : closeEnd - (tagName.length + 2)
+
+    // Approximate content: from contentStart to roughly before </tag>
+    // Find actual </tagName> position
+    let actualClose = html.indexOf(`</${tagName}`, contentStart)
+    if (actualClose === -1) actualClose = html.length
+
+    const content = html.slice(contentStart, actualClose)
+    const blockEnd = actualClose + `</${tagName}>`.length
+
+    if (tagName === 'h1') {
       const text = stripTags(content)
       if (text) blocks.push({ kind: 'h', level: 1, text })
-    } else if (tag === 'h2') {
+    } else if (tagName === 'h2') {
       const text = stripTags(content)
       if (text) blocks.push({ kind: 'h', level: 2, text })
-    } else if (tag === 'h3' || tag === 'h4' || tag === 'h5' || tag === 'h6') {
+    } else if (tagName === 'h3' || tagName === 'h4' || tagName === 'h5' || tagName === 'h6') {
       const text = stripTags(content)
       if (text) blocks.push({ kind: 'h', level: 3, text })
-    } else if (tag === 'p') {
+    } else if (tagName === 'p') {
       const segs = parseSegments(content)
-      blocks.push({ kind: 'p', segments: segs })
-    } else if (tag === 'table') {
+      if (segs.some(sg => sg.text.trim())) {
+        blocks.push({ kind: 'p', segs })
+      } else {
+        blocks.push({ kind: 'p', segs: [] }) // blank line
+      }
+    } else if (tagName === 'table') {
       blocks.push({ kind: 'table', ...parseTable(content) })
-    } else if (tag === 'ul' || tag === 'ol') {
+    } else if (tagName === 'ul' || tagName === 'ol') {
       const items: string[] = []
       const liRe = /<li[^>]*>([\s\S]*?)<\/li>/gi
-      let li: RegExpExecArray | null
-      while ((li = liRe.exec(content)) !== null) {
-        items.push(stripTags(li[1] ?? ''))
+      let liM: RegExpExecArray | null
+      while ((liM = liRe.exec(content)) !== null) {
+        const t = stripTags(liM[1] ?? '')
+        if (t) items.push(t)
       }
-      if (items.length) blocks.push({ kind: 'list', ordered: tag === 'ol', items })
+      if (items.length) blocks.push({ kind: 'list', ordered: tagName === 'ol', items })
     }
+
+    i = blockEnd > i ? blockEnd : i + 1
+    void contentEnd
+    void closeEnd
+    void closeTagLen
   }
+
   return blocks
 }
 
@@ -390,48 +477,75 @@ function renderBlocks(blocks: Block[]): React.ReactElement[] {
   return blocks.flatMap((block, i) => {
     if (block.kind === 'h') {
       if (block.level === 1) {
-        return [<Text key={i} style={s.h1}>{block.text}</Text>]
+        return [<RichText key={i} text={block.text} style={s.h1} />]
       }
       if (block.level === 2) {
         return [
           <View key={i} style={s.h2Wrap}>
-            <Text style={s.h2}>{block.text}</Text>
+            <RichText text={block.text} style={s.h2} />
           </View>,
         ]
       }
-      return [<Text key={i} style={s.h3}>{block.text}</Text>]
+      return [<RichText key={i} text={block.text} style={s.h3} />]
     }
 
     if (block.kind === 'p') {
-      if (block.segments.length === 0) {
+      if (block.segs.length === 0) {
         return [<View key={i} style={s.pBlank} />]
       }
       return [
         <Text key={i} style={s.p}>
-          {block.segments.map((seg, j) => (
-            <Text key={j} style={seg.bold ? s.bold : undefined}>{seg.text}</Text>
-          ))}
+          {block.segs.map((seg, j) => {
+            const cjk = hasCJK(seg.text)
+            const wt = seg.bold ? 700 : 400
+            if (!cjk) {
+              return <Text key={j} style={{ fontFamily: 'Sarabun', fontWeight: wt }}>{seg.text}</Text>
+            }
+            // Mixed script: split into CJK and non-CJK runs
+            return splitScripts(seg.text).map((run, k) => (
+              <Text
+                key={`${j}-${k}`}
+                style={{ fontFamily: run.cjk ? 'NotoSansSC' : 'Sarabun', fontWeight: wt }}
+              >
+                {run.text}
+              </Text>
+            ))
+          }).flat()}
         </Text>,
       ]
     }
 
     if (block.kind === 'table') {
+      const colCount = Math.max(block.head.length, block.rows[0]?.length ?? 1)
       return [
-        <View key={i} style={s.tableWrap}>
+        <View key={i} style={s.tableWrap} wrap={false}>
           {block.head.length > 0 && (
             <View style={s.tHead}>
               {block.head.map((h, j) => (
-                <Text key={j} style={s.tHeadCell}>{h}</Text>
+                <Text
+                  key={j}
+                  style={[s.tHCell, j === colCount - 1 ? { borderRightWidth: 0.8, borderRightColor: C.border } : {}]}
+                >
+                  {h}
+                </Text>
               ))}
             </View>
           )}
-          {block.rows.map((row, ri) => (
-            <View key={ri} style={ri % 2 === 0 ? s.tRow : s.tRowAlt}>
-              {row.map((cell, ci) => (
-                <Text key={ci} style={s.tCell}>{cell}</Text>
-              ))}
-            </View>
-          ))}
+          {block.rows.map((row, ri) => {
+            const rowStyle = ri % 2 === 0 ? s.tRow : s.tRowAlt
+            return (
+              <View key={ri} style={rowStyle} wrap={false}>
+                {row.map((cell, ci) => (
+                  <Text
+                    key={ci}
+                    style={[s.tCell, ci === (row.length - 1) ? { borderRightWidth: 0.8, borderRightColor: C.border } : {}]}
+                  >
+                    {cell}
+                  </Text>
+                ))}
+              </View>
+            )
+          })}
         </View>,
       ]
     }
@@ -440,8 +554,10 @@ function renderBlocks(blocks: Block[]): React.ReactElement[] {
       return [
         <View key={i} style={s.listWrap}>
           {block.items.map((item, li) => (
-            <View key={li} style={s.listItem}>
-              <Text style={s.bullet}>{block.ordered ? `${li + 1}.` : '●'}</Text>
+            <View key={li} style={s.listRow}>
+              <Text style={s.listBullet}>
+                {block.ordered ? `${li + 1}.` : '•'}
+              </Text>
               <Text style={s.listText}>{item}</Text>
             </View>
           ))}
@@ -457,20 +573,23 @@ function renderBlocks(blocks: Block[]): React.ReactElement[] {
 
 function SignatureBlock({ signers }: { signers: PdfSigner[] }) {
   return (
-    <View style={s.sigSection}>
-      <Text style={s.sigTitle}>ลายเซ็นคู่สัญญา / Signatures</Text>
+    <View style={s.sigWrap}>
+      <Text style={s.sigHeading}>ลายเซ็นคู่สัญญา / Signatures</Text>
       <View style={s.sigRow}>
         {signers.map((sig, i) => (
           <View key={i} style={s.sigBox}>
             {sig.signatureUrl
               ? <Image style={s.sigImg} src={sig.signatureUrl} />
-              : <View style={s.sigSpacer} />
+              : <View style={s.sigSpace} />
             }
             <View style={s.sigLine} />
-            <Text style={s.sigLabel}>{sig.label}</Text>
-            {sig.name ? <Text style={s.sigName}>({sig.name})</Text> : null}
+            <Text style={s.sigRole}>{sig.label}</Text>
+            {sig.name
+              ? <Text style={s.sigName}>({sig.name})</Text>
+              : null
+            }
             <Text style={s.sigDate}>
-              {sig.signedAt ?? 'วันที่  _____ / _____ / _____'}
+              {sig.signedAt ?? 'วันที่  ___ / ___ / ___'}
             </Text>
           </View>
         ))}
@@ -485,34 +604,32 @@ function ContractPdfDocument({
   html,
   meta,
 }: {
-  html: string
+  html:  string
   meta: Required<PdfMeta>
 }) {
   const blocks   = parseBlocks(html)
   const children = renderBlocks(blocks)
 
-  const badgeStyle = meta.isFinalized ? s.badgeFinal
-    : meta.status === 'draft'         ? s.badgeDraft
-    : s.badgeActive
-  const badgeLabel = meta.isFinalized ? 'FINALIZED'
-    : meta.status === 'draft'         ? 'DRAFT'
-    : (meta.status ?? 'DRAFT').toUpperCase().replace(/_/g, ' ')
+  const statusText = meta.isFinalized
+    ? 'FINALIZED'
+    : (meta.status === 'draft' ? 'DRAFT' : (meta.status ?? 'DRAFT').toUpperCase().replace(/_/g, ' '))
 
   return (
     <Document title={`${meta.docTypeLabel} ${meta.contractId}`}>
       <Page size="A4" style={s.page}>
 
-        {/* ── Fixed header ── */}
+        {/* ── Fixed header every page ── */}
         <View fixed style={s.header}>
           <View style={s.headerLeft}>
-            <Text style={s.headerBrand}>PROPPSY</Text>
-            <Text style={s.headerTitle}>{meta.docTypeLabel}</Text>
+            <Text style={s.hBrand}>PROPPSY</Text>
+            {meta.agentName
+              ? <Text style={s.hAgent}>{meta.agentName}</Text>
+              : null
+            }
           </View>
           <View style={s.headerRight}>
-            <Text style={s.headerDocNo}>{meta.contractId}</Text>
-            <View style={[s.badge, badgeStyle]}>
-              <Text style={s.badgeText}>{badgeLabel}</Text>
-            </View>
+            <Text style={s.hTitle}>{meta.docTypeLabel}</Text>
+            <Text style={s.hMeta}>{meta.contractId}  ·  {statusText}</Text>
           </View>
         </View>
 
@@ -524,12 +641,12 @@ function ContractPdfDocument({
           <SignatureBlock signers={meta.signers} />
         )}
 
-        {/* ── Fixed footer ── */}
+        {/* ── Fixed footer every page ── */}
         <View fixed style={s.footer}>
-          <Text style={s.footerL}>Proppsy Platform</Text>
-          <Text style={s.footerC}>{meta.generatedAt}</Text>
+          <Text style={s.fL}>Proppsy Platform</Text>
+          <Text style={s.fC}>{meta.generatedAt}</Text>
           <Text
-            style={s.footerR}
+            style={s.fR}
             render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
               `หน้า ${pageNumber} / ${totalPages}`
             }
@@ -556,6 +673,7 @@ export async function renderMammothHtmlAsPdf(
   const resolved: Required<PdfMeta> = {
     contractId:   meta?.contractId   ?? '',
     docTypeLabel: meta?.docTypeLabel ?? 'เอกสารสัญญา',
+    agentName:    meta?.agentName    ?? '',
     status:       meta?.status       ?? 'draft',
     isFinalized:  meta?.isFinalized  ?? false,
     generatedAt:  meta?.generatedAt  ?? new Date().toLocaleDateString('th-TH', {
