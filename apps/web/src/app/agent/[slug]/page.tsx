@@ -1,12 +1,11 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Building2, MapPin, Maximize, Layers, Phone, MessageCircle, Calendar } from 'lucide-react'
+import { Building2, Phone, MessageCircle, Calendar } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { Stock } from '@/types'
 import PublicNav from '@/components/shared/PublicNav'
 import AgentAvatar from '@/components/shared/AgentAvatar'
-import StorageImage from '@/components/shared/StorageImage'
+import AgentListingsSection from './AgentListingsSection'
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -206,27 +205,7 @@ export default async function AgentProfilePage({
         </div>
 
         {/* ── Listings ─────────────────────────────────────────── */}
-        <div>
-          <h2 className="text-base font-semibold text-gray-700 mb-4">
-            ประกาศทรัพย์สิน
-            {stocks.length > 0 && (
-              <span className="ml-2 text-sm font-normal text-gray-400">{stocks.length} ประกาศ</span>
-            )}
-          </h2>
-
-          {stocks.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {stocks.map(stock => (
-                <AgentListingCard key={stock.id} stock={stock} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-20 text-gray-400">
-              <Building2 className="w-12 h-12 mx-auto mb-3 opacity-25" />
-              <p className="text-sm">ยังไม่มีประกาศในขณะนี้</p>
-            </div>
-          )}
-        </div>
+        <AgentListingsSection stocks={stocks} />
       </div>
 
       <footer className="border-t border-gray-100 py-8 text-center text-xs text-gray-400">
@@ -254,102 +233,3 @@ export default async function AgentProfilePage({
   )
 }
 
-// ── Listing Card ──────────────────────────────────────────────
-
-function fmt(n: number) {
-  return new Intl.NumberFormat('th-TH').format(n)
-}
-
-function AgentListingCard({ stock }: { stock: StockCard }) {
-  const photo = stock.photo_thumb_urls?.[0] ?? stock.photo_urls?.[0]
-  const isRent = stock.listing_type !== 'sale'
-  const isSale = stock.listing_type !== 'rent'
-  const price = stock.listing_type === 'sale' ? stock.sale_price : stock.rent_price
-  const location = [stock.project?.district, stock.project?.province].filter(Boolean).join(', ')
-  const bts = stock.project?.bts_mrt?.slice(0, 2) ?? []
-
-  return (
-    <Link
-      href={`/listing/${stock.id}`}
-      className={`group bg-white rounded-2xl overflow-hidden border shadow-sm hover:shadow-md transition-shadow block ${
-        stock.is_premium ? 'border-orange-200 ring-1 ring-orange-200' : 'border-gray-100'
-      }`}
-    >
-      {/* Image */}
-      <div className="relative aspect-[4/3] bg-gray-100">
-        <StorageImage
-          src={photo}
-          alt={stock.project_name ?? 'ทรัพย์'}
-          fill
-          className="object-cover group-hover:scale-105 transition-transform duration-300"
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          fallback={
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Building2 className="w-10 h-10 text-gray-200" />
-            </div>
-          }
-        />
-        <div className="absolute top-2 left-2 flex gap-1">
-          {isRent && <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/90 text-white backdrop-blur-sm">เช่า</span>}
-          {isSale && stock.listing_type !== 'rent' && <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-500/90 text-white backdrop-blur-sm">ขาย</span>}
-        </div>
-        {stock.is_premium && (
-          <span
-            className="absolute top-2 right-2 text-[11px] px-2.5 py-0.5 rounded-full font-bold text-white animate-hot-glow"
-            style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}
-          >
-            HOT
-          </span>
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="p-4">
-        {price != null && (
-          <p className="text-xl font-bold text-gray-900">
-            ฿{fmt(price)}
-            {stock.listing_type !== 'sale' && (
-              <span className="text-sm font-normal text-gray-400">/เดือน</span>
-            )}
-          </p>
-        )}
-        <p className="text-sm font-medium text-gray-700 mt-0.5 truncate">
-          {stock.project_name ?? 'ไม่ระบุโครงการ'}
-          {stock.unit_no && <span className="text-gray-400 font-normal"> · {stock.unit_no}</span>}
-        </p>
-        {location && (
-          <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-            <MapPin className="w-3 h-3 flex-shrink-0" />
-            {location}
-          </p>
-        )}
-        {bts.length > 0 && (
-          <div className="flex gap-1 mt-1.5 flex-wrap">
-            {bts.map(b => (
-              <span key={b} className="text-[11px] px-2 py-0.5 bg-purple-50 text-purple-600 rounded-full border border-purple-100">
-                {b}
-              </span>
-            ))}
-          </div>
-        )}
-        <div className="flex items-center gap-2 mt-2 text-xs text-gray-400 flex-wrap">
-          {stock.room_type && (
-            <span className="bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
-              {stock.room_type}
-            </span>
-          )}
-          {stock.size_sqm && (
-            <span className="flex items-center gap-0.5">
-              <Maximize className="w-3 h-3" />{stock.size_sqm} ตร.ม.
-            </span>
-          )}
-          {stock.floor && (
-            <span className="flex items-center gap-0.5">
-              <Layers className="w-3 h-3" />ชั้น {stock.floor}
-            </span>
-          )}
-        </div>
-      </div>
-    </Link>
-  )
-}
