@@ -2,7 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { resolvePlan, PLAN_LIMITS, type ContractDocType, type ContractCategory, type ContractStatus } from '@/types'
+import { resolvePlan, type ContractDocType, type ContractCategory, type ContractStatus } from '@/types'
+import { getPlanLimitsByUserPlan } from '@/lib/planLimits'
 import {
   setStockReserved, setStockPendingMoveIn, setStockRented, setStockAvailable,
   captureFinalizationSnapshot, appendTimelineEvent, docTypeToCategory,
@@ -103,7 +104,7 @@ export async function createContract(
     supabase.from('profiles').select('plan').eq('id', user.id).single(),
     supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).gte('created_at', startOfMonth),
   ])
-  const limits = PLAN_LIMITS[resolvePlan(profile?.plan)]
+  const limits = await getPlanLimitsByUserPlan(profile?.plan)
   if (limits.maxContractsPerMonth !== null && (contractsThisMonth ?? 0) >= limits.maxContractsPerMonth) {
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }
@@ -230,7 +231,7 @@ export async function createLeaseFromReservation(
     .eq('agent_uid', user.id)
     .gte('created_at', startOfMonth)
 
-  const limits = PLAN_LIMITS[resolvePlan(profile?.plan)]
+  const limits = await getPlanLimitsByUserPlan(profile?.plan)
   if (limits.maxContractsPerMonth !== null && (contractsThisMonth ?? 0) >= limits.maxContractsPerMonth) {
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }
@@ -376,7 +377,7 @@ export async function createChildDocument(
     .eq('agent_uid', user.id)
     .gte('created_at', startOfMonth)
 
-  const limits = PLAN_LIMITS[resolvePlan(profile?.plan)]
+  const limits = await getPlanLimitsByUserPlan(profile?.plan)
   if (limits.maxContractsPerMonth !== null && (contractsThisMonth ?? 0) >= limits.maxContractsPerMonth) {
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }

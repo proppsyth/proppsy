@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { Package, Check, Users } from 'lucide-react'
-import { PLAN_META, PLAN_LIMITS } from '@/types'
+import { PLAN_META } from '@/types'
 import { createAdminClient } from '@/lib/supabase/server'
+import { getAllPlanLimits } from '@/lib/planLimits'
+import PlanEditor from './PlanEditor'
 
 export const metadata: Metadata = { title: 'จัดการแพ็กเกจ — Admin' }
 
@@ -14,10 +16,12 @@ export default async function AdminPackagesPage() {
     { count: starterCount },
     { count: proCount },
     { count: businessCount },
+    planLimits,
   ] = await Promise.all([
     admin.from('profiles').select('*', { count: 'exact', head: true }).eq('plan', 'starter').neq('role', 'admin'),
     admin.from('profiles').select('*', { count: 'exact', head: true }).eq('plan', 'professional').neq('role', 'admin'),
     admin.from('profiles').select('*', { count: 'exact', head: true }).eq('plan', 'business').neq('role', 'admin'),
+    getAllPlanLimits(),
   ])
 
   const planUserCounts: Record<string, number> = {
@@ -47,12 +51,13 @@ export default async function AdminPackagesPage() {
         <span>ผู้ใช้ทั้งหมด {totalUsers.toLocaleString()} คน (ไม่รวม admin)</span>
       </div>
 
-      {/* Current plans overview */}
+      {/* Plan cards */}
       <div className="grid sm:grid-cols-3 gap-4 mb-8">
         {PLANS.map((plan) => {
           const meta = PLAN_META[plan]
-          const limits = PLAN_LIMITS[plan]
+          const row = planLimits[plan]
           const userCount = planUserCounts[plan] ?? 0
+          if (!row) return null
           return (
             <div key={plan} className="bg-white rounded-xl border border-gray-100 p-5">
               <div className="flex items-center justify-between mb-3">
@@ -68,36 +73,31 @@ export default async function AdminPackagesPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Check className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-                  <span>ทรัพย์: {limits.maxStock === null ? 'ไม่จำกัด' : `${limits.maxStock} รายการ`}</span>
+                  <span>ทรัพย์: {row.max_stock === null ? 'ไม่จำกัด' : `${row.max_stock} รายการ`}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Check className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-                  <span>สัญญา: {limits.maxContractsPerMonth === null ? 'ไม่จำกัด' : `${limits.maxContractsPerMonth}/เดือน`}</span>
+                  <span>สัญญา: {row.max_contracts_per_month === null ? 'ไม่จำกัด' : `${row.max_contracts_per_month}/เดือน`}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Check className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-                  <span>AI: {limits.aiCallsPerMonth} ครั้ง/เดือน</span>
+                  <span>AI: {row.ai_calls_per_month} ครั้ง/เดือน</span>
                 </div>
               </div>
-              <button
-                className="mt-4 w-full py-2 border border-gray-200 text-gray-500 text-sm rounded-xl hover:bg-gray-50 transition opacity-50 cursor-not-allowed"
-                disabled
-              >
-                แก้ไข (เร็วๆ นี้)
-              </button>
+              <PlanEditor
+                plan={plan}
+                label={meta.label}
+                badge={meta.badge}
+                row={row}
+              />
             </div>
           )
         })}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
-        <Package className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-        <p className="text-gray-500 font-medium text-sm">Package Management</p>
-        <p className="text-gray-400 text-sm mt-1">ตั้งราคา จำกัดฟีเจอร์ กำหนด AI limits และเปิดใช้งานแบบ manual</p>
-        <span className="inline-flex items-center gap-1 mt-3 px-3 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-full">
-          Coming Soon
-        </span>
-      </div>
+      <p className="text-xs text-gray-400 text-center">
+        การเปลี่ยนแปลงมีผลทันที — ค่าว่างในช่อง &quot;ทรัพย์&quot; และ &quot;สัญญา&quot; หมายถึงไม่จำกัด
+      </p>
     </div>
   )
 }

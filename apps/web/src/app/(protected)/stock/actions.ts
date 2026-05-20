@@ -2,7 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { resolvePlan, PLAN_LIMITS } from '@/types'
+import { resolvePlan } from '@/types'
+import { getPlanLimitsByUserPlan } from '@/lib/planLimits'
 import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
 
 // ─── Types ───────────────────────────────────────────────────
@@ -79,7 +80,7 @@ export async function createStock(
     supabase.from('profiles').select('plan').eq('id', user.id).single(),
     supabase.from('stock').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
   ])
-  const limits = PLAN_LIMITS[resolvePlan(profile?.plan)]
+  const limits = await getPlanLimitsByUserPlan(profile?.plan)
   if (limits.maxStock !== null && (stockCount ?? 0) >= limits.maxStock) {
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxStock} ทรัพย์)` }
   }
