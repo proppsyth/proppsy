@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, Pencil, Calendar, Phone, Globe } from 'lucide-react'
+import { ArrowLeft, Pencil, Calendar, Phone, Globe, MessageSquare } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { ownerDisplayName, stockDisplayTitle, DOC_TYPE_LABELS, STATUS_LABELS, formatRoomType } from '@/types'
@@ -42,7 +42,7 @@ export default async function StockDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: stock }, { data: credit }] = await Promise.all([
+  const [{ data: stock }, { data: credit }, { data: inquiryRows }] = await Promise.all([
     supabase
       .from('stock')
       .select('*, owner:owners(*), project:projects(*)')
@@ -54,6 +54,13 @@ export default async function StockDetailPage({
       .select('balance')
       .eq('user_id', user.id)
       .maybeSingle(),
+    supabase
+      .from('property_inquiries')
+      .select('id, budget, move_in_date, created_at, customer:customers(id, nickname, first_name_th, last_name_th, phone)')
+      .eq('stock_id', id)
+      .eq('agent_uid', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20),
   ])
 
   if (!stock) notFound()
@@ -243,6 +250,59 @@ export default async function StockDetailPage({
               stockId={s.id}
               title={stockDisplayTitle(s)}
             />
+          )}
+
+          {/* คำขอสนใจจาก Listing */}
+          {s.is_published && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                  <MessageSquare className="w-4 h-4 text-blue-500" />
+                  คำขอสนใจ
+                </h2>
+                {(inquiryRows?.length ?? 0) > 0 && (
+                  <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+                    {inquiryRows!.length} คน
+                  </span>
+                )}
+              </div>
+              <div className="p-4">
+                {(inquiryRows?.length ?? 0) === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-2">ยังไม่มีคำขอสนใจ</p>
+                ) : (
+                  <div className="space-y-2">
+                    {inquiryRows!.map((inq) => {
+                      const cust = Array.isArray(inq.customer) ? inq.customer[0] : inq.customer
+                      const name = cust?.nickname
+                        || [cust?.first_name_th, cust?.last_name_th].filter(Boolean).join(' ')
+                        || '—'
+                      return (
+                        <Link
+                          key={inq.id}
+                          href={cust?.id ? `/customers/${cust.id}` : '#'}
+                          className="flex items-start justify-between gap-2 p-2.5 rounded-lg hover:bg-gray-50 transition"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-800 truncate">{name}</p>
+                            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                              {cust?.phone && (
+                                <span className="text-xs text-gray-400">{cust.phone}</span>
+                              )}
+                              {inq.budget && (
+                                <span className="text-[11px] px-1.5 py-0.5 bg-green-50 text-green-700 rounded-full">{inq.budget}</span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-[10px] text-gray-400 whitespace-nowrap flex-shrink-0 mt-0.5">
+                            {new Date(inq.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                          </span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
           {/* วันที่สำคัญ */}
