@@ -79,6 +79,7 @@ export default async function DashboardPage() {
     { data: convertedContractCustomers },
     { count: upcomingApptCount },
     { count: publishedStockCount },
+    { data: recentInquiries },
   ] = await Promise.all([
     supabase.from('stock').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
     supabase.from('stock').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).eq('status', 'available'),
@@ -132,6 +133,13 @@ export default async function DashboardPage() {
       .select('*', { count: 'exact', head: true })
       .eq('agent_uid', user.id)
       .eq('is_published', true),
+    // New inquiries from public listing (last 7 days)
+    supabase.from('property_inquiries')
+      .select('id, created_at, stock_id, budget, customer:customers(id, nickname, first_name_th, last_name_th, phone), stock:stock(project_name, unit_no)')
+      .eq('agent_uid', user.id)
+      .gte('created_at', new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString())
+      .order('created_at', { ascending: false })
+      .limit(10),
   ])
 
   // ─── KPI calculations ───────────────────────────────────────
@@ -274,8 +282,49 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Right column: appointments + expiring */}
+        {/* Right column: new inquiries + appointments + expiring */}
         <div className="space-y-4">
+          {/* New inquiries from public listing */}
+          {(recentInquiries?.length ?? 0) > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-blue-100 ring-1 ring-blue-100">
+              <div className="p-4 border-b border-blue-100 flex items-center justify-between bg-blue-50/50">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🔔</span>
+                  <h2 className="font-semibold text-blue-900 text-sm">คำขอสนใจใหม่ (7 วัน)</h2>
+                </div>
+                <span className="text-xs font-bold text-white bg-blue-600 px-2 py-0.5 rounded-full">
+                  {recentInquiries!.length}
+                </span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {recentInquiries!.map(inq => {
+                  const cust = Array.isArray(inq.customer) ? inq.customer[0] : inq.customer
+                  const stk = Array.isArray(inq.stock) ? inq.stock[0] : inq.stock
+                  const name = (cust as { nickname?: string; first_name_th?: string; last_name_th?: string } | null)?.nickname
+                    || [(cust as { first_name_th?: string } | null)?.first_name_th, (cust as { last_name_th?: string } | null)?.last_name_th].filter(Boolean).join(' ')
+                    || '—'
+                  const stockLabel = [(stk as { project_name?: string } | null)?.project_name, (stk as { unit_no?: string } | null)?.unit_no].filter(Boolean).join(' · ')
+                  const custId = (cust as { id?: string } | null)?.id
+                  return (
+                    <Link key={inq.id} href={custId ? `/customers/${custId}` : `/stock/${inq.stock_id}`}
+                      className="flex items-start justify-between p-3 hover:bg-blue-50/30 transition">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
+                        {stockLabel && <p className="text-xs text-gray-400 truncate">{stockLabel}</p>}
+                        {(inq as { budget?: string }).budget && (
+                          <span className="text-[11px] px-1.5 py-0.5 bg-green-50 text-green-700 rounded-full">{(inq as { budget?: string }).budget}</span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-blue-400 whitespace-nowrap flex-shrink-0 ml-2 mt-0.5">
+                        {new Date(inq.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Upcoming appointments */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
