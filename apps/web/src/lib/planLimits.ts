@@ -8,6 +8,10 @@ export interface PlanLimitRow {
   max_contracts_per_month: number | null
   ai_calls_per_month: number
   is_active: boolean
+  price_monthly_thb: number
+  price_yearly_thb: number
+  feature_list: string[]
+  display_order: number
 }
 
 // In-process cache — revalidated after admin updates via cache busting
@@ -71,6 +75,10 @@ export async function getAllPlanLimits(): Promise<Record<string, PlanLimitRow>> 
       max_contracts_per_month: limits.maxContractsPerMonth,
       ai_calls_per_month: limits.aiCallsPerMonth,
       is_active: true,
+      price_monthly_thb: 0,
+      price_yearly_thb: 0,
+      feature_list: [],
+      display_order: 0,
     }
   }
   return fallback
