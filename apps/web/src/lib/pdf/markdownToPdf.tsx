@@ -187,38 +187,33 @@ const s = StyleSheet.create({
   pBlank: { height: 6 },
 
   // ── Tables ────────────────────────────────────────────────
-  tableWrap: { marginVertical: 2 },
-  tHead: {
-    flexDirection: 'row',
-    backgroundColor: C.white,
-    borderTopWidth: 0.5, borderTopColor: '#CCCCCC',
-    borderLeftWidth: 0,
+  tableWrap: { marginVertical: 0 },
+  tHead:   { flexDirection: 'row' },
+  tRow:    { flexDirection: 'row' },
+  tRowAlt: { flexDirection: 'row' },
+  // label cell — plain text, no border
+  tLabel: {
+    flex: 1, fontSize: 9.5, color: C.text,
+    paddingVertical: 3, paddingHorizontal: 4,
+    lineHeight: 1.8,
   },
-  tRow: {
-    flexDirection: 'row',
-    backgroundColor: C.white,
-    borderBottomWidth: 0,
-    borderLeftWidth: 0,
+  // value cell — underline only
+  tValue: {
+    flex: 1, fontSize: 9.5, color: C.text,
+    paddingVertical: 3, paddingHorizontal: 4,
+    borderBottomWidth: 0.8, borderBottomColor: C.text,
+    lineHeight: 1.8,
   },
-  tRowAlt: {
-    flexDirection: 'row',
-    backgroundColor: C.white,
-    borderBottomWidth: 0,
-    borderLeftWidth: 0,
-  },
+  // single full-width text cell — no decoration
   tHCell: {
-    flex: 1, fontSize: 9, fontWeight: 400, color: C.text,
-    paddingVertical: 5, paddingHorizontal: 8,
-    borderRightWidth: 0.5, borderRightColor: '#CCCCCC',
-    borderBottomWidth: 0.5, borderBottomColor: '#CCCCCC',
-    lineHeight: 1.6,
+    flex: 1, fontSize: 9.5, color: C.text,
+    paddingVertical: 3, paddingHorizontal: 0,
+    lineHeight: 1.8,
   },
   tCell: {
-    flex: 1, fontSize: 9, color: C.text,
-    paddingVertical: 5, paddingHorizontal: 8,
-    borderRightWidth: 0.5, borderRightColor: '#CCCCCC',
-    borderBottomWidth: 0.5, borderBottomColor: '#CCCCCC',
-    lineHeight: 1.6,
+    flex: 1, fontSize: 9.5, color: C.text,
+    paddingVertical: 3, paddingHorizontal: 0,
+    lineHeight: 1.8,
   },
 
   // ── Final signature block (last page, large) ─────────────
@@ -487,32 +482,28 @@ function renderMdBlocks(blocks: MdBlock[]): React.ReactElement[] {
         const [headRow, ...bodyRows] = block.rows
         if (!headRow) continue
         const allRows = [headRow, ...bodyRows]
-        const needTopBorder = !prevWasTable
         prevWasTable = true
+        const isSingleCol = (allRows[0]?.length ?? 0) === 1
         const colFlexes = allRows[0]!.map((_, ci) =>
           alignToFlex(block.aligns[ci] ?? 'none')
         )
         elements.push(
-          <View key={i} style={[s.tableWrap, {
-            borderLeftWidth: 0.5, borderLeftColor: '#CCCCCC',
-            borderTopWidth: needTopBorder ? 0.5 : 0, borderTopColor: '#CCCCCC',
-          }]} wrap={false}>
+          <View key={i} style={s.tableWrap} wrap={false}>
             {allRows.map((row, ri) => (
               <View key={ri} style={s.tRow} wrap={false}>
                 {row.map((cell, ci) => {
                   const align = block.aligns[ci] ?? 'none'
                   const textAlign = align === 'right' ? 'right' : align === 'center' ? 'center' : 'left'
-                  const isLast = ci === row.length - 1
+                  // single-col or right-aligned = label (no underline)
+                  // left-aligned in multi-col = value (underline)
+                  const isValue = !isSingleCol && align === 'left'
+                  const baseStyle = isSingleCol ? s.tHCell : isValue ? s.tValue : s.tLabel
                   return (
                     <RichText
                       key={ci}
                       text={cell}
                       textAlign={textAlign}
-                      style={{
-                        ...s.tCell,
-                        flex: colFlexes[ci] ?? 1,
-                        ...(isLast ? { borderRightWidth: 0.5, borderRightColor: '#CCCCCC' } : {}),
-                      }}
+                      style={{ ...baseStyle, flex: colFlexes[ci] ?? 1 }}
                     />
                   )
                 })}
