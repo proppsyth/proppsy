@@ -188,32 +188,32 @@ const s = StyleSheet.create({
 
   // ── Tables ────────────────────────────────────────────────
   tableWrap: { marginVertical: 0 },
-  tHead:   { flexDirection: 'row' },
-  tRow:    { flexDirection: 'row' },
-  tRowAlt: { flexDirection: 'row' },
+  tHead:   { flexDirection: 'row', alignItems: 'flex-end' },
+  tRow:    { flexDirection: 'row', alignItems: 'flex-end' },
+  tRowAlt: { flexDirection: 'row', alignItems: 'flex-end' },
   // label cell — plain text, no border
   tLabel: {
     flex: 1, fontSize: 9.5, color: C.text,
-    paddingVertical: 3, paddingHorizontal: 4,
-    lineHeight: 1.8,
+    paddingVertical: 2, paddingHorizontal: 4,
+    lineHeight: 1.7, flexShrink: 1,
   },
   // value cell — underline only
   tValue: {
     flex: 1, fontSize: 9.5, color: C.text,
-    paddingVertical: 3, paddingHorizontal: 4,
+    paddingVertical: 2, paddingHorizontal: 4,
     borderBottomWidth: 0.8, borderBottomColor: C.text,
-    lineHeight: 1.8,
+    lineHeight: 1.7, flexShrink: 1,
   },
   // single full-width text cell — no decoration
   tHCell: {
     flex: 1, fontSize: 9.5, color: C.text,
-    paddingVertical: 3, paddingHorizontal: 0,
-    lineHeight: 1.8,
+    paddingVertical: 2, paddingHorizontal: 0,
+    lineHeight: 1.7,
   },
   tCell: {
     flex: 1, fontSize: 9.5, color: C.text,
-    paddingVertical: 3, paddingHorizontal: 0,
-    lineHeight: 1.8,
+    paddingVertical: 2, paddingHorizontal: 0,
+    lineHeight: 1.7,
   },
 
   // ── Final signature block (last page, large) ─────────────
@@ -374,8 +374,8 @@ function parseAlignRow(cells: string[]): ColAlign[] {
 }
 
 function alignToFlex(a: ColAlign): number {
-  if (a === 'right') return 0.55  // narrow label column
-  if (a === 'left')  return 1.45  // wide value column
+  if (a === 'right') return 0.8   // label column
+  if (a === 'left')  return 1.2   // value column
   return 1                         // center / none = equal
 }
 
@@ -490,7 +490,7 @@ function renderMdBlocks(blocks: MdBlock[]): React.ReactElement[] {
         elements.push(
           <View key={i} style={s.tableWrap} wrap={false}>
             {allRows.map((row, ri) => (
-              <View key={ri} style={s.tRow} wrap={false}>
+              <View key={ri} style={s.tRow}>
                 {row.map((cell, ci) => {
                   const align = block.aligns[ci] ?? 'none'
                   const textAlign = align === 'right' ? 'right' : align === 'center' ? 'center' : 'left'
