@@ -290,18 +290,59 @@ function splitScripts(text: string): ScriptRun[] {
   return runs
 }
 
-function RichText({ text, style, bold }: { text: string; style?: object; bold?: boolean }): React.ReactElement {
+type BoldSegment = { text: string; bold: boolean }
+
+function parseBoldSegments(raw: string): BoldSegment[] {
+  const parts = raw.split(/(\*\*[^*]+\*\*)/)
+  return parts
+    .filter(p => p.length > 0)
+    .map(p => p.startsWith('**') && p.endsWith('**')
+      ? { text: p.slice(2, -2), bold: true }
+      : { text: p, bold: false }
+    )
+}
+
+function RichText({ text, style, bold, textAlign }: {
+  text: string; style?: object; bold?: boolean; textAlign?: 'left' | 'right' | 'center'
+}): React.ReactElement {
+  const baseStyle = { fontFamily: 'Sarabun', ...(style ?? {}), ...(textAlign ? { textAlign } : {}) }
   const weight = bold ? 700 : 400
-  if (!hasCJK(text)) {
-    return <Text style={{ fontFamily: 'Sarabun', fontWeight: weight, ...(style ?? {}) }}>{text}</Text>
+  const segments = parseBoldSegments(text)
+  const hasInlineBold = segments.some(s => s.bold)
+
+  if (!hasInlineBold) {
+    if (!hasCJK(text)) {
+      return <Text style={{ ...baseStyle, fontWeight: weight }}>{text}</Text>
+    }
+    return (
+      <Text style={{ ...baseStyle, fontWeight: weight }}>
+        {splitScripts(text).map((run, i) => (
+          <Text key={i} style={{ fontFamily: run.cjk ? 'NotoSansSC' : 'Sarabun', fontWeight: weight }}>
+            {run.text}
+          </Text>
+        ))}
+      </Text>
+    )
   }
+
+  // Inline bold segments
   return (
-    <Text style={{ fontFamily: 'Sarabun', fontWeight: weight, ...(style ?? {}) }}>
-      {splitScripts(text).map((run, i) => (
-        <Text key={i} style={{ fontFamily: run.cjk ? 'NotoSansSC' : 'Sarabun', fontWeight: weight }}>
-          {run.text}
-        </Text>
-      ))}
+    <Text style={baseStyle}>
+      {segments.map((seg, si) => {
+        const w = seg.bold ? 700 : weight
+        if (!hasCJK(seg.text)) {
+          return <Text key={si} style={{ fontFamily: 'Sarabun', fontWeight: w }}>{seg.text}</Text>
+        }
+        return (
+          <Text key={si} style={{ fontFamily: 'Sarabun', fontWeight: w }}>
+            {splitScripts(seg.text).map((run, ri) => (
+              <Text key={ri} style={{ fontFamily: run.cjk ? 'NotoSansSC' : 'Sarabun', fontWeight: w }}>
+                {run.text}
+              </Text>
+            ))}
+          </Text>
+        )
+      })}
     </Text>
   )
 }
@@ -458,15 +499,23 @@ function renderMdBlocks(blocks: MdBlock[]): React.ReactElement[] {
           }]} wrap={false}>
             {allRows.map((row, ri) => (
               <View key={ri} style={s.tRow} wrap={false}>
-                {row.map((cell, ci) => (
-                  <Text key={ci} style={[
-                    s.tCell,
-                    { flex: colFlexes[ci] ?? 1 },
-                    ci === row.length - 1 ? { borderRightWidth: 0.5, borderRightColor: '#CCCCCC' } : {},
-                  ]}>
-                    {cell}
-                  </Text>
-                ))}
+                {row.map((cell, ci) => {
+                  const align = block.aligns[ci] ?? 'none'
+                  const textAlign = align === 'right' ? 'right' : align === 'center' ? 'center' : 'left'
+                  const isLast = ci === row.length - 1
+                  return (
+                    <RichText
+                      key={ci}
+                      text={cell}
+                      textAlign={textAlign}
+                      style={{
+                        ...s.tCell,
+                        flex: colFlexes[ci] ?? 1,
+                        ...(isLast ? { borderRightWidth: 0.5, borderRightColor: '#CCCCCC' } : {}),
+                      }}
+                    />
+                  )
+                })}
               </View>
             ))}
           </View>
