@@ -485,7 +485,7 @@ function renderMdBlocks(blocks: MdBlock[]): React.ReactElement[] {
                 {row.map((cell, ci) => {
                   const spec   = block.cols[ci] ?? { align: 'none', flex: 1 }
                   const tAlign = spec.align === 'right' ? 'right' : spec.align === 'center' ? 'center' : 'left'
-                  const isValue = !isSingleCol && spec.align === 'left'
+                  const isValue = !isSingleCol && (ci % 2 === 1)
                   const base   = isSingleCol ? s.tHCell : isValue ? s.tValue : s.tLabel
                   return (
                     <RichText key={ci} text={cell} textAlign={tAlign}
