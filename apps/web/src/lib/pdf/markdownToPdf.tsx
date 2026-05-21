@@ -325,12 +325,30 @@ function isSeparatorRow(cells: string[]): boolean {
   return cells.length > 0 && cells.every(c => /^[-:\s]*$/.test(c))
 }
 
+type ColAlign = 'left' | 'right' | 'center' | 'none'
+
+function parseAlignRow(cells: string[]): ColAlign[] {
+  return cells.map(c => {
+    const s = c.trim()
+    if (s.startsWith(':') && s.endsWith(':')) return 'center'
+    if (s.endsWith(':')) return 'right'
+    if (s.startsWith(':')) return 'left'
+    return 'none'
+  })
+}
+
+function alignToFlex(a: ColAlign): number {
+  if (a === 'right') return 0.55  // narrow label column
+  if (a === 'left')  return 1.45  // wide value column
+  return 1                         // center / none = equal
+}
+
 type MdBlock =
   | { type: 'h1'; text: string; bold: boolean }
   | { type: 'h2'; text: string; bold: boolean }
   | { type: 'p';  text: string; bold: boolean }
   | { type: 'blank' }
-  | { type: 'table'; rows: string[][]; wide: boolean }
+  | { type: 'table'; rows: string[][]; aligns: ColAlign[]; wide: boolean }
 
 function parseMd(md: string): MdBlock[] {
   const lines = md.split('\n')
@@ -360,13 +378,18 @@ function parseMd(md: string): MdBlock[] {
         tableLines.push(lines[i] ?? ''); i++
       }
       const allRows: string[][] = []
+      let aligns: ColAlign[] = []
       for (const tl of tableLines) {
         const cells = tl.split('|').slice(1, -1).map(c => c.trim())
-        if (!isSeparatorRow(cells)) allRows.push(cells)
+        if (isSeparatorRow(cells)) {
+          aligns = parseAlignRow(cells)
+        } else {
+          allRows.push(cells)
+        }
       }
       if (allRows.length === 0) continue
       const maxCols = Math.max(...allRows.map(r => r.length))
-      blocks.push({ type: 'table', rows: allRows, wide: maxCols > 8 })
+      blocks.push({ type: 'table', rows: allRows, aligns, wide: maxCols > 8 })
       continue
     }
 
@@ -425,6 +448,9 @@ function renderMdBlocks(blocks: MdBlock[]): React.ReactElement[] {
         const allRows = [headRow, ...bodyRows]
         const needTopBorder = !prevWasTable
         prevWasTable = true
+        const colFlexes = allRows[0]!.map((_, ci) =>
+          alignToFlex(block.aligns[ci] ?? 'none')
+        )
         elements.push(
           <View key={i} style={[s.tableWrap, {
             borderLeftWidth: 0.5, borderLeftColor: '#CCCCCC',
@@ -433,7 +459,11 @@ function renderMdBlocks(blocks: MdBlock[]): React.ReactElement[] {
             {allRows.map((row, ri) => (
               <View key={ri} style={s.tRow} wrap={false}>
                 {row.map((cell, ci) => (
-                  <Text key={ci} style={[s.tCell, ci === row.length - 1 ? { borderRightWidth: 0.5, borderRightColor: '#CCCCCC' } : {}]}>
+                  <Text key={ci} style={[
+                    s.tCell,
+                    { flex: colFlexes[ci] ?? 1 },
+                    ci === row.length - 1 ? { borderRightWidth: 0.5, borderRightColor: '#CCCCCC' } : {},
+                  ]}>
                     {cell}
                   </Text>
                 ))}
