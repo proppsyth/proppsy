@@ -48,23 +48,27 @@ export function computeVariables(
   v['ทำสัญญาเดือนอย่างเดียว']    = String(contractDate.getMonth() + 1)
 
   if (endDate) {
-    v['ทำสัญญาวันที่สิ้นสุดตัวอักษร'] = toThaiDateFull(endDate)
-    v['สิ้นสุดสัญญาวันที่']            = toThaiDate(endDate)
-    v['ขยายเวลาสิ้นสุดเป็นวันที่']     = toThaiDate(endDate)
-    v['ปีสิ้นสุด']                     = thaiYear(endDate)
-    v['ปีที่สิ้นสุดไทย']               = thaiYear(endDate)
-    v['ปีที่สิ้นสุดอังกฤษ']            = enYear(endDate)
-    v['เดือนที่สิ้นสุด']               = thaiMonthName(endDate)
-    v['เดือนสิ้นสุด']                  = thaiMonthName(endDate)
-    v['วันที่สิ้นสุด']                 = dayOfMonth(endDate)
+    v['ทำสัญญาวันที่สิ้นสุดตัวอักษร']   = toThaiDateFull(endDate)
+    v['สิ้นสุดสัญญาวันที่']              = toThaiDate(endDate)
+    v['ขยายเวลาสิ้นสุดเป็นวันที่']       = toThaiDate(endDate)
+    v['enขยายเวลาสิ้นสุดเป็นวันที่']     = toEnDate(endDate)
+    v['enสิ้นสุดสัญญาวันที่']            = toEnDate(endDate)
+    v['ปีสิ้นสุด']                       = thaiYear(endDate)
+    v['ปีที่สิ้นสุดไทย']                 = thaiYear(endDate)
+    v['ปีที่สิ้นสุดอังกฤษ']              = enYear(endDate)
+    v['เดือนที่สิ้นสุด']                 = thaiMonthName(endDate)
+    v['เดือนสิ้นสุด']                    = thaiMonthName(endDate)
+    v['วันที่สิ้นสุด']                   = dayOfMonth(endDate)
   }
 
   if (moveInDate) {
-    v['เริ่มต่อสัญญา'] = toThaiDate(moveInDate)
+    v['เริ่มต่อสัญญา']   = toThaiDate(moveInDate)
+    v['enเริ่มต่อสัญญา'] = toEnDate(moveInDate)
   }
 
   // Original lease date for renewal (stored in extra_vars)
-  v['สัญญาเช่าฉบับเก่าลงวันที่'] = extra['สัญญาเช่าฉบับเก่าลงวันที่'] ?? '-'
+  v['สัญญาเช่าฉบับเก่าลงวันที่']   = extra['สัญญาเช่าฉบับเก่าลงวันที่'] ?? '-'
+  v['enสัญญาเช่าฉบับเก่าลงวันที่'] = extra['enสัญญาเช่าฉบับเก่าลงวันที่'] ?? '-'
 
   // ─── Contract period & payment ───────────────────────────────
 
