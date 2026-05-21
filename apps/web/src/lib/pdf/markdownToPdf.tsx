@@ -62,7 +62,7 @@ const C = {
 }
 
 const HEADER_H  = 60
-const FOOTER_H  = 38
+const FOOTER_H  = 44
 const PAD_H     = 52
 
 // ─── Styles ───────────────────────────────────────────────────
@@ -75,8 +75,8 @@ const s = StyleSheet.create({
     fontSize:          9.5,
     color:             C.text,
     backgroundColor:   C.bg,
-    paddingTop:        HEADER_H + 20,
-    paddingBottom:     FOOTER_H + 20,
+    paddingTop:        HEADER_H + 32,
+    paddingBottom:     FOOTER_H + 24,
     paddingHorizontal: PAD_H,
     lineHeight:        1.8,
   },
@@ -125,24 +125,30 @@ const s = StyleSheet.create({
     textAlign: 'right', marginTop: 1, letterSpacing: 0.5,
   },
 
-  // ── Footer (fixed, every page) — mini sig + page number ───
+  // ── Footer: page number only (always shown) ────────────────
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    height:   FOOTER_H,
-    borderTopWidth: 0.8, borderTopColor: C.border,
-    backgroundColor: '#F7F9FC',
+    height: FOOTER_H,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: PAD_H,
+    paddingBottom: 6,
+  },
+  // ── Footer: mini-sig row (non-last pages only) ─────────────
+  footerSigs: {
+    position: 'absolute', bottom: 6, left: PAD_H, right: PAD_H,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
   },
   // Mini-sig slot (owner / customer)
   miniSigBox: {
-    width: 90, alignItems: 'center',
+    width: 100, alignItems: 'center',
   },
-  miniSigImgWrap: { height: 18, justifyContent: 'flex-end', marginBottom: 2 },
-  miniSigImg: { width: 54, height: 16, objectFit: 'contain' },
+  miniSigImgWrap: { height: 20, justifyContent: 'flex-end', marginBottom: 2 },
+  miniSigImg: { width: 60, height: 18, objectFit: 'contain' },
   miniSigLine: {
-    width: 80, borderBottomWidth: 0.8, borderBottomColor: C.text, marginBottom: 2,
+    width: 90, borderBottomWidth: 0.8, borderBottomColor: C.text, marginBottom: 2,
   },
   miniSigLabel: {
     fontSize: 6.5, color: C.light, textAlign: 'center',
@@ -152,15 +158,10 @@ const s = StyleSheet.create({
     flex: 1, alignItems: 'center',
   },
   fPageNum: {
-    fontSize: 7, color: C.light,
+    fontSize: 7.5, color: C.light,
   },
-  // Status badge (right side)
-  fRight: {
-    width: 90, alignItems: 'flex-end',
-  },
-  fStatus: {
-    fontSize: 6.5, color: C.light,
-  },
+  fRight:  { width: 90, alignItems: 'flex-end' },
+  fStatus: { fontSize: 6.5, color: C.light },
 
   // ── Body text ─────────────────────────────────────────────
   h1: {
@@ -218,14 +219,8 @@ const s = StyleSheet.create({
 
   // ── Final signature block (last page, large) ─────────────
   sigSection: {
-    marginTop: 48,
-    paddingTop: 24,
-    borderTopWidth: 1.5, borderTopColor: C.navy,
-  },
-  sigTitle: {
-    fontSize: 8, fontWeight: 700, color: C.navy,
-    letterSpacing: 1.5, textAlign: 'center', marginBottom: 32,
-    textTransform: 'uppercase',
+    marginTop: 40,
+    paddingTop: 16,
   },
   sigRow: {
     flexDirection: 'row',
@@ -533,7 +528,6 @@ function MiniSigSlot({ sig }: { sig: PdfSigner }) {
 function FinalSignatureBlock({ signers }: { signers: PdfSigner[] }) {
   return (
     <View style={s.sigSection}>
-      <Text style={s.sigTitle}>ลายมือชื่อคู่สัญญา</Text>
       <View style={s.sigRow}>
         {signers.map((sig, i) => (
           <View key={i} style={s.sigBox}>
@@ -578,7 +572,6 @@ function MdContractDocument({
         {/* ── Fixed header (every page) ─────────────────── */}
         <View fixed style={s.header}>
           <View style={s.hLeft}>
-            <Text style={s.hBrand}>PROPPSY</Text>
             <Text style={s.hTitle}>{meta.docTypeLabel}</Text>
             {meta.contractId
               ? <Text style={s.hDocNo}>เลขที่  {meta.contractId}  ·  {statusText}</Text>
@@ -590,7 +583,6 @@ function MdContractDocument({
             <>
               <View style={s.hDivider} />
               <View style={s.hRight}>
-                <Text style={s.hAgentLabel}>ตัวแทน / AGENT</Text>
                 <Text style={s.hAgentName}>{meta.agentName}</Text>
                 {(meta as PdfMeta).agentPhone
                   ? <Text style={s.hAgentPhone}>{(meta as PdfMeta).agentPhone}</Text>
@@ -609,27 +601,40 @@ function MdContractDocument({
           <FinalSignatureBlock signers={meta.signers} />
         )}
 
-        {/* ── Fixed footer (every page) — mini sig + page ─ */}
+        {/* ── Fixed footer: page number (all pages) ───────── */}
         <View fixed style={s.footer}>
-          {meta.signers[0]
-            ? <MiniSigSlot sig={meta.signers[0]} />
-            : <View style={s.miniSigBox} />
-          }
-
           <View style={s.fCenter}>
             <Text
               style={s.fPageNum}
               render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
-                `หน้า ${pageNumber} / ${totalPages}`
+                `${pageNumber} / ${totalPages}`
               }
             />
           </View>
-
-          {meta.signers[1]
-            ? <MiniSigSlot sig={meta.signers[1]} />
-            : <View style={s.miniSigBox} />
-          }
         </View>
+
+        {/* ── Fixed footer: mini-sigs (all pages except last) ─ */}
+        {meta.signers.length > 0 && (
+          <View
+            fixed
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            render={({ pageNumber, totalPages }: any) =>
+              pageNumber === totalPages ? null : (
+                <View style={s.footerSigs}>
+                  {meta.signers[0]
+                    ? <MiniSigSlot sig={meta.signers[0]} />
+                    : <View style={s.miniSigBox} />
+                  }
+                  <View style={{ flex: 1 }} />
+                  {meta.signers[1]
+                    ? <MiniSigSlot sig={meta.signers[1]} />
+                    : <View style={s.miniSigBox} />
+                  }
+                </View>
+              )
+            }
+          />
+        )}
 
       </Page>
     </Document>
