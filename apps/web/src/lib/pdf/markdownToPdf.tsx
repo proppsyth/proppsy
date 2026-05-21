@@ -362,21 +362,20 @@ function isSeparatorRow(cells: string[]): boolean {
 }
 
 type ColAlign = 'left' | 'right' | 'center' | 'none'
+type ColSpec  = { align: ColAlign; flex: number }
 
-function parseAlignRow(cells: string[]): ColAlign[] {
+function parseColSpecs(cells: string[]): ColSpec[] {
   return cells.map(c => {
     const s = c.trim()
-    if (s.startsWith(':') && s.endsWith(':')) return 'center'
-    if (s.endsWith(':')) return 'right'
-    if (s.startsWith(':')) return 'left'
-    return 'none'
+    const dashes = (s.match(/-/g) ?? []).length
+    // flex = (dashCount - 2) * 0.5, min 0.5
+    const flex = Math.max(0.5, (dashes - 2) * 0.5)
+    let align: ColAlign = 'none'
+    if (s.startsWith(':') && s.endsWith(':')) align = 'center'
+    else if (s.endsWith(':'))   align = 'right'
+    else if (s.startsWith(':')) align = 'left'
+    return { align, flex }
   })
-}
-
-function alignToFlex(a: ColAlign): number {
-  if (a === 'right') return 0.8   // label column
-  if (a === 'left')  return 1.2   // value column
-  return 1                         // center / none = equal
 }
 
 type MdBlock =
@@ -384,7 +383,7 @@ type MdBlock =
   | { type: 'h2'; text: string; bold: boolean }
   | { type: 'p';  text: string; bold: boolean }
   | { type: 'blank' }
-  | { type: 'table'; rows: string[][]; aligns: ColAlign[]; wide: boolean }
+  | { type: 'table'; rows: string[][]; cols: ColSpec[]; wide: boolean }
 
 function parseMd(md: string): MdBlock[] {
   const lines = md.split('\n')
@@ -414,18 +413,18 @@ function parseMd(md: string): MdBlock[] {
         tableLines.push(lines[i] ?? ''); i++
       }
       const allRows: string[][] = []
-      let aligns: ColAlign[] = []
+      let cols: ColSpec[] = []
       for (const tl of tableLines) {
         const cells = tl.split('|').slice(1, -1).map(c => c.trim())
         if (isSeparatorRow(cells)) {
-          aligns = parseAlignRow(cells)
+          cols = parseColSpecs(cells)
         } else {
           allRows.push(cells)
         }
       }
       if (allRows.length === 0) continue
       const maxCols = Math.max(...allRows.map(r => r.length))
-      blocks.push({ type: 'table', rows: allRows, aligns, wide: maxCols > 8 })
+      blocks.push({ type: 'table', rows: allRows, cols, wide: maxCols > 8 })
       continue
     }
 
@@ -484,26 +483,18 @@ function renderMdBlocks(blocks: MdBlock[]): React.ReactElement[] {
         const allRows = [headRow, ...bodyRows]
         prevWasTable = true
         const isSingleCol = (allRows[0]?.length ?? 0) === 1
-        const colFlexes = allRows[0]!.map((_, ci) =>
-          alignToFlex(block.aligns[ci] ?? 'none')
-        )
         elements.push(
           <View key={i} style={s.tableWrap} wrap={false}>
             {allRows.map((row, ri) => (
               <View key={ri} style={s.tRow}>
                 {row.map((cell, ci) => {
-                  const align = block.aligns[ci] ?? 'none'
-                  const textAlign = align === 'right' ? 'right' : align === 'center' ? 'center' : 'left'
-                  // single-col or right-aligned = label (no underline)
-                  // left-aligned in multi-col = value (underline)
-                  const isValue = !isSingleCol && align === 'left'
-                  const baseStyle = isSingleCol ? s.tHCell : isValue ? s.tValue : s.tLabel
+                  const spec   = block.cols[ci] ?? { align: 'none', flex: 1 }
+                  const tAlign = spec.align === 'right' ? 'right' : spec.align === 'center' ? 'center' : 'left'
+                  const isValue = !isSingleCol && spec.align === 'left'
+                  const base   = isSingleCol ? s.tHCell : isValue ? s.tValue : s.tLabel
                   return (
-                    <RichText
-                      key={ci}
-                      text={cell}
-                      textAlign={textAlign}
-                      style={{ ...baseStyle, flex: colFlexes[ci] ?? 1 }}
+                    <RichText key={ci} text={cell} textAlign={tAlign}
+                      style={{ ...base, flex: spec.flex }}
                     />
                   )
                 })}
