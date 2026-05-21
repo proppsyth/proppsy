@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-type Plan = 'standard' | 'ai_pro' | 'professional' | 'business'
+export type Plan = 'standard' | 'ai_pro' | 'professional' | 'business'
 type Billing = 'monthly' | 'yearly'
 
 const PRICES: Record<string, Record<string, number>> = {
@@ -34,7 +34,7 @@ function planExpiry(billing: Billing): Date {
 // ─── Credit card charge (Omise token) ────────────────────────
 
 export async function createOmiseCharge(params: {
-  plan: 'standard' | 'ai_pro'
+  plan: Plan
   billing: Billing
   token: string
 }): Promise<{ error?: string }> {
@@ -88,7 +88,7 @@ export async function createOmiseCharge(params: {
 // ─── PromptPay charge ─────────────────────────────────────────
 
 export async function createPromptPayCharge(params: {
-  plan: 'standard' | 'ai_pro'
+  plan: Plan
   billing: Billing
 }): Promise<{ error?: string; qr_url?: string; chargeId?: string }> {
   const secretKey = process.env.OMISE_SECRET_KEY
@@ -150,7 +150,7 @@ export async function createPromptPayCharge(params: {
 // ─── Charge with saved card (Omise Customer + card_id) ───────
 
 export async function chargeWithSavedCard(params: {
-  plan: 'standard' | 'ai_pro'
+  plan: Plan
   billing: Billing
   cardId: string
 }): Promise<{ error?: string }> {
@@ -211,7 +211,7 @@ export async function chargeWithSavedCard(params: {
 
 export async function pollAndActivate(params: {
   chargeId: string
-  plan: 'standard' | 'ai_pro'
+  plan: Plan
   billing: Billing
 }): Promise<{ status: string; error?: string }> {
   const secretKey = process.env.OMISE_SECRET_KEY

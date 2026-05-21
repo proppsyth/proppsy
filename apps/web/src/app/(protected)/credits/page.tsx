@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getCreditBalance, getTransactions } from '@/lib/credits/actions'
-import { resolvePlan, PLAN_META, PLAN_LIMITS } from '@/types'
+import { resolvePlan, PLAN_META } from '@/types'
+import { getPlanLimitsByUserPlan } from '@/lib/planLimits'
 import CreditGauge from '@/components/credits/CreditGauge'
 import TransactionHistory from '@/components/credits/TransactionHistory'
 import HotBadge from '@/components/credits/HotBadge'
@@ -28,7 +29,7 @@ export default async function CreditsPage() {
 
   const plan = resolvePlan(profile?.plan)
   const planMeta = PLAN_META[plan]
-  const limits = PLAN_LIMITS[plan]
+  const limits = await getPlanLimitsByUserPlan(profile?.plan)
   const quota = PLAN_QUOTA[plan] ?? Math.max(balanceData.totalEarned, balanceData.balance, 10)
 
   const now = new Date()

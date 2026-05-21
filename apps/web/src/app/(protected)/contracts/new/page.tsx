@@ -3,7 +3,8 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import ContractWizard from '../ContractWizard'
-import { resolvePlan, PLAN_LIMITS } from '@/types'
+import { resolvePlan } from '@/types'
+import { getPlanLimitsByUserPlan } from '@/lib/planLimits'
 
 export const metadata: Metadata = { title: 'สร้างใบจอง' }
 
@@ -21,7 +22,7 @@ export default async function NewContractPage() {
   ])
 
   const plan = resolvePlan(profile?.plan)
-  const limits = PLAN_LIMITS[plan]
+  const limits = await getPlanLimitsByUserPlan(profile?.plan)
   const isAtLimit = limits.maxContractsPerMonth !== null && (contractsThisMonth ?? 0) >= limits.maxContractsPerMonth
 
   if (isAtLimit) {

@@ -3,7 +3,8 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import StockForm from '../StockForm'
-import { resolvePlan, PLAN_LIMITS } from '@/types'
+import { resolvePlan } from '@/types'
+import { getPlanLimitsByUserPlan } from '@/lib/planLimits'
 
 export const metadata: Metadata = { title: 'เพิ่มทรัพย์ใหม่' }
 
@@ -19,7 +20,7 @@ export default async function NewStockPage() {
   ])
 
   const plan = resolvePlan(profile?.plan)
-  const limits = PLAN_LIMITS[plan]
+  const limits = await getPlanLimitsByUserPlan(profile?.plan)
   const isAtLimit = limits.maxStock !== null && (stockCount ?? 0) >= limits.maxStock
 
   if (isAtLimit) {

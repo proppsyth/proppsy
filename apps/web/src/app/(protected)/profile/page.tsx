@@ -3,7 +3,8 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import ProfileForm from './ProfileForm'
-import { resolvePlan, PLAN_META, PLAN_LIMITS } from '@/types'
+import { resolvePlan, PLAN_META } from '@/types'
+import { getPlanLimitsByUserPlan } from '@/lib/planLimits'
 
 export const metadata: Metadata = { title: 'โปรไฟล์ของฉัน' }
 
@@ -23,7 +24,7 @@ export default async function ProfilePage() {
   const profileWithEmail = { ...profile, email: profile.email ?? user.email }
   const plan = resolvePlan(profile.plan)
   const planMeta = PLAN_META[plan]
-  const limits = PLAN_LIMITS[plan]
+  const limits = await getPlanLimitsByUserPlan(profile.plan)
 
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
