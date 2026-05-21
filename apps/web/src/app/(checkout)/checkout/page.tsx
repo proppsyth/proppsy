@@ -3,17 +3,16 @@ import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { getSavedCards } from '@/app/(protected)/billing/actions'
+import { getAllPlanLimits } from '@/lib/planLimits'
 import CheckoutForm from './CheckoutForm'
 
 export const metadata: Metadata = { title: 'ชำระเงิน — Proppsy' }
 
-const PLAN_INFO = {
-  standard: { name: 'Standard', monthly: 990, yearly: 8900 },
-  ai_pro: { name: 'AI Pro', monthly: 1290, yearly: 11900 },
-  professional: { name: 'Standard', monthly: 990, yearly: 8900 }, // backward compat
-} as const
-
-type PlanKey = 'standard' | 'ai_pro'
+// Normalize any legacy/alias slugs to canonical DB plan names
+function canonicalPlan(raw?: string): 'professional' | 'business' {
+  if (raw === 'business') return 'business'
+  return 'professional' // standard, ai_pro, professional all → professional
+}
 
 export default async function CheckoutPage({
   searchParams,
@@ -21,14 +20,18 @@ export default async function CheckoutPage({
   searchParams: Promise<{ plan?: string; billing?: string }>
 }) {
   const params = await searchParams
-  const planKey: PlanKey = params.plan === 'ai_pro' ? 'ai_pro' : 'standard'
+  const planKey = canonicalPlan(params.plan)
   const billing: 'monthly' | 'yearly' =
     params.billing === 'yearly' ? 'yearly' : 'monthly'
 
-  const info = PLAN_INFO[planKey]
-  const amount = billing === 'yearly' ? info.yearly : info.monthly
+  const allLimits = await getAllPlanLimits()
+  const row = allLimits[planKey]
 
-  // Fetch saved cards if user is logged in
+  const monthlyPrice = row?.price_monthly_thb ?? (planKey === 'business' ? 1990 : 990)
+  const yearlyPrice  = row?.price_yearly_thb  ?? (planKey === 'business' ? 19900 : 9900)
+  const planName     = planKey === 'business' ? 'Business' : 'Professional'
+  const amount       = billing === 'yearly' ? yearlyPrice : monthlyPrice
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const savedCards = user ? ((await getSavedCards()).cards ?? []) : []
@@ -49,32 +52,8 @@ export default async function CheckoutPage({
         <div className="w-full max-w-md">
           <h1 className="text-xl font-bold text-gray-900 mb-1">สั่งซื้อแพ็กเกจ</h1>
           <p className="text-sm text-gray-400 mb-6">
-            {info.name} · {billing === 'yearly' ? 'ชำระรายปี' : 'ชำระรายเดือน'}
+            {planName} · {billing === 'yearly' ? 'ชำระรายปี' : 'ชำระรายเดือน'}
           </p>
-
-          {/* Plan toggle */}
-          <div className="flex gap-2 mb-3">
-            <Link
-              href={`/checkout?plan=standard&billing=${billing}`}
-              className={`flex-1 py-2 text-center text-xs rounded-xl border transition font-medium ${
-                planKey === 'standard'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
-              }`}
-            >
-              Standard
-            </Link>
-            <Link
-              href={`/checkout?plan=ai_pro&billing=${billing}`}
-              className={`flex-1 py-2 text-center text-xs rounded-xl border transition font-medium ${
-                planKey === 'ai_pro'
-                  ? 'bg-emerald-600 text-white border-emerald-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-300'
-              }`}
-            >
-              AI Pro
-            </Link>
-          </div>
 
           {/* Billing toggle */}
           <div className="flex gap-2 mb-5">
@@ -86,7 +65,7 @@ export default async function CheckoutPage({
                   : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
               }`}
             >
-              รายเดือน ฿{info.monthly.toLocaleString('th-TH')}
+              รายเดือน ฿{monthlyPrice.toLocaleString('th-TH')}
             </Link>
             <Link
               href={`/checkout?plan=${planKey}&billing=yearly`}
@@ -96,7 +75,7 @@ export default async function CheckoutPage({
                   : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
               }`}
             >
-              รายปี ฿{info.yearly.toLocaleString('th-TH')}
+              รายปี ฿{yearlyPrice.toLocaleString('th-TH')}
               <span className={`absolute -top-2 -right-1 text-xs px-1.5 py-0.5 rounded-full font-semibold ${billing === 'yearly' ? 'bg-white text-blue-600' : 'bg-green-500 text-white'}`}>
                 ประหยัด
               </span>
@@ -107,7 +86,7 @@ export default async function CheckoutPage({
             plan={planKey}
             billing={billing}
             amount={amount}
-            planName={info.name}
+            planName={planName}
             savedCards={savedCards}
           />
         </div>

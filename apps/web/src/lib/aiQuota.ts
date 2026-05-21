@@ -1,12 +1,14 @@
 'use server'
 import { createClient } from '@/lib/supabase/server'
-import { resolvePlan, PLAN_LIMITS } from '@/types'
+import { resolvePlan } from '@/types'
+import { getPlanLimits } from '@/lib/planLimits'
 
 export type AiQuotaInfo = { used: number; limit: number }
 
-function resolveLimit(plan?: string | null, planExpiresAt?: string | null): number {
+async function resolveLimit(plan?: string | null, planExpiresAt?: string | null): Promise<number> {
   const resolved = resolvePlan(plan)
-  const base = PLAN_LIMITS[resolved].aiCallsPerMonth
+  const limits = await getPlanLimits(resolved)
+  const base = limits.aiCallsPerMonth
   if (planExpiresAt && new Date(planExpiresAt) < new Date() && resolved !== 'starter') return 0
   return base
 }
@@ -22,7 +24,7 @@ export async function getAiQuota(): Promise<AiQuotaInfo> {
     .eq('id', user.id)
     .single()
 
-  const limit = resolveLimit(p?.plan, p?.plan_expires_at)
+  const limit = await resolveLimit(p?.plan, p?.plan_expires_at)
   const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
   const used = (p?.ai_calls_month ?? '').slice(0, 7) === currentMonth
     ? (p?.ai_calls_this_month ?? 0)

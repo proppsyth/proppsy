@@ -2,91 +2,13 @@ import Link from 'next/link'
 import { ArrowLeft, Check, Building2, Users, FileText, TrendingUp, Calendar, Zap, Brain, Camera, PenLine, BarChart3 } from 'lucide-react'
 import type { Metadata } from 'next'
 import PublicNav from '@/components/shared/PublicNav'
+import { getAllPlanLimits } from '@/lib/planLimits'
 
 export const metadata: Metadata = { title: 'บริการของเรา — Proppsy' }
 
 function fmt(n: number) {
   return new Intl.NumberFormat('th-TH').format(n)
 }
-
-const PLANS = [
-  {
-    name: 'Starter',
-    nameEn: 'ทดลองใช้',
-    monthly: 0, yearly: 0,
-    highlight: false, badge: '',
-    features: [
-      '10 ทรัพย์',
-      '5 สัญญา / เดือน',
-      '1 บัญชีเอเจนต์',
-      'Photo Gallery',
-      'ปฏิทินนัดหมาย',
-    ],
-    missing: ['AI Smart Paste', 'AI OCR บัตรประชาชน', 'AI วิเคราะห์ทรัพย์', 'ลายเซ็นอิเล็กทรอนิกส์', 'รายงานคอมมิชชัน'],
-    cta: 'ทดลองใช้ฟรี',
-    ctaHref: '/register',
-    ctaStyle: 'border border-gray-200 text-gray-700 hover:bg-gray-50',
-  },
-  {
-    name: 'Standard',
-    nameEn: 'สำหรับเอเจนต์เดี่ยว',
-    monthly: 990, yearly: 8900,
-    highlight: true, badge: 'แนะนำ',
-    features: [
-      '100 ทรัพย์',
-      '200 สัญญา',
-      '1 บัญชีเอเจนต์',
-      'PDF สัญญาภาษาไทยครบชุด (9 ประเภท)',
-      'Public Marketplace Listing',
-      'ลายเซ็นอิเล็กทรอนิกส์',
-      'รายงานคอมมิชชัน',
-    ],
-    missing: ['AI Smart Paste', 'AI OCR บัตรประชาชน', 'AI วิเคราะห์ทรัพย์'],
-    cta: 'ซื้อแพ็กเกจ',
-    ctaHref: '/checkout?plan=standard&billing=monthly',
-    ctaStyle: 'bg-blue-600 hover:bg-blue-700 text-white',
-  },
-  {
-    name: 'AI Pro',
-    nameEn: 'ใช้ AI ได้ทั้งหมด',
-    monthly: 1290, yearly: 11900,
-    highlight: false, badge: '✦ AI',
-    features: [
-      '100 ทรัพย์',
-      '200 สัญญา',
-      '1 บัญชีเอเจนต์',
-      'AI Smart Paste',
-      'AI OCR บัตรประชาชน',
-      'AI วิเคราะห์ทรัพย์อัตโนมัติ',
-      'PDF สัญญาภาษาไทยครบชุด (9 ประเภท)',
-      'Public Marketplace Listing',
-      'ลายเซ็นอิเล็กทรอนิกส์',
-      'รายงานคอมมิชชัน',
-    ],
-    missing: [],
-    cta: 'ซื้อ AI Pro',
-    ctaHref: '/checkout?plan=ai_pro&billing=monthly',
-    ctaStyle: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-  },
-  {
-    name: 'Business',
-    nameEn: 'สำหรับทีมและบริษัท',
-    monthly: null, yearly: null,
-    highlight: false, badge: '',
-    features: [
-      'ทุกอย่างใน AI Pro',
-      'สูงสุด 5 บัญชีเอเจนต์',
-      'บัญชีผู้จัดการทีม (Manager)',
-      'รายงานภาพรวมทีม',
-      'คอมมิชชันแยกรายเอเจนต์',
-      'Priority Support',
-    ],
-    missing: [],
-    cta: 'ติดต่อเรา',
-    ctaHref: '/contact',
-    ctaStyle: 'border border-gray-200 text-gray-700 hover:bg-gray-50',
-  },
-]
 
 const FEATURES = [
   { icon: Building2, title: 'จัดการทรัพย์สิน', desc: 'บันทึกรายละเอียดทรัพย์ รูปภาพ ราคา เงื่อนไข พร้อม Photo Gallery สวยงาม' },
@@ -101,6 +23,79 @@ const FEATURES = [
 ]
 
 export default async function ServicesPage() {
+  const allLimits = await getAllPlanLimits()
+
+  const pro = allLimits.professional
+  const biz = allLimits.business
+
+  const PLANS = [
+    {
+      plan: 'starter',
+      name: 'Starter',
+      nameEn: 'ทดลองใช้',
+      monthly: 0, yearly: 0,
+      highlight: false, badge: '',
+      features: [
+        '10 ทรัพย์',
+        '5 สัญญา / เดือน',
+        '1 บัญชีเอเจนต์',
+        'Photo Gallery',
+        'ปฏิทินนัดหมาย',
+      ],
+      missing: ['AI Smart Paste', 'AI OCR บัตรประชาชน', 'AI วิเคราะห์ทรัพย์', 'ลายเซ็นอิเล็กทรอนิกส์', 'รายงานคอมมิชชัน'],
+      cta: 'ทดลองใช้ฟรี',
+      ctaHref: '/register',
+      ctaStyle: 'border border-gray-200 text-gray-700 hover:bg-gray-50',
+    },
+    {
+      plan: 'professional',
+      name: 'Professional',
+      nameEn: 'สำหรับเอเจนต์เดี่ยว',
+      monthly: pro?.price_monthly_thb ?? 990,
+      yearly: pro?.price_yearly_thb ?? 9900,
+      highlight: true, badge: 'แนะนำ',
+      features: pro?.feature_list?.length
+        ? pro.feature_list
+        : [
+            '100 ทรัพย์',
+            '200 สัญญา / เดือน',
+            '1 บัญชีเอเจนต์',
+            'AI Smart Paste',
+            'AI OCR บัตรประชาชน',
+            'PDF สัญญาภาษาไทยครบชุด (9 ประเภท)',
+            'Public Marketplace Listing',
+            'ลายเซ็นอิเล็กทรอนิกส์',
+            'รายงานคอมมิชชัน',
+          ],
+      missing: [],
+      cta: 'ซื้อแพ็กเกจ',
+      ctaHref: '/checkout?plan=professional&billing=monthly',
+      ctaStyle: 'bg-blue-600 hover:bg-blue-700 text-white',
+    },
+    {
+      plan: 'business',
+      name: 'Business',
+      nameEn: 'สำหรับทีมและบริษัท',
+      monthly: biz?.price_monthly_thb ?? null,
+      yearly: biz?.price_yearly_thb ?? null,
+      highlight: false, badge: '',
+      features: biz?.feature_list?.length
+        ? biz.feature_list
+        : [
+            'ทุกอย่างใน Professional',
+            'สูงสุด 5 บัญชีเอเจนต์',
+            'บัญชีผู้จัดการทีม (Manager)',
+            'รายงานภาพรวมทีม',
+            'คอมมิชชันแยกรายเอเจนต์',
+            'Priority Support',
+          ],
+      missing: [],
+      cta: 'ติดต่อเรา',
+      ctaHref: '/contact',
+      ctaStyle: 'border border-gray-200 text-gray-700 hover:bg-gray-50',
+    },
+  ]
+
   const contractCount = 1240
   const agentCount = 68
   const stockCount = 530
@@ -124,23 +119,21 @@ export default async function ServicesPage() {
           </p>
         </div>
 
-        {/* ─── Pricing (ด้านบนสุด) ─── */}
+        {/* ─── Pricing ─── */}
         <div className="mb-12">
           <h2 className="text-xl font-bold text-gray-900 mb-1 text-center">แพ็กเกจราคา</h2>
           <p className="text-sm text-gray-400 text-center mb-8">* ราคาสามารถเปลี่ยนแปลงได้ตามการพัฒนาระบบ</p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {PLANS.map(plan => (
               <div
-                key={plan.name}
+                key={plan.plan}
                 className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col ${
                   plan.highlight ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-gray-100'
                 }`}
               >
                 {plan.badge && (
-                  <div className={`text-white text-xs font-semibold text-center py-1.5 ${
-                    plan.badge.includes('AI') ? 'bg-emerald-600' : 'bg-blue-600'
-                  }`}>
+                  <div className="bg-blue-600 text-white text-xs font-semibold text-center py-1.5">
                     {plan.badge}
                   </div>
                 )}
@@ -164,12 +157,14 @@ export default async function ServicesPage() {
                         <span className="text-2xl font-bold text-gray-900">฿{fmt(plan.monthly)}</span>
                         <span className="text-xs text-gray-400">/เดือน</span>
                       </div>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-xs text-gray-500">หรือ ฿{fmt(plan.yearly!)}/ปี</span>
-                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">
-                          ประหยัด {Math.round((1 - plan.yearly! / (plan.monthly * 12)) * 100)}%
-                        </span>
-                      </div>
+                      {plan.yearly && (
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-xs text-gray-500">หรือ ฿{fmt(plan.yearly)}/ปี</span>
+                          <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">
+                            ประหยัด {Math.round((1 - plan.yearly / (plan.monthly * 12)) * 100)}%
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -208,9 +203,9 @@ export default async function ServicesPage() {
         {/* Live Stats */}
         <div className="grid grid-cols-3 gap-4 mb-12">
           {[
-            { label: 'สัญญาที่ออกแล้ว', value: contractCount ?? 0, unit: 'ฉบับ', color: 'blue' },
-            { label: 'เอเจนต์ที่ใช้งาน', value: agentCount ?? 0, unit: 'คน', color: 'green' },
-            { label: 'ทรัพย์ในระบบ', value: stockCount ?? 0, unit: 'รายการ', color: 'purple' },
+            { label: 'สัญญาที่ออกแล้ว', value: contractCount, unit: 'ฉบับ', color: 'blue' },
+            { label: 'เอเจนต์ที่ใช้งาน', value: agentCount, unit: 'คน', color: 'green' },
+            { label: 'ทรัพย์ในระบบ', value: stockCount, unit: 'รายการ', color: 'purple' },
           ].map(s => (
             <div key={s.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 text-center">
               <p className={`text-2xl sm:text-3xl font-bold text-${s.color}-600`}>{fmt(s.value)}</p>

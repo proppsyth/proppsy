@@ -2,7 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { resolvePlan, PLAN_LIMITS, type ContractDocType, type ContractCategory, type ContractStatus } from '@/types'
+import { resolvePlan, type ContractDocType, type ContractCategory, type ContractStatus } from '@/types'
+import { getPlanLimitsByUserPlan } from '@/lib/planLimits'
 import {
   setStockReserved, setStockPendingMoveIn, setStockRented, setStockAvailable,
   captureFinalizationSnapshot, appendTimelineEvent, docTypeToCategory,
@@ -103,7 +104,7 @@ export async function createContract(
     supabase.from('profiles').select('plan').eq('id', user.id).single(),
     supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).gte('created_at', startOfMonth),
   ])
-  const limits = PLAN_LIMITS[resolvePlan(profile?.plan)]
+  const limits = await getPlanLimitsByUserPlan(profile?.plan)
   if (limits.maxContractsPerMonth !== null && (contractsThisMonth ?? 0) >= limits.maxContractsPerMonth) {
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }
@@ -230,7 +231,7 @@ export async function createLeaseFromReservation(
     .eq('agent_uid', user.id)
     .gte('created_at', startOfMonth)
 
-  const limits = PLAN_LIMITS[resolvePlan(profile?.plan)]
+  const limits = await getPlanLimitsByUserPlan(profile?.plan)
   if (limits.maxContractsPerMonth !== null && (contractsThisMonth ?? 0) >= limits.maxContractsPerMonth) {
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }
@@ -376,7 +377,7 @@ export async function createChildDocument(
     .eq('agent_uid', user.id)
     .gte('created_at', startOfMonth)
 
-  const limits = PLAN_LIMITS[resolvePlan(profile?.plan)]
+  const limits = await getPlanLimitsByUserPlan(profile?.plan)
   if (limits.maxContractsPerMonth !== null && (contractsThisMonth ?? 0) >= limits.maxContractsPerMonth) {
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }
@@ -944,6 +945,13 @@ export async function generateContractPdf(
       const customerName = [contract.customer?.prefix, contract.customer?.first_name_th, contract.customer?.last_name_th]
         .filter(Boolean).join(' ') || ''
 
+      const ownerSigUrl    = (contract.owner    as { signature_url?: string | null } | null)?.signature_url ?? undefined
+      const customerSigUrl = (contract.customer as { signature_url?: string | null } | null)?.signature_url ?? undefined
+
+      const baseSigners = [
+        { label: 'ผู้ให้เช่า', name: ownerName,    signatureUrl: ownerSigUrl,    signedAt: null },
+        { label: 'ผู้เช่า',    name: customerName, signatureUrl: customerSigUrl, signedAt: null },
+      ]
       const pdfMeta = {
         contractId:   contract.id,
         docTypeLabel: template.label,
@@ -951,11 +959,8 @@ export async function generateContractPdf(
         isFinalized:  contract.is_finalized ?? false,
         generatedAt:  new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
         agentName:    profile?.company_name ?? profile?.name ?? undefined,
-        signers: [
-          { label: 'ผู้ให้เช่า (Landlord)', name: ownerName },
-          { label: 'ผู้เช่า (Tenant)',       name: customerName },
-          { label: 'พยาน (Witness)',          name: '' },
-        ],
+        agentPhone:   (profile as { phone?: string | null } | null)?.phone ?? undefined,
+        signers:      baseSigners,
       }
 
       if (template.mdFilename) {

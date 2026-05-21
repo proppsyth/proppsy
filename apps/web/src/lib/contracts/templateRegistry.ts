@@ -162,6 +162,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     docType: 'renewal',
     language: 'th_en',
     filename: 'ต่อสัญญาไทยอังกฤษ.docx',
+    mdFilename: 'renewal_th_en.md',
     label: 'ต่อสัญญาเช่า',
     languageLabel: 'ไทย + อังกฤษ',
     hasFurniture: false,

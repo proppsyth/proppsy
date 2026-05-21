@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect } from 'react'
 import Script from 'next/script'
 import { CreditCard, Check, ShieldCheck, QrCode, Loader2, Star } from 'lucide-react'
 import { createOmiseCharge, createPromptPayCharge, pollAndActivate, chargeWithSavedCard } from './actions'
+import type { Plan } from './actions'
 import type { SavedCard } from '@/app/(protected)/billing/actions'
 
 declare global {
@@ -23,12 +24,14 @@ declare global {
 }
 
 const PLAN_FEATURES: Record<string, string[]> = {
-  standard: ['100 ทรัพย์', '200 สัญญา', 'PDF สัญญา 9 ประเภท', 'ลายเซ็นอิเล็กทรอนิกส์', 'รายงานคอมมิชชัน', 'Public Marketplace'],
-  ai_pro: ['100 ทรัพย์', '200 สัญญา', 'AI Smart Paste', 'AI OCR บัตรประชาชน', 'AI วิเคราะห์ทรัพย์', 'PDF สัญญา 9 ประเภท', 'ลายเซ็นอิเล็กทรอนิกส์'],
+  standard:      ['100 ทรัพย์', '200 สัญญา', 'PDF สัญญา 9 ประเภท', 'ลายเซ็นอิเล็กทรอนิกส์', 'รายงานคอมมิชชัน', 'Public Marketplace'],
+  ai_pro:        ['100 ทรัพย์', '200 สัญญา', 'AI Smart Paste', 'AI OCR บัตรประชาชน', 'AI วิเคราะห์ทรัพย์', 'PDF สัญญา 9 ประเภท', 'ลายเซ็นอิเล็กทรอนิกส์'],
+  professional:  ['100 ทรัพย์', '200 สัญญา', 'AI Smart Paste', 'AI OCR บัตรประชาชน', 'PDF สัญญา 9 ประเภท', 'ลายเซ็นอิเล็กทรอนิกส์', 'รายงานคอมมิชชัน'],
+  business:      ['ทุกอย่างใน Professional', 'สูงสุด 5 เอเจนต์', 'ผู้จัดการทีม', 'รายงานภาพรวมทีม', 'Priority Support'],
 }
 
 interface Props {
-  plan: 'standard' | 'ai_pro'
+  plan: Plan
   billing: 'monthly' | 'yearly'
   amount: number
   planName: string
