@@ -187,33 +187,38 @@ const s = StyleSheet.create({
   pBlank: { height: 6 },
 
   // ── Tables ────────────────────────────────────────────────
-  tableWrap: { marginVertical: 6 },
+  tableWrap: { marginVertical: 2 },
   tHead: {
     flexDirection: 'row',
-    backgroundColor: C.navy,
-    borderTopWidth: 0, borderLeftWidth: 0,
+    backgroundColor: C.white,
+    borderTopWidth: 0.5, borderTopColor: '#CCCCCC',
+    borderLeftWidth: 0,
   },
   tRow: {
     flexDirection: 'row',
-    borderBottomWidth: 0.5, borderBottomColor: C.rule,
+    backgroundColor: C.white,
+    borderBottomWidth: 0,
     borderLeftWidth: 0,
   },
   tRowAlt: {
-    flexDirection: 'row', backgroundColor: C.rule,
-    borderBottomWidth: 0.5, borderBottomColor: C.border,
+    flexDirection: 'row',
+    backgroundColor: C.white,
+    borderBottomWidth: 0,
     borderLeftWidth: 0,
   },
   tHCell: {
-    flex: 1, fontSize: 8.5, fontWeight: 700, color: C.white,
-    paddingVertical: 5, paddingHorizontal: 7,
-    borderRightWidth: 0.5, borderRightColor: 'rgba(255,255,255,0.15)',
-    lineHeight: 1.5,
+    flex: 1, fontSize: 9, fontWeight: 400, color: C.text,
+    paddingVertical: 5, paddingHorizontal: 8,
+    borderRightWidth: 0.5, borderRightColor: '#CCCCCC',
+    borderBottomWidth: 0.5, borderBottomColor: '#CCCCCC',
+    lineHeight: 1.6,
   },
   tCell: {
-    flex: 1, fontSize: 8.5, color: C.text,
-    paddingVertical: 4, paddingHorizontal: 7,
-    borderRightWidth: 0.5, borderRightColor: C.border,
-    lineHeight: 1.5,
+    flex: 1, fontSize: 9, color: C.text,
+    paddingVertical: 5, paddingHorizontal: 8,
+    borderRightWidth: 0.5, borderRightColor: '#CCCCCC',
+    borderBottomWidth: 0.5, borderBottomColor: '#CCCCCC',
+    lineHeight: 1.6,
   },
 
   // ── Final signature block (last page, large) ─────────────
@@ -383,6 +388,7 @@ function parseMd(md: string): MdBlock[] {
 function renderMdBlocks(blocks: MdBlock[]): React.ReactElement[] {
   const elements: React.ReactElement[] = []
   let blankCount = 0
+  let prevWasTable = false
 
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i]!
@@ -390,21 +396,22 @@ function renderMdBlocks(blocks: MdBlock[]): React.ReactElement[] {
     if (block.type === 'blank') {
       blankCount++
       if (blankCount <= 1) elements.push(<View key={i} style={s.pBlank} />)
+      prevWasTable = false
       continue
     }
     blankCount = 0
 
     if (block.type === 'h1') {
       elements.push(<RichText key={i} text={block.text} style={s.h1} bold />)
-      continue
+      prevWasTable = false; continue
     }
     if (block.type === 'h2') {
       elements.push(<RichText key={i} text={block.text} style={s.h2} bold />)
-      continue
+      prevWasTable = false; continue
     }
     if (block.type === 'p') {
       elements.push(<RichText key={i} text={block.text} style={block.bold ? s.pBold : s.p} bold={block.bold} />)
-      continue
+      prevWasTable = false; continue
     }
     if (block.type === 'table') {
       if (block.wide) {
@@ -415,20 +422,18 @@ function renderMdBlocks(blocks: MdBlock[]): React.ReactElement[] {
       } else {
         const [headRow, ...bodyRows] = block.rows
         if (!headRow) continue
-        const colCount = headRow.length
+        const allRows = [headRow, ...bodyRows]
+        const needTopBorder = !prevWasTable
+        prevWasTable = true
         elements.push(
-          <View key={i} style={s.tableWrap} wrap={false}>
-            <View style={s.tHead}>
-              {headRow.map((h, ci) => (
-                <Text key={ci} style={[s.tHCell, ci === colCount - 1 ? { borderRightWidth: 0 } : {}]}>
-                  {h}
-                </Text>
-              ))}
-            </View>
-            {bodyRows.map((row, ri) => (
-              <View key={ri} style={ri % 2 === 0 ? s.tRow : s.tRowAlt} wrap={false}>
+          <View key={i} style={[s.tableWrap, {
+            borderLeftWidth: 0.5, borderLeftColor: '#CCCCCC',
+            borderTopWidth: needTopBorder ? 0.5 : 0, borderTopColor: '#CCCCCC',
+          }]} wrap={false}>
+            {allRows.map((row, ri) => (
+              <View key={ri} style={s.tRow} wrap={false}>
                 {row.map((cell, ci) => (
-                  <Text key={ci} style={[s.tCell, ci === row.length - 1 ? { borderRightWidth: 0 } : {}]}>
+                  <Text key={ci} style={[s.tCell, ci === row.length - 1 ? { borderRightWidth: 0.5, borderRightColor: '#CCCCCC' } : {}]}>
                     {cell}
                   </Text>
                 ))}
@@ -436,6 +441,7 @@ function renderMdBlocks(blocks: MdBlock[]): React.ReactElement[] {
             ))}
           </View>
         )
+        continue
       }
       continue
     }
