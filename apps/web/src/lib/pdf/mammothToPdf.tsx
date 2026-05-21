@@ -245,6 +245,7 @@ export interface PdfMeta {
   contractId:   string
   docTypeLabel: string
   agentName?:   string
+  agentPhone?:  string
   status?:      string
   isFinalized?: boolean
   generatedAt?: string
@@ -772,6 +773,7 @@ export async function renderMammothHtmlAsPdf(
     contractId:   meta?.contractId   ?? '',
     docTypeLabel: meta?.docTypeLabel ?? 'เอกสารสัญญา',
     agentName:    meta?.agentName    ?? '',
+    agentPhone:   meta?.agentPhone   ?? '',
     status:       meta?.status       ?? 'draft',
     isFinalized:  meta?.isFinalized  ?? false,
     generatedAt:  meta?.generatedAt  ?? new Date().toLocaleDateString('th-TH', {
