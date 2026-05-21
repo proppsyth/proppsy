@@ -1036,10 +1036,11 @@ export async function generateContractPdf(
       buffer = await renderToBuffer(element as any)
     }
 
-    const path = `${user.id}/${contractId}.pdf`
+    const ts = Date.now()
+    const path = `${user.id}/${contractId}-${ts}.pdf`
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('documents')
-      .upload(path, buffer, { contentType: 'application/pdf', upsert: true })
+      .upload(path, buffer, { contentType: 'application/pdf', upsert: false })
 
     if (uploadError || !uploadData) {
       return { error: 'อัปโหลด PDF ไม่สำเร็จ: ' + uploadError?.message }
