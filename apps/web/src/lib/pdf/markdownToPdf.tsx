@@ -1,512 +1,96 @@
-// Markdown → PDF renderer for Thai legal contract templates.
-// Pipeline: .md file → de-escape \<\< → substitute <<vars>> → parse → react-pdf
-// Design: navy/white header + mini-sig footer every page + large final sig block.
-
-import path from 'path'
-import fs from 'fs'
+// EXACTLY mirror test-min7 to verify the file location/import chain works
 import React from 'react'
-import {
-  renderToBuffer,
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  Font,
-  Image,
-} from '@react-pdf/renderer'
-
-import type { PdfMeta, PdfSigner } from './mammothToPdf'
-
-// ─── Fonts ────────────────────────────────────────────────────
-
-const fontsDir = path.join(process.cwd(), 'public', 'fonts')
+import path from 'path'
+import { renderToBuffer, Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/renderer'
+import { parseTemplate } from './contract/markdownParser'
+import { renderBodyBlocks } from './contract/PdfBodyRenderer'
 
 Font.register({
   family: 'Sarabun',
   fonts: [
-    { src: path.join(fontsDir, 'Sarabun-Regular.ttf'), fontWeight: 400 },
-    { src: path.join(fontsDir, 'Sarabun-Bold.ttf'),    fontWeight: 700 },
+    { src: path.join(process.cwd(), 'public', 'fonts', 'Sarabun-Regular.ttf'), fontWeight: 400 },
+    { src: path.join(process.cwd(), 'public', 'fonts', 'Sarabun-Bold.ttf'), fontWeight: 700 },
   ],
 })
 
-const notoSCRegular = path.join(fontsDir, 'NotoSansSC-Regular.otf')
-const notoSCBold    = path.join(fontsDir, 'NotoSansSC-Bold.otf')
-try {
-  if (fs.existsSync(notoSCRegular)) {
-    Font.register({
-      family: 'NotoSansSC',
-      fonts: [
-        { src: notoSCRegular, fontWeight: 400 },
-        { src: fs.existsSync(notoSCBold) ? notoSCBold : notoSCRegular, fontWeight: 700 },
-      ],
-    })
-  }
-} catch { /* NotoSansSC unavailable */ }
-
-Font.registerHyphenationCallback(word => [word])
-
-// ─── Design tokens ─────────────────────────────────────────────
-
 const C = {
-  navy:    '#1B3B6F',        // primary navy
-  navyDim: '#2B4E8C',        // lighter navy for accents
-  white:   '#FFFFFF',
-  text:    '#1A1A1A',
-  sub:     '#4A4A4A',
-  light:   '#888888',
-  border:  '#D0D8E8',        // blue-tinted border
-  rule:    '#EEF1F7',        // blue-tinted row alt
-  bg:      '#FFFFFF',
-  accent:  '#3B6CD4',        // blue accent line
+  navy: '#1B3B6F', text: '#1A1A1A', sub: '#4A4A4A', light: '#888888',
+  border: '#D0D8E8', white: '#FFFFFF',
 }
-
-const HEADER_H  = 60
-const FOOTER_H  = 44
-const PAD_H     = 52
-
-// ─── Styles ───────────────────────────────────────────────────
+const HEADER_H = 60
+const FOOTER_H = 44
+const PAD_H = 52
 
 const s = StyleSheet.create({
-
-  // Page
   page: {
-    fontFamily:        'Sarabun',
-    fontSize:          9.5,
-    color:             C.text,
-    backgroundColor:   C.bg,
-    paddingTop:        HEADER_H + 32,
-    paddingBottom:     FOOTER_H + 24,
-    paddingHorizontal: PAD_H,
-    lineHeight:        1.8,
+    fontFamily: 'Sarabun', fontSize: 9.5,
+    paddingTop: HEADER_H + 32, paddingBottom: FOOTER_H + 60, paddingHorizontal: PAD_H,
   },
-
-  // ── Header (fixed, every page) ─────────────────────────────
   header: {
-    position:         'absolute', top: 0, left: 0, right: 0,
-    height:           HEADER_H,
-    backgroundColor:  C.navy,
-    flexDirection:    'row',
-    alignItems:       'center',
-    paddingHorizontal: PAD_H,
-    paddingVertical:   10,
+    position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_H,
+    backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.border,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: PAD_H, paddingVertical: 10,
   },
-  // Left: contract title + doc number
-  hLeft: { flex: 1, justifyContent: 'center' },
-  hBrand: {
-    fontSize: 6.5, fontWeight: 700, color: 'rgba(255,255,255,0.55)',
-    letterSpacing: 2, marginBottom: 3,
-  },
-  hTitle: {
-    fontSize: 11, fontWeight: 700, color: C.white,
-    letterSpacing: 0.3,
-  },
-  hDocNo: {
-    fontSize: 7.5, color: 'rgba(255,255,255,0.70)', marginTop: 2,
-  },
-  // Divider
-  hDivider: {
-    width: 1, height: 32,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    marginHorizontal: 20,
-  },
-  // Right: agent info
-  hRight: { alignItems: 'flex-end', justifyContent: 'center' },
-  hAgentName: {
-    fontSize: 8.5, fontWeight: 700, color: C.white,
-    textAlign: 'right',
-  },
-  hAgentPhone: {
-    fontSize: 7.5, color: 'rgba(255,255,255,0.75)',
-    textAlign: 'right', marginTop: 2,
-  },
-  hAgentLabel: {
-    fontSize: 6.5, color: 'rgba(255,255,255,0.50)',
-    textAlign: 'right', marginTop: 1, letterSpacing: 0.5,
-  },
+  hLeft:       { flex: 1, justifyContent: 'center' },
+  hTitle:      { fontSize: 11, fontWeight: 700, color: C.navy, letterSpacing: 0.3 },
+  hDocNo:      { fontSize: 7.5, color: C.sub, marginTop: 2 },
+  hDivider:    { width: 1, height: 28, backgroundColor: C.border, marginHorizontal: 20 },
+  hRight:      { alignItems: 'flex-end', justifyContent: 'center' },
+  hAgentName:  { fontSize: 8.5, fontWeight: 700, color: C.navy, textAlign: 'right' },
+  hAgentPhone: { fontSize: 7.5, color: C.sub, textAlign: 'right', marginTop: 2 },
 
-  // ── Footer: page number only (always shown) ────────────────
   footer: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    height: FOOTER_H,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: PAD_H,
-    paddingBottom: 6,
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: FOOTER_H,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: PAD_H,
+    borderTopWidth: 0.5, borderTopColor: C.border,
   },
-  // ── Footer: mini-sig row (non-last pages only) ─────────────
-  footerSigs: {
-    position: 'absolute', bottom: 6, left: PAD_H, right: PAD_H,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
+  fL: { flex: 1, fontSize: 9, color: C.sub },
+  fC: { flex: 1, fontSize: 9, color: C.sub, textAlign: 'center' },
+  fR: { flex: 1, fontSize: 9, color: C.sub, textAlign: 'right' },
+
+  miniSigRow: {
+    position: 'absolute', bottom: FOOTER_H + 8, left: PAD_H, right: PAD_H,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
   },
-  // Mini-sig slot (owner / customer)
-  miniSigBox: {
-    width: 100, alignItems: 'center',
-  },
+  miniSigBox:     { width: 110, alignItems: 'center' },
   miniSigImgWrap: { height: 20, justifyContent: 'flex-end', marginBottom: 2 },
-  miniSigImg: { width: 60, height: 18, objectFit: 'contain' },
-  miniSigLine: {
-    width: 90, borderBottomWidth: 0.8, borderBottomColor: C.text, marginBottom: 2,
-  },
-  miniSigLabel: {
-    fontSize: 6.5, color: C.light, textAlign: 'center',
-  },
-  // Center: page number
-  fCenter: {
-    flex: 1, alignItems: 'center',
-  },
-  fPageNum: {
-    fontSize: 7.5, color: C.light,
-  },
-  fRight:  { width: 90, alignItems: 'flex-end' },
-  fStatus: { fontSize: 6.5, color: C.light },
+  miniSigImg:     { width: 70, height: 18, objectFit: 'contain' },
+  miniSigLine:    { width: 100, borderBottomWidth: 0.8, borderBottomColor: C.text, marginBottom: 2 },
+  miniSigLabel:   { fontSize: 7, color: C.sub, textAlign: 'center' },
 
-  // ── Body text ─────────────────────────────────────────────
-  h1: {
-    fontFamily: 'Sarabun', fontSize: 13, fontWeight: 700,
-    color: C.navy, textAlign: 'center',
-    marginTop: 8, marginBottom: 16,
-    letterSpacing: 0.5,
-  },
-  h2: {
-    fontFamily: 'Sarabun', fontSize: 10, fontWeight: 700,
-    color: C.navy,
-    paddingBottom: 4, paddingTop: 2,
-    borderBottomWidth: 1.5, borderBottomColor: C.accent,
-    marginTop: 18, marginBottom: 10,
-  },
-  p: {
-    fontFamily: 'Sarabun', fontSize: 9.5, lineHeight: 1.8,
-    color: C.text, marginBottom: 5, textAlign: 'justify',
-  },
-  pBold: {
-    fontFamily: 'Sarabun', fontSize: 9.5, fontWeight: 700,
-    lineHeight: 1.8, color: C.text, marginBottom: 5,
-  },
-  pBlank: { height: 6 },
-
-  // ── Tables ────────────────────────────────────────────────
-  tableWrap: { marginVertical: 0 },
-  tHead:   { flexDirection: 'row', alignItems: 'flex-end' },
-  tRow:    { flexDirection: 'row', alignItems: 'flex-end' },
-  tRowAlt: { flexDirection: 'row', alignItems: 'flex-end' },
-  // label cell — plain text, no border
-  tLabel: {
-    flex: 1, fontSize: 9.5, color: C.text,
-    paddingVertical: 2, paddingHorizontal: 4,
-    lineHeight: 1.7, flexShrink: 1,
-  },
-  // value cell — underline only
-  tValue: {
-    flex: 1, fontSize: 9.5, color: C.text,
-    paddingVertical: 2, paddingHorizontal: 4,
-    borderBottomWidth: 0.8, borderBottomColor: C.text,
-    lineHeight: 1.7, flexShrink: 1,
-  },
-  // single full-width text cell — no decoration
-  tHCell: {
-    flex: 1, fontSize: 9.5, color: C.text,
-    paddingVertical: 2, paddingHorizontal: 0,
-    lineHeight: 1.7,
-  },
-  tCell: {
-    flex: 1, fontSize: 9.5, color: C.text,
-    paddingVertical: 2, paddingHorizontal: 0,
-    lineHeight: 1.7,
-  },
-
-  // ── Final signature block (last page, large) ─────────────
-  sigSection: {
-    marginTop: 40,
-    paddingTop: 16,
-  },
-  sigRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 20,
-  },
-  sigBox: {
-    alignItems: 'center',
-    width: '42%',
-  },
-  sigImgArea: {
-    height: 54, justifyContent: 'flex-end', marginBottom: 6,
-  },
-  sigImg: {
-    width: 110, height: 48, objectFit: 'contain',
-  },
-  sigLine: {
-    width: '100%',
-    borderBottomWidth: 1.2, borderBottomColor: C.navy,
-    marginBottom: 7,
-  },
-  sigRole: {
-    fontSize: 9, fontWeight: 700, color: C.navy,
-    textAlign: 'center', marginBottom: 3,
-  },
-  sigName: {
-    fontSize: 8.5, color: C.sub,
-    textAlign: 'center', marginBottom: 10,
-  },
-  sigDateLabel: {
-    fontSize: 7.5, color: C.light, textAlign: 'center',
-    marginTop: 4,
-  },
+  finalSigSection: { marginTop: 40, paddingTop: 16 },
+  finalSigRow:     { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 20 },
+  finalSigBox:     { alignItems: 'center', width: '42%' },
+  finalSigImgArea: { height: 54, justifyContent: 'flex-end', marginBottom: 6 },
+  finalSigImg:     { width: 110, height: 48, objectFit: 'contain' },
+  finalSigLine:    { width: '100%', borderBottomWidth: 1.2, borderBottomColor: C.navy, marginBottom: 7 },
+  finalSigRole:    { fontSize: 9, fontWeight: 700, color: C.navy, textAlign: 'center', marginBottom: 3 },
+  finalSigName:    { fontSize: 8.5, color: C.sub, textAlign: 'center', marginBottom: 10 },
+  finalSigDate:    { fontSize: 7.5, color: C.light, textAlign: 'center', marginTop: 4 },
 })
 
-// ─── CJK-aware rendering ──────────────────────────────────────
+// ─── Inline types (avoid importing mammothToPdf side effects) ──────
 
-const CJK_RE = /[一-鿿㐀-䶿豈-﫿　-〿！-｠￠-￦]/
-
-function hasCJK(text: string): boolean { return CJK_RE.test(text) }
-
-type ScriptRun = { text: string; cjk: boolean }
-
-function splitScripts(text: string): ScriptRun[] {
-  if (!text) return []
-  const runs: ScriptRun[] = []
-  let buf = ''
-  let isCjk = CJK_RE.test(text[0] ?? ' ')
-  for (const ch of text) {
-    const c = CJK_RE.test(ch)
-    if (c !== isCjk) {
-      if (buf) runs.push({ text: buf, cjk: isCjk })
-      buf = ch; isCjk = c
-    } else { buf += ch }
-  }
-  if (buf) runs.push({ text: buf, cjk: isCjk })
-  return runs
+export interface PdfSigner {
+  label:         string
+  name:          string
+  signatureUrl?: string | null
+  signedAt?:     string | null
+}
+export interface PdfMeta {
+  contractId?:   string
+  docTypeLabel?: string
+  agentName?:    string
+  agentPhone?:   string
+  status?:       string
+  isFinalized?:  boolean
+  generatedAt?:  string
+  signers?:      PdfSigner[]
 }
 
-type BoldSegment = { text: string; bold: boolean }
+type ParsedDoc = ReturnType<typeof parseTemplate>
 
-function parseBoldSegments(raw: string): BoldSegment[] {
-  const parts = raw.split(/(\*\*[^*]+\*\*)/)
-  return parts
-    .filter(p => p.length > 0)
-    .map(p => p.startsWith('**') && p.endsWith('**')
-      ? { text: p.slice(2, -2), bold: true }
-      : { text: p, bold: false }
-    )
-}
-
-function RichText({ text, style, bold, textAlign }: {
-  text: string; style?: object; bold?: boolean; textAlign?: 'left' | 'right' | 'center'
-}): React.ReactElement {
-  const baseStyle = { fontFamily: 'Sarabun', ...(style ?? {}), ...(textAlign ? { textAlign } : {}) }
-  const weight = bold ? 700 : 400
-  const segments = parseBoldSegments(text)
-  const hasInlineBold = segments.some(s => s.bold)
-
-  if (!hasInlineBold) {
-    if (!hasCJK(text)) {
-      return <Text style={{ ...baseStyle, fontWeight: weight }}>{text}</Text>
-    }
-    return (
-      <Text style={{ ...baseStyle, fontWeight: weight }}>
-        {splitScripts(text).map((run, i) => (
-          <Text key={i} style={{ fontFamily: run.cjk ? 'NotoSansSC' : 'Sarabun', fontWeight: weight }}>
-            {run.text}
-          </Text>
-        ))}
-      </Text>
-    )
-  }
-
-  // Inline bold segments
-  return (
-    <Text style={baseStyle}>
-      {segments.map((seg, si) => {
-        const w = seg.bold ? 700 : weight
-        if (!hasCJK(seg.text)) {
-          return <Text key={si} style={{ fontFamily: 'Sarabun', fontWeight: w }}>{seg.text}</Text>
-        }
-        return (
-          <Text key={si} style={{ fontFamily: 'Sarabun', fontWeight: w }}>
-            {splitScripts(seg.text).map((run, ri) => (
-              <Text key={ri} style={{ fontFamily: run.cjk ? 'NotoSansSC' : 'Sarabun', fontWeight: w }}>
-                {run.text}
-              </Text>
-            ))}
-          </Text>
-        )
-      })}
-    </Text>
-  )
-}
-
-// ─── Markdown processor ───────────────────────────────────────
-
-export function deEscape(md: string): string {
-  const stripped = md.startsWith('﻿') ? md.slice(1) : md
-  return stripped.replace(/\\<\\</g, '<<').replace(/\\>\\>/g, '>>')
-}
-
-export function substituteVars(md: string, vars: Record<string, string>): string {
-  return md.replace(/<<([^>]+)>>/g, (_, key: string) => vars[key] ?? '')
-}
-
-function stripMarkdown(text: string): string {
-  return text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').trim()
-}
-
-function isSeparatorRow(cells: string[]): boolean {
-  return cells.length > 0 && cells.every(c => /^[-:\s]*$/.test(c))
-}
-
-type ColAlign = 'left' | 'right' | 'center' | 'none'
-type ColSpec  = { align: ColAlign; flex: number }
-
-function parseColSpecs(cells: string[]): ColSpec[] {
-  return cells.map(c => {
-    const s = c.trim()
-    const dashes = (s.match(/-/g) ?? []).length
-    // flex = (dashCount - 2) * 0.5, min 0.5
-    const flex = Math.max(0.5, (dashes - 2) * 0.5)
-    let align: ColAlign = 'none'
-    if (s.startsWith(':') && s.endsWith(':')) align = 'center'
-    else if (s.endsWith(':'))   align = 'right'
-    else if (s.startsWith(':')) align = 'left'
-    return { align, flex }
-  })
-}
-
-type MdBlock =
-  | { type: 'h1'; text: string; bold: boolean }
-  | { type: 'h2'; text: string; bold: boolean }
-  | { type: 'p';  text: string; bold: boolean }
-  | { type: 'blank' }
-  | { type: 'table'; rows: string[][]; cols: ColSpec[]; wide: boolean }
-
-function parseMd(md: string): MdBlock[] {
-  const lines = md.split('\n')
-  const blocks: MdBlock[] = []
-  let i = 0
-
-  while (i < lines.length) {
-    const line = lines[i] ?? ''
-
-    if (/^#\s/.test(line) && !/^##/.test(line)) {
-      const raw = line.replace(/^#\s+/, '')
-      const text = stripMarkdown(raw)
-      if (text) blocks.push({ type: 'h1', text, bold: true })
-      i++; continue
-    }
-
-    if (/^##\s/.test(line)) {
-      const raw = line.replace(/^##\s+/, '')
-      const text = stripMarkdown(raw)
-      if (text) blocks.push({ type: 'h2', text, bold: true })
-      i++; continue
-    }
-
-    if (line.trimStart().startsWith('|')) {
-      const tableLines: string[] = []
-      while (i < lines.length && (lines[i] ?? '').trimStart().startsWith('|')) {
-        tableLines.push(lines[i] ?? ''); i++
-      }
-      const allRows: string[][] = []
-      let cols: ColSpec[] = []
-      for (const tl of tableLines) {
-        const cells = tl.split('|').slice(1, -1).map(c => c.trim())
-        if (isSeparatorRow(cells)) {
-          cols = parseColSpecs(cells)
-        } else {
-          allRows.push(cells)
-        }
-      }
-      if (allRows.length === 0) continue
-      const maxCols = Math.max(...allRows.map(r => r.length))
-      blocks.push({ type: 'table', rows: allRows, cols, wide: maxCols > 8 })
-      continue
-    }
-
-    if (line.trim() === '') {
-      blocks.push({ type: 'blank' }); i++; continue
-    }
-
-    const isBold = /^\*\*/.test(line.trim()) || (/\*\*/.test(line) && line.trim().endsWith('**'))
-    const text = stripMarkdown(line)
-    if (text) blocks.push({ type: 'p', text, bold: isBold })
-    i++
-  }
-
-  return blocks
-}
-
-// ─── Block renderers ──────────────────────────────────────────
-
-function renderMdBlocks(blocks: MdBlock[]): React.ReactElement[] {
-  const elements: React.ReactElement[] = []
-  let blankCount = 0
-  let prevWasTable = false
-
-  for (let i = 0; i < blocks.length; i++) {
-    const block = blocks[i]!
-
-    if (block.type === 'blank') {
-      blankCount++
-      if (blankCount <= 1) elements.push(<View key={i} style={s.pBlank} />)
-      prevWasTable = false
-      continue
-    }
-    blankCount = 0
-
-    if (block.type === 'h1') {
-      elements.push(<RichText key={i} text={block.text} style={s.h1} bold />)
-      prevWasTable = false; continue
-    }
-    if (block.type === 'h2') {
-      elements.push(<RichText key={i} text={block.text} style={s.h2} bold />)
-      prevWasTable = false; continue
-    }
-    if (block.type === 'p') {
-      elements.push(<RichText key={i} text={block.text} style={block.bold ? s.pBold : s.p} bold={block.bold} />)
-      prevWasTable = false; continue
-    }
-    if (block.type === 'table') {
-      if (block.wide) {
-        block.rows.forEach((row, ri) => {
-          const text = row.filter(c => c.length > 0).join('  ')
-          if (text) elements.push(<RichText key={`${i}-${ri}`} text={text} style={s.p} />)
-        })
-      } else {
-        const [headRow, ...bodyRows] = block.rows
-        if (!headRow) continue
-        const allRows = [headRow, ...bodyRows]
-        prevWasTable = true
-        const isSingleCol = (allRows[0]?.length ?? 0) === 1
-        elements.push(
-          <View key={i} style={s.tableWrap} wrap={false}>
-            {allRows.map((row, ri) => (
-              <View key={ri} style={s.tRow}>
-                {row.map((cell, ci) => {
-                  const spec   = block.cols[ci] ?? { align: 'none', flex: 1 }
-                  const tAlign = spec.align === 'right' ? 'right' : spec.align === 'center' ? 'center' : 'left'
-                  const isValue = !isSingleCol && (ci % 2 === 1)
-                  const base   = isSingleCol ? s.tHCell : isValue ? s.tValue : s.tLabel
-                  return (
-                    <RichText key={ci} text={cell} textAlign={tAlign}
-                      style={{ ...base, flex: spec.flex }}
-                    />
-                  )
-                })}
-              </View>
-            ))}
-          </View>
-        )
-        continue
-      }
-      continue
-    }
-  }
-
-  return elements
-}
-
-// ─── Mini-sig footer slot ──────────────────────────────────────
+// ─── Mini-sig slot helper ─────────────────────────────────────────
 
 function MiniSigSlot({ sig }: { sig: PdfSigner }) {
   return (
@@ -523,53 +107,24 @@ function MiniSigSlot({ sig }: { sig: PdfSigner }) {
   )
 }
 
-// ─── Final signature block (large, last page) ─────────────────
+// ─── Document component ───────────────────────────────────────────
 
-function FinalSignatureBlock({ signers }: { signers: PdfSigner[] }) {
-  return (
-    <View style={s.sigSection}>
-      <View style={s.sigRow}>
-        {signers.map((sig, i) => (
-          <View key={i} style={s.sigBox}>
-            <View style={s.sigImgArea}>
-              {sig.signatureUrl
-                ? <Image style={s.sigImg} src={sig.signatureUrl} />
-                : null
-              }
-            </View>
-            <View style={s.sigLine} />
-            <Text style={s.sigRole}>{sig.label}</Text>
-            {sig.name ? <Text style={s.sigName}>({sig.name})</Text> : null}
-            <Text style={s.sigDateLabel}>
-              {sig.signedAt ?? 'วันที่  .......... / .......... / ..........'}
-            </Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  )
-}
-
-// ─── Document component ───────────────────────────────────────
-
-function MdContractDocument({
-  blocks,
-  meta,
+function ContractDocument({
+  blocks, features, meta,
 }: {
-  blocks: MdBlock[]
-  meta: Required<PdfMeta>
+  blocks:   ParsedDoc['blocks']
+  features: ParsedDoc['features']
+  meta:     Required<PdfMeta>
 }) {
-  const children = renderMdBlocks(blocks)
-
   const statusText = meta.isFinalized
     ? 'FINALIZED'
-    : (meta.status === 'draft' ? 'DRAFT' : (meta.status ?? 'DRAFT').toUpperCase().replace(/_/g, ' '))
+    : (meta.status === 'draft' ? 'DRAFT' : (meta.status || 'DRAFT').toUpperCase().replace(/_/g, ' '))
 
   return (
     <Document title={`${meta.docTypeLabel} ${meta.contractId}`}>
       <Page size="A4" style={s.page}>
 
-        {/* ── Fixed header (every page) ─────────────────── */}
+        {/* ── HEADER (fixed) ── */}
         <View fixed style={s.header}>
           <View style={s.hLeft}>
             <Text style={s.hTitle}>{meta.docTypeLabel}</Text>
@@ -578,62 +133,74 @@ function MdContractDocument({
               : null
             }
           </View>
-
-          {(meta.agentName) && (
-            <>
-              <View style={s.hDivider} />
-              <View style={s.hRight}>
-                <Text style={s.hAgentName}>{meta.agentName}</Text>
-                {(meta as PdfMeta).agentPhone
-                  ? <Text style={s.hAgentPhone}>{(meta as PdfMeta).agentPhone}</Text>
-                  : null
-                }
-              </View>
-            </>
-          )}
+          {meta.agentName ? <View style={s.hDivider} /> : null}
+          {meta.agentName ? (
+            <View style={s.hRight}>
+              <Text style={s.hAgentName}>{meta.agentName}</Text>
+              {meta.agentPhone
+                ? <Text style={s.hAgentPhone}>{meta.agentPhone}</Text>
+                : null
+              }
+            </View>
+          ) : null}
         </View>
 
-        {/* ── Content ───────────────────────────────────── */}
-        {children}
-
-        {/* ── Final sig block ───────────────────────────── */}
-        {meta.signers.length > 0 && (
-          <FinalSignatureBlock signers={meta.signers} />
+        {/* ── PAGE NUMBER (fixed footer, every page) ── */}
+        {features.pageNumbers && (
+          <View fixed style={s.footer}>
+            <Text style={s.fL}> </Text>
+            <Text
+              style={s.fC}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              render={({ pageNumber, totalPages }: any) => `หน้า ${pageNumber} / ${totalPages}`}
+            />
+            <Text style={s.fR}> </Text>
+          </View>
         )}
 
-        {/* ── Fixed footer: page number (all pages) ───────── */}
-        <View fixed style={s.footer}>
-          <View style={s.fCenter}>
-            <Text
-              style={s.fPageNum}
-              render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
-                `${pageNumber} / ${totalPages}`
-              }
-            />
-          </View>
-        </View>
-
-        {/* ── Fixed footer: mini-sigs (all pages except last) ─ */}
-        {meta.signers.length > 0 && (
+        {/* ── MINI-SIGS (fixed, hidden on last page) ── */}
+        {features.miniSignatures && meta.signers.length > 0 && (
           <View
             fixed
+            style={s.miniSigRow}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            render={({ pageNumber, totalPages }: any) =>
-              pageNumber === totalPages ? null : (
-                <View style={s.footerSigs}>
-                  {meta.signers[0]
-                    ? <MiniSigSlot sig={meta.signers[0]} />
-                    : <View style={s.miniSigBox} />
-                  }
-                  <View style={{ flex: 1 }} />
-                  {meta.signers[1]
-                    ? <MiniSigSlot sig={meta.signers[1]} />
-                    : <View style={s.miniSigBox} />
-                  }
+            render={({ pageNumber, totalPages }: any) => {
+              if (pageNumber >= totalPages) return null
+              return (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', flex: 1 }}>
+                  {meta.signers[0] ? <MiniSigSlot sig={meta.signers[0]} /> : <View style={s.miniSigBox} />}
+                  {meta.signers[1] ? <MiniSigSlot sig={meta.signers[1]} /> : <View style={s.miniSigBox} />}
                 </View>
               )
-            }
+            }}
           />
+        )}
+
+        {/* ── BODY ── */}
+        {renderBodyBlocks(blocks)}
+
+        {/* ── FINAL SIG BLOCK (last page) ── */}
+        {features.finalSignature && meta.signers.length > 0 && (
+          <View style={s.finalSigSection}>
+            <View style={s.finalSigRow}>
+              {meta.signers.map((sig, i) => (
+                <View key={i} style={s.finalSigBox}>
+                  <View style={s.finalSigImgArea}>
+                    {sig.signatureUrl
+                      ? <Image style={s.finalSigImg} src={sig.signatureUrl} />
+                      : null
+                    }
+                  </View>
+                  <View style={s.finalSigLine} />
+                  <Text style={s.finalSigRole}>{sig.label}</Text>
+                  {sig.name ? <Text style={s.finalSigName}>({sig.name})</Text> : null}
+                  <Text style={s.finalSigDate}>
+                    {sig.signedAt ?? 'วันที่  .......... / .......... / ..........'}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
         )}
 
       </Page>
@@ -641,7 +208,8 @@ function MdContractDocument({
   )
 }
 
-// ─── Main export ──────────────────────────────────────────────
+// Backward-compat exports
+export { deEscape, substituteVars } from './contract/markdownParser'
 
 const DEFAULT_SIGNERS: PdfSigner[] = [
   { label: 'ผู้ให้เช่า', name: '' },
@@ -653,10 +221,6 @@ export async function renderMarkdownAsPdf(
   vars: Record<string, string>,
   meta?: Partial<PdfMeta>,
 ): Promise<Buffer> {
-  const deEscaped  = deEscape(mdContent)
-  const substituted = substituteVars(deEscaped, vars)
-  const blocks     = parseMd(substituted)
-
   const resolved: Required<PdfMeta> = {
     contractId:   meta?.contractId   ?? '',
     docTypeLabel: meta?.docTypeLabel ?? 'เอกสารสัญญา',
@@ -669,8 +233,8 @@ export async function renderMarkdownAsPdf(
     }),
     signers: meta?.signers ?? DEFAULT_SIGNERS,
   }
-
-  const element = <MdContractDocument blocks={blocks} meta={resolved} />
+  const { blocks, features } = parseTemplate(mdContent, vars)
+  const element = <ContractDocument blocks={blocks} features={features} meta={resolved} />
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return renderToBuffer(element as any)
 }
