@@ -78,7 +78,10 @@ export function parseSpecCell(raw: string): ColSpec {
   if (s === '') return { align: 'none', flex: 1, underline: false }
 
   // 1) ~N~ → plain center (no underline)
-  const tildeMatch = s.match(/^~\s*(\d+(?:\.\d+)?)\s*~$/)
+  // Accepts: ~1~ ~1.5~ ~2.25~ ~10.5~ ~0.5~ ~.5~ ~1.~ and whitespace inside
+  // (the inner number regex is permissive: digits then optional `.digits`,
+  // or `.digits` alone, with safeFloat falling back to 1 if NaN).
+  const tildeMatch = s.match(/^~\s*(\d*\.?\d+|\d+\.?)\s*~$/)
   if (tildeMatch) {
     return { align: 'center', flex: safeFlex(safeFloat(tildeMatch[1] ?? '')), underline: false }
   }
@@ -94,9 +97,10 @@ export function parseSpecCell(raw: string): ColSpec {
   // Underline only when explicitly `:N:` (both colons)
   const underline = hasLeading && hasTrailing
 
-  // 3) Extract numeric flex (after stripping colons)
+  // 3) Extract numeric flex (after stripping colons).
+  // Accepts decimals with or without leading/trailing digit (.5, 5., 1.5)
   const inner = s.replace(/:/g, '').trim()
-  const numMatch = inner.match(/^(\d+(?:\.\d+)?)$/)
+  const numMatch = inner.match(/^(\d*\.?\d+|\d+\.?)$/)
   if (numMatch) {
     return { align, flex: safeFlex(safeFloat(numMatch[1] ?? '')), underline }
   }
