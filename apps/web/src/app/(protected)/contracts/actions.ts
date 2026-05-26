@@ -921,6 +921,96 @@ export async function generateContractPdf(
   try {
     let buffer: Buffer
 
+    // ─── Route: invoice / receipt → Puppeteer (Noto Thai, navy theme) ───
+    const invoiceLikeTypes = ['invoice_reservation', 'receipt_reservation', 'invoice_deposit', 'receipt_deposit']
+    if (invoiceLikeTypes.includes(contract.doc_type)) {
+      const { renderInvoiceReceiptPdf } = await import('@/lib/pdf/contract/invoiceReceiptPdf')
+      const isReceipt = contract.doc_type === 'receipt_reservation' || contract.doc_type === 'receipt_deposit'
+
+      const docTitleMap: Record<string, string> = {
+        invoice_reservation: 'ใบแจ้งหนี้เงินจอง',
+        receipt_reservation: 'ใบเสร็จรับเงิน (เงินจอง)',
+        invoice_deposit:     'ใบแจ้งหนี้เงินประกัน',
+        receipt_deposit:     'ใบเสร็จรับเงิน (เงินประกัน)',
+      }
+
+      // Amount: reservation invoice uses rent_price (1 month deposit); deposit uses deposit_amount
+      const isReservationDoc = contract.doc_type.includes('reservation')
+      const amount = isReservationDoc
+        ? (contract.rent_price ?? 0)
+        : (contract.deposit_amount ?? 0)
+
+      const stockDesc = contract.stock
+        ? `โครงการ ${contract.stock.project_name ?? ''} ห้อง ${contract.stock.unit_no ?? ''}` +
+          (contract.contract_months ? ` สัญญา ${contract.contract_months} เดือน` : '') +
+          (contract.rent_price      ? ` ราคาเช่า ${contract.rent_price.toLocaleString()} บาท/เดือน` : '')
+        : '-'
+
+      const ownerName = [contract.owner?.prefix, contract.owner?.first_name_th, contract.owner?.last_name_th]
+        .filter(Boolean).join(' ') || ''
+      const customerName = [contract.customer?.prefix, contract.customer?.first_name_th, contract.customer?.last_name_th]
+        .filter(Boolean).join(' ') || ''
+
+      const ownerAddr = contract.owner
+        ? [contract.owner.address_no, contract.owner.address_road, contract.owner.subdistrict,
+           contract.owner.district, contract.owner.province, contract.owner.zip]
+          .filter(Boolean).join(' ')
+        : ''
+      const customerAddr = contract.customer
+        ? [contract.customer.address_no, contract.customer.address_road, contract.customer.subdistrict,
+           contract.customer.district, contract.customer.province, contract.customer.zip]
+          .filter(Boolean).join(' ')
+        : ''
+
+      const statusText = contract.is_finalized
+        ? 'FINALIZED'
+        : ((contract as { status?: string }).status ?? 'draft').toUpperCase().replace(/_/g, ' ')
+
+      buffer = await renderInvoiceReceiptPdf({
+        docTitle:   docTitleMap[contract.doc_type] ?? contract.doc_type,
+        docId:      contract.id,
+        date:       new Date(contract.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
+        agentName:  profile?.company_name ?? profile?.name ?? undefined,
+        agentPhone: (profile as { phone?: string | null } | null)?.phone ?? undefined,
+        statusText,
+        owner: contract.owner ? {
+          name:                ownerName,
+          address:             ownerAddr,
+          national_id:         contract.owner.national_id ?? undefined,
+          bank_name:           (contract.owner as { bank_name?: string | null }).bank_name ?? undefined,
+          bank_account_no:     (contract.owner as { bank_account_no?: string | null }).bank_account_no ?? undefined,
+          bank_account_name:   (contract.owner as { bank_account_name?: string | null }).bank_account_name ?? undefined,
+        } : null,
+        customer: contract.customer ? {
+          name:        customerName,
+          address:     customerAddr,
+          national_id: contract.customer.national_id ?? undefined,
+        } : null,
+        stockDesc,
+        amount,
+        vat7:  contract.vat_7 ?? false,
+        wht3:  contract.wht_3 ?? false,
+        isReceipt,
+        paymentMethod: (contract as { payment_method?: string | null }).payment_method ?? null,
+        bankRef:       (contract as { bank_ref?: string | null }).bank_ref ?? null,
+        ownerSignatureUrl:    (contract.owner    as { signature_url?: string | null } | null)?.signature_url ?? null,
+        customerSignatureUrl: (contract.customer as { signature_url?: string | null } | null)?.signature_url ?? null,
+      })
+
+      // Use same storage bucket + URL strategy as the main dispatch below
+      const ts = Date.now()
+      const storagePath = `${user.id}/${contract.id}-${ts}.pdf`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(storagePath, buffer, { contentType: 'application/pdf', upsert: false })
+      if (uploadError || !uploadData) {
+        return { error: 'อัปโหลด PDF ไม่สำเร็จ: ' + uploadError?.message }
+      }
+      const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(storagePath)
+      await supabase.from('contracts').update({ pdf_url: publicUrl }).eq('id', contractId)
+      return { url: publicUrl }
+    }
+
     const templateSlugForPdf = (contract as { template_slug?: string | null }).template_slug
     if (templateSlugForPdf) {
       const { getTemplateBySlug } = await import('@/lib/contracts/templateRegistry')
