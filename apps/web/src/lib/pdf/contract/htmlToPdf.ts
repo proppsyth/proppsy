@@ -1,21 +1,34 @@
 // HTML → PDF via Puppeteer (Chromium-native Thai text rendering)
 
-import puppeteer, { Browser } from 'puppeteer'
-import { PDFDocument } from 'pdf-lib'
 import path from 'path'
 import fs from 'fs'
 
-// ─── Browser singleton (avoid relaunching for each PDF) ───────────
+// Use `unknown` here to avoid pulling puppeteer types into module graph at
+// import time (Next.js 16 + Turbopack RSC streaming chokes on it otherwise).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _browser: any | null = null
 
-let _browser: Browser | null = null
-
-async function getBrowser(): Promise<Browser> {
+async function getBrowser(): Promise<any> {
   if (_browser && _browser.connected) return _browser
+  // Dynamic import so Turbopack/RSC don't try to bundle puppeteer's heavy
+  // graph (native bindings, fs paths) into the server component chunk.
+  const { default: puppeteer } = await import('puppeteer')
   _browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none'],
   })
   return _browser
+}
+
+async function loadPdfDocument(buf: Buffer): Promise<any> {
+  // Dynamic import for the same reason
+  const { PDFDocument } = await import('pdf-lib')
+  return PDFDocument.load(buf)
+}
+
+async function createPdfDocument(): Promise<any> {
+  const { PDFDocument } = await import('pdf-lib')
+  return PDFDocument.create()
 }
 
 // ─── Font data (embed Noto Sans Thai as base64 for CSS @font-face) ─
@@ -299,16 +312,13 @@ function buildFooterTemplate(opts: RenderOptions): string {
   `
 }
 
-// PDF margins (Puppeteer uses mm, not pt)
+// PDF margins (Puppeteer uses mm, not pt).
+// CRITICAL: must be identical for both passes (with-mini and without-mini),
+// otherwise the body content area differs → page count differs → pageRanges
+// for the second render points beyond the actual page count.
 const PDF_MARGIN = {
   top:    '32mm',
   bottom: '42mm',
-  left:   '18mm',
-  right:  '18mm',
-}
-const PDF_MARGIN_NO_MINI = {
-  top:    '32mm',
-  bottom: '22mm',   // smaller — only page number, no mini-sigs
   left:   '18mm',
   right:  '18mm',
 }
@@ -351,37 +361,46 @@ export async function htmlToPdfBuffer(opts: RenderOptions): Promise<Buffer> {
   const footerWithMini    = buildFooterTemplate(opts)
   const footerWithoutMini = buildFooterTemplate({ ...opts, features: { ...opts.features, miniSignatures: false } })
 
-  // If mini-sigs are NOT enabled, just render once with whichever footer
+  // If mini-sigs are NOT enabled, just render once
   if (!opts.features.miniSignatures || opts.signers.length === 0) {
     return renderPdf(html, headerTpl, footerWithMini, PDF_MARGIN)
   }
 
   // Two-pass strategy to hide mini-sigs on LAST page only:
-  //  1) Render with mini-sigs to count total pages
-  //  2) If multi-page, re-render last page WITHOUT mini-sigs and merge
+  //   1) Render full PDF with mini-sigs footer → keep pages [1..N-1]
+  //   2) Render same PDF with footer-without-mini-sigs → keep only page N
+  //   3) Merge: [1..N-1] from #1 + [N] from #2
+  // Both renders MUST use identical margins → identical page count.
   const fullPdf = await renderPdf(html, headerTpl, footerWithMini, PDF_MARGIN)
-  const fullDoc = await PDFDocument.load(fullPdf)
+  const fullDoc = await loadPdfDocument(fullPdf)
   const totalPages = fullDoc.getPageCount()
 
   if (totalPages <= 1) {
-    // Single page → only "last" page exists, so render without mini-sigs entirely
-    return renderPdf(html, headerTpl, footerWithoutMini, PDF_MARGIN_NO_MINI)
+    // Single page → render without mini-sigs
+    return renderPdf(html, headerTpl, footerWithoutMini, PDF_MARGIN)
   }
 
-  // Re-render JUST the last page without mini-sigs, then merge:
-  // pages [1..N-1] from fullPdf  +  page [N] from lastOnlyPdf
-  const lastOnlyPdf = await renderPdf(
-    html, headerTpl, footerWithoutMini, PDF_MARGIN_NO_MINI,
-    `${totalPages}-${totalPages}`,
-  )
-  const lastOnlyDoc = await PDFDocument.load(lastOnlyPdf)
+  // Second pass: full doc again, but with no-mini footer. Same margins → same N pages.
+  const noMiniPdf = await renderPdf(html, headerTpl, footerWithoutMini, PDF_MARGIN)
+  const noMiniDoc = await loadPdfDocument(noMiniPdf)
+  const noMiniPageCount = noMiniDoc.getPageCount()
 
-  const merged = await PDFDocument.create()
-  // Copy pages 0..N-2 from fullDoc
-  const fullPages = await merged.copyPages(fullDoc, Array.from({ length: totalPages - 1 }, (_, i) => i))
-  fullPages.forEach(p => merged.addPage(p))
-  // Copy single page (index 0) from lastOnlyDoc
-  const [lastPage] = await merged.copyPages(lastOnlyDoc, [0])
+  // Defensive: if page counts diverge (shouldn't happen with same margins),
+  // fall back to single full render.
+  if (noMiniPageCount !== totalPages) {
+    return fullPdf
+  }
+
+  const merged = await createPdfDocument()
+  // Pages 0..N-2 from fullPdf (with mini-sigs)
+  const firstPages = await merged.copyPages(
+    fullDoc,
+    Array.from({ length: totalPages - 1 }, (_, i) => i),
+  )
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  firstPages.forEach((p: any) => merged.addPage(p))
+  // Last page from noMiniPdf (no mini-sigs)
+  const [lastPage] = await merged.copyPages(noMiniDoc, [totalPages - 1])
   merged.addPage(lastPage)
 
   const mergedBytes = await merged.save()

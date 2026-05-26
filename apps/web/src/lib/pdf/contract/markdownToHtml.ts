@@ -34,9 +34,11 @@ function renderTable(rows: string[][], cols: ColSpec[]): string {
   const cells = rows.map(row =>
     `<div class="row">${
       row.map((cell, ci) => {
-        const spec = cols[ci] ?? { align: 'none', flex: 1 }
+        const spec: ColSpec = cols[ci] ?? { align: 'none', flex: 1, underline: false }
         const klass = alignClass(spec)
-        const isValue = spec.align === 'center'
+        // Underline only when explicit: spec.underline === true (from `:N:` syntax).
+        // `~N~` keeps center alignment but underline=false → plain centered cell.
+        const isValue = spec.underline === true
         return `<div class="cell ${klass} ${isValue ? 'value' : 'label'}" style="flex:${spec.flex}">${inlineMd(cell)}</div>`
       }).join('')
     }</div>`

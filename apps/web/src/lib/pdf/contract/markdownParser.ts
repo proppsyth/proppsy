@@ -1,10 +1,13 @@
-// Parsing layer: .md template → semantic AST + feature directives
-// NO React-PDF imports here. Pure data transformation.
+// Parsing layer: .md template → semantic AST + feature directives.
+// Table parsing is delegated to ./tableParser for isolation + validation.
+
+import { parseTable as parseTableBlock } from './tableParser'
+import type { ColSpec as TableColSpec, ColAlign as TableColAlign } from './tableParser'
 
 // ─── Public types ──────────────────────────────────────────────────
 
-export type ColAlign = 'left' | 'right' | 'center' | 'none'
-export type ColSpec  = { align: ColAlign; flex: number }
+export type ColAlign = TableColAlign
+export type ColSpec  = TableColSpec
 
 export type MdBlock =
   | { type: 'h1';    text: string }
@@ -44,23 +47,7 @@ function stripMarkdown(text: string): string {
   return text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').trim()
 }
 
-function isSeparatorRow(cells: string[]): boolean {
-  return cells.length > 0 && cells.every(c => /^[-:\s\d.]*$/.test(c))
-}
-
-function parseColSpecs(cells: string[]): ColSpec[] {
-  return cells.map(c => {
-    const s = c.trim()
-    let align: ColAlign = 'none'
-    if (s.startsWith(':') && s.endsWith(':'))  align = 'center'
-    else if (s.endsWith(':'))                  align = 'right'
-    else if (s.startsWith(':'))                align = 'left'
-    const numMatch = s.replace(/:/g, '').match(/^(\d+(?:\.\d+)?)$/)
-    if (numMatch) return { align, flex: Math.max(0, parseFloat(numMatch[1]!)) }
-    const dashes = (s.match(/-/g) ?? []).length
-    return { align, flex: Math.max(0, (dashes - 2) * 0.5) }
-  })
-}
+// Table parsing now lives in ./tableParser.ts — robust, validated, isolated.
 
 // ─── Directive detection ───────────────────────────────────────────
 
@@ -122,18 +109,22 @@ function parseBlocks(md: string): MdBlock[] {
       while (i < lines.length && (lines[i] ?? '').trimStart().startsWith('|')) {
         tableLines.push(lines[i] ?? ''); i++
       }
-      const allRows: string[][] = []
-      let cols: ColSpec[] = []
-      for (const tl of tableLines) {
-        const cells = tl.split('|').slice(1, -1).map(c =>
-          c.trim().replace(/\\n/g, '\n').replace(/\\t/g, '    ').replace(/\\s/g, ' ')
-        )
-        if (isSeparatorRow(cells)) { cols = parseColSpecs(cells) }
-        else                       { allRows.push(cells) }
+      // Delegate to robust table parser — handles malformed input gracefully
+      const result = parseTableBlock(tableLines)
+      if (!result.table) {
+        // Could not parse — fall back to rendering raw text per line so content
+        // doesn't disappear and the request doesn't crash RSC.
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.warn('[markdownParser] table parse failed:', result.error, tableLines)
+        }
+        for (const tl of tableLines) {
+          const fallback = tl.replace(/^\s*\|/, '').replace(/\|\s*$/, '').trim()
+          if (fallback) blocks.push({ type: 'p', text: fallback, bold: false })
+        }
+        continue
       }
-      if (allRows.length === 0) continue
-      const maxCols = Math.max(...allRows.map(r => r.length))
-      blocks.push({ type: 'table', rows: allRows, cols, wide: maxCols > 8 })
+      blocks.push(result.table)
       continue
     }
 

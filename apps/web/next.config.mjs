@@ -6,7 +6,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@workspace/ui"],
-  serverExternalPackages: ['@react-pdf/renderer'],
+  serverExternalPackages: [
+    '@react-pdf/renderer',
+    'puppeteer',
+    'puppeteer-core',
+    '@puppeteer/browsers',
+    'pdf-lib',
+  ],
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
