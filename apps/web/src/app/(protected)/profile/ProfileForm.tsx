@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/client'
 
 // ─── Constants ───────────────────────────────────────────────
 
+const PREFIX_SYNC: Record<string, string> = { นาย: 'Mr.', นาง: 'Mrs.', นางสาว: 'Ms.' }
 const PREFIXES_TH = ['นาย', 'นาง', 'นางสาว']
 const PREFIXES_EN = ['Mr.', 'Mrs.', 'Ms.']
 const BANK_OPTIONS = [
@@ -45,7 +46,7 @@ interface FormState {
   national_id: string; nationality: string; gender: string; birth_date: string
   name: string; nickname: string; phone: string; line_id: string
   position: string; company_name: string; tax_id: string
-  address_no: string; address_road: string
+  address_no: string; moo: string; address_road: string
   province: string; district: string; subdistrict: string; zip: string
   bank_name: string; bank_account_no: string; bank_account_name: string
 }
@@ -61,7 +62,7 @@ function profileToForm(p: Profile): FormState {
     phone: p.phone ?? '', line_id: p.line_id ?? '',
     position: p.position ?? '', company_name: p.company_name ?? '',
     tax_id: p.tax_id ?? '',
-    address_no: p.address_no ?? '', address_road: p.address_road ?? '',
+    address_no: p.address_no ?? '', moo: p.moo ?? '', address_road: p.address_road ?? '',
     province: p.province ?? '', district: p.district ?? '',
     subdistrict: p.subdistrict ?? '', zip: p.zip ?? '',
     bank_name: p.bank_name ?? '', bank_account_no: p.bank_account_no ?? '',
@@ -182,6 +183,7 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
       if (result.birth_date) { set('birth_date', result.birth_date); fields.push('birth_date') }
       if (!isPassport) {
         apply('address_no', result.address_no)
+        apply('moo', result.moo)
         apply('address_road', result.address_road)
         apply('province', result.province)
         apply('district', result.district)
@@ -403,7 +405,14 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
                   <button
                     key={p}
                     type="button"
-                    onClick={() => set('prefix', form.prefix === p ? '' : p)}
+                    onClick={() => {
+                      const next = form.prefix === p ? '' : p
+                      setForm(f => ({
+                        ...f,
+                        prefix: next,
+                        prefix_en: next ? (PREFIX_SYNC[next] ?? f.prefix_en) : f.prefix_en,
+                      }))
+                    }}
                     className={`px-3 py-1.5 text-sm rounded-lg border transition ${
                       form.prefix === p ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                     }`}
@@ -531,8 +540,9 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
       <Section title="ที่อยู่">
         {editing ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Field label="บ้านเลขที่" value={form.address_no} onChange={v => set('address_no', v)} editing={editing} placeholder="123/4" />
+              <Field label="หมู่ที่" value={form.moo} onChange={v => set('moo', v)} editing={editing} placeholder="5" />
               <Field label="ถนน / ซอย" value={form.address_road} onChange={v => set('address_road', v)} editing={editing} placeholder="ถ.สุขุมวิท ซ.21" />
             </div>
             <AddressSelector
@@ -546,6 +556,7 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <ReadOnly label="บ้านเลขที่" value={form.address_no} />
+            {form.moo && <ReadOnly label="หมู่ที่" value={form.moo} />}
             <ReadOnly label="ถนน / ซอย" value={form.address_road} />
             <ReadOnly label="ตำบล / แขวง" value={form.subdistrict} />
             <ReadOnly label="อำเภอ / เขต" value={form.district} />

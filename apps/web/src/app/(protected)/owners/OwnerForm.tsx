@@ -28,6 +28,8 @@ const BANK_OPTIONS = [
 
 // ─── Types ───────────────────────────────────────────────────
 
+const PREFIX_SYNC: Record<string, string> = { นาย: 'Mr.', นาง: 'Mrs.', นางสาว: 'Ms.' }
+
 interface FormState {
   prefix: string
   prefix_en: string
@@ -40,6 +42,7 @@ interface FormState {
   line_id: string
   national_id: string
   address_no: string
+  moo: string
   address_road: string
   province: string
   district: string
@@ -55,7 +58,7 @@ const DEFAULT: FormState = {
   prefix: '', prefix_en: '', first_name_th: '', last_name_th: '',
   first_name_en: '', last_name_en: '', nickname: '',
   phone: '', line_id: '', national_id: '',
-  address_no: '', address_road: '',
+  address_no: '', moo: '', address_road: '',
   province: '', district: '', subdistrict: '', zip: '',
   bank_name: '', bank_account_no: '', bank_account_name: '',
   notes: '',
@@ -74,6 +77,7 @@ function ownerToForm(o: Owner): FormState {
     line_id: o.line_id ?? '',
     national_id: o.national_id ?? '',
     address_no: o.address_no ?? '',
+    moo: o.moo ?? '',
     address_road: o.address_road ?? '',
     province: o.province ?? '',
     district: o.district ?? '',
@@ -100,6 +104,7 @@ function toInput(f: FormState): OwnerInput {
     line_id: str(f.line_id),
     national_id: str(f.national_id),
     address_no: str(f.address_no),
+    moo: str(f.moo),
     address_road: str(f.address_road),
     province: str(f.province),
     district: str(f.district),
@@ -178,6 +183,7 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
 
       if (!isPassport) {
         apply('address_no', result.address_no)
+        apply('moo', result.moo)
         apply('address_road', result.address_road)
         apply('province', result.province)
         apply('district', result.district)
@@ -306,7 +312,14 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
                   <button
                     key={p}
                     type="button"
-                    onClick={() => set('prefix', form.prefix === p ? '' : p)}
+                    onClick={() => {
+                      const next = form.prefix === p ? '' : p
+                      setForm(f => ({
+                        ...f,
+                        prefix: next,
+                        prefix_en: next ? (PREFIX_SYNC[next] ?? f.prefix_en) : f.prefix_en,
+                      }))
+                    }}
                     className={`px-3 py-1.5 text-sm rounded-lg border transition ${
                       form.prefix === p
                         ? 'bg-blue-600 text-white border-blue-600'
@@ -378,8 +391,9 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
       {/* ที่อยู่ */}
       <Section title="ที่อยู่">
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="บ้านเลขที่" value={form.address_no} onChange={v => set('address_no', v)} placeholder="123/4" />
+            <Field label="หมู่ที่" value={form.moo} onChange={v => set('moo', v)} placeholder="5" />
             <Field label="ถนน / ซอย" value={form.address_road} onChange={v => set('address_road', v)} placeholder="ถ.สุขุมวิท ซ.21" />
           </div>
           <AddressSelector

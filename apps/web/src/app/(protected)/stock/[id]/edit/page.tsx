@@ -17,18 +17,12 @@ export default async function EditStockPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: stock }, { data: projects }] = await Promise.all([
-    supabase
-      .from('stock')
-      .select('*, owner:owners(id, nickname, first_name_th, last_name_th)')
-      .eq('id', id)
-      .eq('agent_uid', user.id)
-      .single(),
-    supabase
-      .from('projects')
-      .select('id, name_th, name_en')
-      .order('name_th'),
-  ])
+  const { data: stock } = await supabase
+    .from('stock')
+    .select('*, owner:owners(id, nickname, first_name_th, last_name_th)')
+    .eq('id', id)
+    .eq('agent_uid', user.id)
+    .single()
 
   if (!stock) notFound()
 
@@ -46,7 +40,6 @@ export default async function EditStockPage({
       <StockForm
         stockId={id}
         initialData={stock as unknown as Stock}
-        projects={projects ?? []}
         initialOwnerLabel={initialOwnerLabel}
       />
     </div>

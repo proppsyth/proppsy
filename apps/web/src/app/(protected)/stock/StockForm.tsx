@@ -2,11 +2,13 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, X, Plus, Loader2, ChevronDown, ChevronUp, UserPlus } from 'lucide-react'
+import { Sparkles, X, Plus, Loader2, ChevronDown, ChevronUp, UserPlus, Search } from 'lucide-react'
 import { formatRoomType } from '@/types'
 import type { Stock, Project } from '@/types'
 import { createStock, updateStock, parseStockTextWithEntities, checkOwnerDuplicate } from './actions'
 import type { StockInput } from './actions'
+import { searchProjects } from '@/app/(protected)/projects/actions'
+import type { ProjectSearchResult } from '@/app/(protected)/projects/actions'
 import { usePropertyImages } from '@/hooks/useUpload'
 import ImageUploader from '@/components/shared/ImageUploader'
 import { useAiQuota } from '@/hooks/useAiQuota'
@@ -142,21 +144,20 @@ function ownerLabel(r: OwnerSearchResult): string {
 // ─── Main Component ───────────────────────────────────────────
 
 interface Props {
-  projects: ProjectOption[]
   initialData?: Stock
   stockId?: string
   allowAI?: boolean
   initialOwnerLabel?: string
 }
 
-export default function StockForm({ projects, initialData, stockId, allowAI = true, initialOwnerLabel }: Props) {
+export default function StockForm({ initialData, stockId, allowAI = true, initialOwnerLabel }: Props) {
   const router = useRouter()
   const [form, setForm] = useState<FormState>(() =>
     initialData
       ? { ...stockToForm(initialData), owner_label: initialOwnerLabel ?? '' }
       : DEFAULT
   )
-  const [localProjects, setLocalProjects] = useState<ProjectOption[]>(projects)
+  const [localProjects, setLocalProjects] = useState<ProjectOption[]>([])
   const [aiEntities, setAiEntities] = useState<{ ownerDisplay?: string; ownerCreated?: boolean; projectDisplay?: string; projectCreated?: boolean } | null>(null)
   const [error, setError] = useState('')
   const [aiOpen, setAiOpen] = useState(!stockId)
@@ -374,20 +375,12 @@ export default function StockForm({ projects, initialData, stockId, allowAI = tr
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
             <Label text="โครงการ" />
-            <input
-              list="projects-list"
-              value={form.project_name}
-              onChange={e => {
-                const name = e.target.value
-                const match = localProjects.find(p => p.name_th === name)
-                setForm(f => ({ ...f, project_name: name, project_id: match?.id ?? '' }))
-              }}
-              placeholder="ค้นหาหรือพิมพ์ชื่อโครงการ..."
-              className={INPUT_CLS}
+            <ProjectCombobox
+              value={form.project_id}
+              displayName={form.project_name}
+              localOptions={localProjects}
+              onSelect={(id, name) => setForm(f => ({ ...f, project_id: id, project_name: name }))}
             />
-            <datalist id="projects-list">
-              {localProjects.map(p => <option key={p.id} value={p.name_th} />)}
-            </datalist>
             {form.project_id ? (
               <p className="mt-1.5 text-xs text-green-600">
                 ✓ ลิงก์กับโครงการในระบบแล้ว ({form.project_id}) — ข้อมูลโครงการจะแสดงบนหน้าประกาศ
@@ -646,6 +639,111 @@ interface TagGroupProps {
   onAdd: (item: string) => void
   onRemove: (item: string) => void
   chipColor?: 'gray' | 'blue'
+}
+
+// ─── Project Combobox (async search) ─────────────────────────
+
+interface ProjectComboboxProps {
+  value: string
+  displayName: string
+  localOptions: ProjectOption[]
+  onSelect: (id: string, name: string) => void
+}
+
+function ProjectCombobox({ value: _value, displayName, localOptions, onSelect }: ProjectComboboxProps) {
+  const [query, setQuery] = useState(displayName)
+  const [results, setResults] = useState<ProjectSearchResult[]>([])
+  const [loading, setLoading] = useState(false)
+  const [open, setOpen] = useState(false)
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  // Sync display name from parent (e.g. AI fill)
+  useEffect(() => { setQuery(displayName) }, [displayName])
+
+  // Close on outside click
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [])
+
+  function handleInput(q: string) {
+    setQuery(q)
+    onSelect('', q)
+    if (debounce.current) clearTimeout(debounce.current)
+    if (!q.trim()) { setResults([]); setOpen(false); return }
+    setOpen(true)
+    debounce.current = setTimeout(async () => {
+      setLoading(true)
+      try {
+        const remote = await searchProjects(q)
+        // Prepend local additions not yet in DB (AI-created, QuickProjectModal)
+        const localMatched = localOptions.filter(
+          p => (p.name_th.includes(q) || (p.name_en ?? '').toLowerCase().includes(q.toLowerCase()))
+            && !remote.find(r => r.id === p.id)
+        )
+        const merged: ProjectSearchResult[] = [
+          ...localMatched.map(p => ({ id: p.id, name_th: p.name_th, name_en: p.name_en ?? null })),
+          ...remote,
+        ]
+        setResults(merged)
+      } finally {
+        setLoading(false)
+      }
+    }, 300)
+  }
+
+  function handleSelect(r: ProjectSearchResult) {
+    const label = r.name_en ?? r.name_th
+    setQuery(label)
+    onSelect(r.id, r.name_th)
+    setOpen(false)
+  }
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          value={query}
+          onChange={e => handleInput(e.target.value)}
+          onFocus={() => { if (query.trim()) setOpen(true) }}
+          placeholder="ค้นหาชื่อโครงการ (ไทย / EN)..."
+          className={`${INPUT_CLS} pl-8`}
+        />
+        {loading && (
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 animate-spin" />
+        )}
+      </div>
+      {open && results.length > 0 && (
+        <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+          {results.map(r => (
+            <li key={r.id}>
+              <button
+                type="button"
+                onMouseDown={() => handleSelect(r)}
+                className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition"
+              >
+                <p className="text-sm font-medium text-gray-900 leading-tight">{r.name_en ?? r.name_th}</p>
+                {r.name_en && r.name_th !== r.name_en && (
+                  <p className="text-xs text-gray-500 mt-0.5">{r.name_th}</p>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {open && !loading && results.length === 0 && query.trim().length >= 2 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3">
+          <p className="text-sm text-gray-500">ไม่พบโครงการ &ldquo;{query}&rdquo;</p>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function TagGroup({ options, selected, onToggle, onAdd, onRemove, chipColor = 'gray' }: TagGroupProps) {

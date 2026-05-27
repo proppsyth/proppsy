@@ -107,7 +107,7 @@ export function computeVariables(
     v['ฟอแมทบัตรประชาชนผู้ให้เช่า'] = formatNationalId(owner.national_id)
     v['เลขเสียภาษี เจ้าของ']      = owner.national_id ?? '-'
     v['บ้านเลขที่ เจ้าของ']       = owner.address_no ?? '-'
-    v['หมู่ที่ เจ้าของ']          = extra['หมู่ที่ เจ้าของ'] ?? ''
+    v['หมู่ที่ เจ้าของ']          = owner.moo ?? extra['หมู่ที่ เจ้าของ'] ?? ''
     v['ถนน เจ้าของ']             = owner.address_road ?? '-'
     v['แขวงตำบล เจ้าของ']        = owner.subdistrict ?? '-'
     v['เขตอำเภอ เจ้าของ']        = owner.district ?? '-'
@@ -137,7 +137,7 @@ export function computeVariables(
     v['ผู้เช่าบัตรประชาชนเลขที่']  = customer.national_id?.replace(/\D/g, '') ?? '-'
     v['เลขเสียภาษี ลูกค้า']       = customer.national_id ?? '-'
     v['บ้านเลขที่ ลูกค้า']        = customer.address_no ?? '-'
-    v['หมู่ที่ ลูกค้า']           = extra['หมู่ที่ ลูกค้า'] ?? ''
+    v['หมู่ที่ ลูกค้า']           = customer.moo ?? extra['หมู่ที่ ลูกค้า'] ?? ''
     v['ถนน ลูกค้า']              = customer.address_road ?? '-'
     v['แขวงตำบล ลูกค้า']         = customer.subdistrict ?? '-'
     v['เขตอำเภอ ลูกค้า']         = customer.district ?? '-'

@@ -39,6 +39,7 @@ export async function updateProfile(
       tax_id: str('tax_id'),
       // Address
       address_no: str('address_no'),
+      moo: str('moo'),
       address_road: str('address_road'),
       subdistrict: str('subdistrict'),
       district: str('district'),

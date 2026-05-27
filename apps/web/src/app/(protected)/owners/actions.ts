@@ -21,6 +21,7 @@ export type OwnerInput = {
   national_id?: string
   id_card_url?: string
   address_no?: string
+  moo?: string
   address_road?: string
   province?: string
   district?: string

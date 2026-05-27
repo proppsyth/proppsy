@@ -18,6 +18,7 @@ import { AiLimitModal } from '@/components/shared/AiLimitModal'
 
 // ─── Constants ───────────────────────────────────────────────
 
+const PREFIX_SYNC: Record<string, string> = { นาย: 'Mr.', นาง: 'Mrs.', นางสาว: 'Ms.' }
 const PREFIXES_TH = ['นาย', 'นาง', 'นางสาว']
 const PREFIXES_EN = ['Mr.', 'Mrs.', 'Miss', 'Ms.']
 const KNOWN_SOURCES = ['line_oa', 'facebook', 'instagram', 'tiktok', 'website', 'referral', 'walk_in', 'online', 'other']
@@ -59,6 +60,7 @@ interface FormState {
   lead_status: string
   follow_up: boolean
   address_no: string
+  moo: string
   address_road: string
   province: string
   district: string
@@ -72,7 +74,7 @@ const DEFAULT: FormState = {
   first_name_en: '', last_name_en: '', nickname: '',
   phone: '', line_id: '', national_id: '',
   source: '', source_other: '', lead_status: 'lead', follow_up: false,
-  address_no: '', address_road: '',
+  address_no: '', moo: '', address_road: '',
   province: '', district: '', subdistrict: '', zip: '',
   notes: '',
 }
@@ -96,6 +98,7 @@ function customerToForm(c: Customer): FormState {
     lead_status: c.lead_status ?? 'lead',
     follow_up: c.follow_up ?? false,
     address_no: c.address_no ?? '',
+    moo: c.moo ?? '',
     address_road: c.address_road ?? '',
     province: c.province ?? '',
     district: c.district ?? '',
@@ -125,6 +128,7 @@ function toInput(f: FormState): CustomerInput {
     lead_status: f.lead_status || undefined,
     follow_up: f.follow_up,
     address_no: str(f.address_no),
+    moo: str(f.moo),
     address_road: str(f.address_road),
     province: str(f.province),
     district: str(f.district),
@@ -197,6 +201,7 @@ export default function CustomerForm({ initialData, customerId }: Props) {
 
       if (!isPassport) {
         apply('address_no', result.address_no)
+        apply('moo', result.moo)
         apply('address_road', result.address_road)
         apply('province', result.province)
         apply('district', result.district)
@@ -302,7 +307,14 @@ export default function CustomerForm({ initialData, customerId }: Props) {
                   <button
                     key={p}
                     type="button"
-                    onClick={() => set('prefix', form.prefix === p ? '' : p)}
+                    onClick={() => {
+                      const next = form.prefix === p ? '' : p
+                      setForm(f => ({
+                        ...f,
+                        prefix: next,
+                        prefix_en: next ? (PREFIX_SYNC[next] ?? f.prefix_en) : f.prefix_en,
+                      }))
+                    }}
                     className={`px-3 py-1.5 text-sm rounded-lg border transition ${
                       form.prefix === p
                         ? 'bg-blue-600 text-white border-blue-600'
@@ -429,8 +441,9 @@ export default function CustomerForm({ initialData, customerId }: Props) {
       {/* ที่อยู่ */}
       <Section title="ที่อยู่">
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="บ้านเลขที่" value={form.address_no} onChange={v => set('address_no', v)} placeholder="123/4" />
+            <Field label="หมู่ที่" value={form.moo} onChange={v => set('moo', v)} placeholder="5" />
             <Field label="ถนน / ซอย" value={form.address_road} onChange={v => set('address_road', v)} placeholder="ถ.สุขุมวิท ซ.21" />
           </div>
           <AddressSelector

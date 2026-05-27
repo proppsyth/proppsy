@@ -13,9 +13,8 @@ export default async function NewStockPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: projects }, { count: stockCount }] = await Promise.all([
+  const [{ data: profile }, { count: stockCount }] = await Promise.all([
     supabase.from('profiles').select('plan').eq('id', user.id).single(),
-    supabase.from('projects').select('id, name_th, name_en').order('name_th'),
     supabase.from('stock').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
   ])
 
@@ -48,7 +47,6 @@ export default async function NewStockPage() {
     <div className="p-4 lg:p-8 pt-6 max-w-3xl">
       <h1 className="text-xl font-bold text-gray-900 mb-6">เพิ่มทรัพย์ใหม่</h1>
       <StockForm
-        projects={projects ?? []}
         allowAI={limits.aiCallsPerMonth > 0}
       />
     </div>

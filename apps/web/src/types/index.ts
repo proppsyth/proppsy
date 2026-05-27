@@ -76,6 +76,7 @@ export interface Profile {
   signature_url?: string
   logo_url?: string
   address_no?: string
+  moo?: string
   address_road?: string
   province?: string
   district?: string
@@ -113,6 +114,7 @@ export interface Project {
   facilities: string[]
   bts_mrt: string[]
   address_no?: string
+  moo?: string
   address_road?: string
   province?: string
   district?: string
@@ -139,6 +141,7 @@ export interface Owner {
   national_id?: string
   id_card_url?: string
   address_no?: string
+  moo?: string
   address_road?: string
   province?: string
   district?: string
@@ -175,6 +178,7 @@ export interface Customer {
   occupation?: string
   follow_up: boolean
   address_no?: string
+  moo?: string
   address_road?: string
   province?: string
   district?: string

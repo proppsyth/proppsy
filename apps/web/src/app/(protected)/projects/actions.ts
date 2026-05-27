@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { normalizeAddressFields } from '@/lib/address'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -16,6 +17,7 @@ export type ProjectInput = {
   facilities: string[]
   bts_mrt: string[]
   address_no?: string
+  moo?: string
   address_road?: string
   province?: string
   district?: string
@@ -34,6 +36,7 @@ export type AiEnrichResult = {
   facilities?: string[]
   bts_mrt?: string[]
   address_road?: string | null
+  moo?: string | null
   province?: string | null
   district?: string | null
   subdistrict?: string | null
@@ -122,9 +125,10 @@ export async function enrichProject(
   "facilities": ["สิ่งอำนวยความสะดวก1", "สิ่งอำนวยความสะดวก2"],
   "bts_mrt": ["BTS/MRT ที่ใกล้ที่สุด"],
   "address_road": "ถนนหลัก หรือ null",
-  "province": "จังหวัด หรือ null",
-  "district": "เขต/อำเภอ หรือ null",
-  "subdistrict": "แขวง/ตำบล หรือ null",
+  "moo": "หมู่บ้าน/ชุมชน (ข้อความ) หรือ null",
+  "province": "จังหวัด (ภาษาไทย) หรือ null",
+  "district": "เขต/อำเภอ (ภาษาไทย) หรือ null",
+  "subdistrict": "แขวง/ตำบล (ภาษาไทย) หรือ null",
   "zip": "รหัสไปรษณีย์ หรือ null"
 }
 
@@ -151,9 +155,61 @@ export async function enrichProject(
     const data = await res.json()
     const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    return JSON.parse(cleaned || '{}') as AiEnrichResult
+    const raw = JSON.parse(cleaned || '{}') as AiEnrichResult
+
+    // Validate province/district/subdistrict against CSV — discard hallucinations
+    const normalized = normalizeAddressFields({
+      province: raw.province ?? undefined,
+      district: raw.district ?? undefined,
+      subdistrict: raw.subdistrict ?? undefined,
+    })
+
+    if (normalized) {
+      raw.province = normalized.province_th
+      raw.district = normalized.district_th
+      raw.subdistrict = normalized.subdistrict_th
+      raw.zip = normalized.zip
+    } else {
+      raw.province = null
+      raw.district = null
+      raw.subdistrict = null
+      raw.zip = null
+    }
+
+    return raw
   } catch (err) {
     console.error('Enricher error:', err)
     return { error: 'ค้นหาข้อมูลโครงการไม่สำเร็จ กรุณาลองใหม่' }
   }
+}
+
+// ─── Smart Project Search (Feature 5) ────────────────────────
+
+export type ProjectSearchResult = {
+  id: string
+  name_th: string
+  name_en: string | null
+}
+
+export async function searchProjects(
+  query: string
+): Promise<ProjectSearchResult[]> {
+  if (!query.trim()) return []
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const q = query.trim()
+
+  // Search name_th OR name_en with ilike, sort by name_en NULLS LAST then name_th
+  const { data } = await supabase
+    .from('projects')
+    .select('id, name_th, name_en')
+    .or(`name_th.ilike.%${q}%,name_en.ilike.%${q}%`)
+    .order('name_en', { ascending: true, nullsFirst: false })
+    .order('name_th', { ascending: true })
+    .limit(20)
+
+  return (data ?? []) as ProjectSearchResult[]
 }

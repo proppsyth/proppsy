@@ -24,6 +24,7 @@ export type CustomerInput = {
   lead_status?: string
   follow_up?: boolean
   address_no?: string
+  moo?: string
   address_road?: string
   province?: string
   district?: string

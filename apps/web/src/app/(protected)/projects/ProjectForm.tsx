@@ -37,6 +37,7 @@ interface FormState {
   facilities: string[]
   bts_mrt: string[]
   address_no: string
+  moo: string
   address_road: string
   province: string
   district: string
@@ -49,7 +50,7 @@ const DEFAULT: FormState = {
   name_th: '', name_en: '', developer: '',
   built_year: '', total_floors: '', total_units: '', parking_pct: '',
   facilities: [], bts_mrt: [],
-  address_no: '', address_road: '', province: '',
+  address_no: '', moo: '', address_road: '', province: '',
   district: '', subdistrict: '', zip: '', map_url: '',
 }
 
@@ -65,6 +66,7 @@ function projectToForm(p: Project): FormState {
     facilities: p.facilities ?? [],
     bts_mrt: p.bts_mrt ?? [],
     address_no: p.address_no ?? '',
+    moo: p.moo ?? '',
     address_road: p.address_road ?? '',
     province: p.province ?? '',
     district: p.district ?? '',
@@ -88,6 +90,7 @@ function toInput(f: FormState): ProjectInput {
     facilities: f.facilities,
     bts_mrt: f.bts_mrt,
     address_no: str(f.address_no),
+    moo: str(f.moo),
     address_road: str(f.address_road),
     province: str(f.province),
     district: str(f.district),
@@ -150,6 +153,7 @@ export default function ProjectForm({ initialData, projectId }: Props) {
       apply('total_floors', result.total_floors)
       apply('total_units', result.total_units)
       apply('parking_pct', result.parking_pct)
+      apply('moo', result.moo)
       apply('address_road', result.address_road)
       apply('province', result.province)
       apply('district', result.district)
@@ -237,8 +241,9 @@ export default function ProjectForm({ initialData, projectId }: Props) {
       {/* ที่ตั้ง */}
       <Section title="ที่ตั้ง">
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="บ้านเลขที่" value={form.address_no} onChange={v => set('address_no', v)} placeholder="123" />
+            <Field label="หมู่ที่" value={form.moo} onChange={v => set('moo', v)} placeholder="5" />
             <Field label="ถนน / ซอย" value={form.address_road} onChange={v => set('address_road', v)} placeholder="ถ.สุขุมวิท" />
           </div>
           <AddressSelector
