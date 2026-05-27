@@ -1,24 +1,37 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Download, ExternalLink, RefreshCw } from 'lucide-react'
+import { Download, RefreshCw } from 'lucide-react'
 
 interface Props {
   contractId: string
   docLabel: string
 }
 
-function isMobileDevice(): boolean {
+// Detect iOS Safari specifically — includes iPads on iOS 13+ which report
+// as 'MacIntel' with touch points.
+function detectIOS(): boolean {
   if (typeof navigator === 'undefined') return false
-  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+  if (/iPhone|iPod/.test(navigator.userAgent)) return true
+  // iPad on iOS 13+ identifies as MacIntel but has touch
+  if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) return true
+  return false
+}
+
+// Non-iOS mobile (Android, etc.)
+function detectNonIOSMobile(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Android/i.test(navigator.userAgent)
 }
 
 export default function PreviewClient({ contractId, docLabel }: Props) {
-  const [state, setState]     = useState<'loading' | 'ready' | 'error'>('loading')
-  const [pdfUrl, setPdfUrl]   = useState<string | null>(null)
+  const [state, setState]       = useState<'loading' | 'ready' | 'error'>('loading')
+  const [pdfUrl, setPdfUrl]     = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const [mobile, setMobile]   = useState(false)
-  const [elapsed, setElapsed] = useState(0)
+  const [elapsed, setElapsed]   = useState(0)
+  // Device flags — set once on mount (SSR-safe: default false)
+  const [ios, setIos]           = useState(false)
+  const [androidMobile, setAndroidMobile] = useState(false)
 
   const fetchUrl = useCallback(async () => {
     setState('loading')
@@ -42,18 +55,37 @@ export default function PreviewClient({ contractId, docLabel }: Props) {
     }
   }, [contractId])
 
-  // Tick elapsed seconds while loading so the user can see progress
+  // Detect device on mount (must be client-side only)
+  useEffect(() => {
+    setIos(detectIOS())
+    setAndroidMobile(detectNonIOSMobile())
+    fetchUrl()
+  }, [fetchUrl])
+
+  // Elapsed-seconds ticker for the loading state
   useEffect(() => {
     if (state !== 'loading') return
     const id = setInterval(() => setElapsed(s => s + 1), 1000)
     return () => clearInterval(id)
   }, [state])
 
+  // iOS auto-redirect: when PDF URL is ready, navigate the current tab to the
+  // PDF via window.location.replace(). Using replace() (not href=) removes the
+  // preview page from history — pressing Back in Safari returns to the contract
+  // page, not back to this page (which would redirect again, creating a loop).
+  //
+  // This preserves the user-gesture flow (they tapped Preview) without needing
+  // window.open() (which would be blocked by Safari's popup blocker if called
+  // after an async operation).
   useEffect(() => {
-    setMobile(isMobileDevice())
-    fetchUrl()
-  }, [fetchUrl])
+    if (!ios || state !== 'ready' || !pdfUrl) return
+    // Small delay so the "กำลังเปิด PDF..." UI renders for one frame before
+    // navigation — gives visual feedback that something is happening.
+    const timer = setTimeout(() => window.location.replace(pdfUrl), 120)
+    return () => clearTimeout(timer)
+  }, [ios, state, pdfUrl])
 
+  // ── Loading state ────────────────────────────────────────────────────────────
   if (state === 'loading') {
     const takingLong = elapsed >= 20
     return (
@@ -78,6 +110,7 @@ export default function PreviewClient({ contractId, docLabel }: Props) {
     )
   }
 
+  // ── Error state ──────────────────────────────────────────────────────────────
   if (state === 'error') {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-gray-900 px-6 text-center">
@@ -99,16 +132,33 @@ export default function PreviewClient({ contractId, docLabel }: Props) {
 
   if (!pdfUrl) return null
 
-  // Mobile: iframe PDF is unreliable on iOS Safari and some Android browsers.
-  // Show action buttons instead of trying to embed the PDF.
-  if (mobile) {
+  // ── iOS: auto-redirect is in progress (useEffect above fires after render) ───
+  // Show a transitional spinner. Includes a fallback tap link in case the
+  // automatic navigation is somehow blocked.
+  if (ios) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-gray-900">
+        <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+        <p className="text-white/70 text-sm font-medium">กำลังเปิด PDF...</p>
+        {/* Fallback: if auto-redirect is somehow blocked, give user a tap target */}
+        <a
+          href={pdfUrl}
+          className="text-white/40 text-xs underline mt-3"
+        >
+          แตะที่นี่หากไม่เปิดอัตโนมัติ
+        </a>
+      </div>
+    )
+  }
+
+  // ── Android / other mobile: show action buttons ───────────────────────────────
+  // Android Chrome supports iframe PDFs but other Android browsers may not.
+  // Showing buttons is the safest cross-browser choice.
+  if (androidMobile) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-gray-900 px-8 text-center">
         <p className="text-5xl">📄</p>
         <p className="text-white font-semibold text-base mt-2">{docLabel}</p>
-        <p className="text-white/50 text-sm mt-1">
-          เบราว์เซอร์มือถือไม่รองรับการแสดง PDF แบบฝัง
-        </p>
         <div className="flex flex-col gap-3 w-full max-w-xs mt-4">
           <a
             href={pdfUrl}
@@ -116,7 +166,6 @@ export default function PreviewClient({ contractId, docLabel }: Props) {
             rel="noreferrer"
             className="flex items-center justify-center gap-2 px-5 py-3 bg-white text-gray-900 text-sm font-semibold rounded-xl hover:bg-gray-100 active:bg-gray-200 transition"
           >
-            <ExternalLink className="w-4 h-4" />
             เปิด PDF
           </a>
           <a
@@ -132,6 +181,7 @@ export default function PreviewClient({ contractId, docLabel }: Props) {
     )
   }
 
+  // ── Desktop: embed PDF in iframe ─────────────────────────────────────────────
   return (
     <iframe
       src={pdfUrl}
