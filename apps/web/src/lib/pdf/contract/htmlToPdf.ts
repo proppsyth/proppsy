@@ -19,14 +19,30 @@ const CHROMIUM_REMOTE_URL =
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _localBrowser: any | null = null
 
-function log(step: string, data?: Record<string, unknown>): void {
-  const ts = new Date().toISOString()
-  if (data) {
-    console.log(`[PDF ${ts}] ${step}`, JSON.stringify(data))
-  } else {
-    console.log(`[PDF ${ts}] ${step}`)
+// ─── Structured logging ───────────────────────────────────────────────────────
+// Each subsystem uses its own prefix so logs are grep-able in production:
+//   [PDF]      — rendering pipeline (HTML build, render pass, merge)
+//   [CHROMIUM] — browser launch and Chromium binary resolution
+//
+// Route-level prefixes live in route.ts:
+//   [CACHE]   — cache hits/misses
+//   [PREVIEW] — route handler operations
+//
+// Upload prefix lives in contracts/actions.ts:
+//   [UPLOAD]  — Supabase storage operations
+
+function makeLog(prefix: string) {
+  return (step: string, data?: Record<string, unknown>): void => {
+    const ts = new Date().toISOString()
+    const msg = `[${prefix} ${ts}] ${step}`
+    data ? console.log(msg, JSON.stringify(data)) : console.log(msg)
   }
 }
+
+const pdfLog = makeLog('PDF')
+const chromiumLog = makeLog('CHROMIUM')
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return Promise.race([
@@ -37,40 +53,53 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   ])
 }
 
+function memMb(): { rss: number; heap: number; ext: number } {
+  const m = process.memoryUsage()
+  return {
+    rss:  Math.round(m.rss  / 1024 / 1024),
+    heap: Math.round(m.heapUsed / 1024 / 1024),
+    ext:  Math.round(m.external / 1024 / 1024),
+  }
+}
+
+// ─── Chromium / browser ───────────────────────────────────────────────────────
+
 async function launchServerlessBrowser(): Promise<any> {
-  log('browser.serverless.start')
+  chromiumLog('launch.start', { env: 'serverless' })
   const chromiumMod = await import('@sparticuz/chromium-min')
   const chromium = chromiumMod.default
   const puppeteerCore = await import('puppeteer-core')
-  log('browser.chromium.resolve.start', { remoteUrl: CHROMIUM_REMOTE_URL })
+
+  chromiumLog('resolve.start', { remoteUrl: CHROMIUM_REMOTE_URL })
   const executablePath = await withTimeout(
     chromium.executablePath(CHROMIUM_REMOTE_URL),
     30000,
     'chromium.executablePath'
   )
-  log('browser.chromium.resolve.done', { executablePath })
+  chromiumLog('resolve.done', { executablePath })
+
   const browser = await puppeteerCore.launch({
     args: [...chromium.args, '--disable-dev-shm-usage'],
     defaultViewport: chromium.defaultViewport,
     executablePath,
     headless: chromium.headless,
   })
-  log('browser.serverless.launched')
+  chromiumLog('launch.done')
   return browser
 }
 
 async function launchLocalBrowser(): Promise<any> {
   if (_localBrowser && _localBrowser.connected) {
-    log('browser.local.reuse')
+    chromiumLog('reuse.local')
     return _localBrowser
   }
-  log('browser.local.launch')
+  chromiumLog('launch.local.start')
   const { default: puppeteer } = await import('puppeteer')
   _localBrowser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none'],
   })
-  log('browser.local.launched')
+  chromiumLog('launch.local.done')
   return _localBrowser
 }
 
@@ -84,7 +113,10 @@ async function createPdfDocument(): Promise<any> {
   return PDFDocument.create()
 }
 
-// ─── Font data (embed Noto Sans Thai as base64 for CSS @font-face) ───────────
+// ─── Font data (embed Noto Sans Thai as base64 @font-face) ───────────────────
+// Fonts are embedded as data URLs so Puppeteer never makes a network request
+// for them. External font loading (e.g. Google Fonts) is explicitly NOT used —
+// it can stall Puppeteer for seconds or minutes on a serverless cold start.
 
 function fontDataUrl(file: string): string | null {
   const p = path.join(process.cwd(), 'public', 'fonts', file)
@@ -96,28 +128,49 @@ function fontDataUrl(file: string): string | null {
 const FONT_REG_URL  = fontDataUrl('NotoSansThai-Regular.ttf')
 const FONT_BOLD_URL = fontDataUrl('NotoSansThai-Bold.ttf')
 
-// ─── Fetch external image and convert to base64 data URL ─────────────────────
-// Puppeteer's footerTemplate runs in an isolated context — external URLs often
-// fail. Inline images as data URLs.
+if (!FONT_REG_URL || !FONT_BOLD_URL) {
+  console.warn('[PDF] WARNING: NotoSansThai fonts not found in public/fonts/ — Thai text will render with fallback fonts. Expected: NotoSansThai-Regular.ttf, NotoSansThai-Bold.ttf')
+}
+
+// ─── Signature image inlining ─────────────────────────────────────────────────
+// Puppeteer's header/footer templates run in an isolated context. External URLs
+// often fail silently or stall. We convert all signature image URLs to base64
+// data URLs here — before the HTML is given to Puppeteer.
+//
+// IMPORTANT: If inlining fails, we set signatureUrl to null (no image).
+// We must NOT fall back to the original external URL — that would let a broken
+// or slow Supabase signed URL block Chromium's render loop.
 
 async function urlToDataUrl(url: string): Promise<string | null> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 5000) // 5s max per image
   try {
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: controller.signal })
     if (!res.ok) return null
     const contentType = res.headers.get('content-type') ?? 'image/png'
-    const arrayBuffer = await res.arrayBuffer()
-    const base64 = Buffer.from(arrayBuffer).toString('base64')
-    return `data:${contentType};base64,${base64}`
+    const buf = Buffer.from(await res.arrayBuffer())
+    return `data:${contentType};base64,${buf.toString('base64')}`
   } catch {
     return null
+  } finally {
+    clearTimeout(timer)
   }
 }
 
 async function inlineSignerImages(signers: PdfSigner[]): Promise<PdfSigner[]> {
   return Promise.all(signers.map(async sig => {
-    if (!sig.signatureUrl || sig.signatureUrl.startsWith('data:')) return sig
+    if (!sig.signatureUrl) return sig
+    if (sig.signatureUrl.startsWith('data:')) return sig
+    pdfLog('sig.inline.start', { label: sig.label, url: sig.signatureUrl.substring(0, 60) })
     const dataUrl = await urlToDataUrl(sig.signatureUrl)
-    return { ...sig, signatureUrl: dataUrl ?? sig.signatureUrl }
+    if (!dataUrl) {
+      // Inlining failed — drop the image rather than passing the external URL
+      // to Puppeteer's footer context where it would trigger a network stall.
+      pdfLog('sig.inline.failed', { label: sig.label })
+      return { ...sig, signatureUrl: null }
+    }
+    pdfLog('sig.inline.done', { label: sig.label })
+    return { ...sig, signatureUrl: dataUrl }
   }))
 }
 
@@ -375,15 +428,34 @@ async function renderPdf(
   margin: typeof PDF_MARGIN,
   pageRanges?: string,
 ): Promise<Buffer> {
-  log('renderPdf.start', { pageRanges: pageRanges ?? 'all' })
+  pdfLog('renderPdf.start', { pageRanges: pageRanges ?? 'all' })
   const page = await browser.newPage()
+
+  // Block all external HTTP(S) requests — every resource in our HTML is either
+  // a data URL (fonts, signature images) or inline CSS. If anything external
+  // slips in (broken data URL, CDN image in template body), abort it immediately
+  // rather than letting Chromium stall waiting for a network response.
+  await page.setRequestInterception(true)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  page.on('request', (req: any) => {
+    const reqUrl = req.url() as string
+    const resType = req.resourceType() as string
+    if (resType === 'document' || reqUrl.startsWith('data:') || reqUrl.startsWith('about:')) {
+      req.continue()
+    } else {
+      pdfLog('renderPdf.request.blocked', { type: resType, url: reqUrl.substring(0, 80) })
+      req.abort('blockedbyclient')
+    }
+  })
+
   try {
     await withTimeout(
       page.setContent(html, { waitUntil: 'load' }),
       30000,
       'page.setContent'
     )
-    log('renderPdf.setContent.done')
+    pdfLog('renderPdf.setContent.done')
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const buf: any = await withTimeout(
       page.pdf({
@@ -398,15 +470,15 @@ async function renderPdf(
       40000,
       'page.pdf'
     )
-    log('renderPdf.done', { bytes: (buf as Buffer).length })
+    pdfLog('renderPdf.done', { bytes: (buf as Buffer).length })
     return Buffer.from(buf as Uint8Array)
   } finally {
-    await page.close().catch((e: Error) => log('renderPdf.page.close.error', { error: e.message }))
+    await page.close().catch((e: Error) => pdfLog('renderPdf.page.close.error', { error: e.message }))
   }
 }
 
 export async function htmlToPdfBuffer(opts: RenderOptions): Promise<Buffer> {
-  log('htmlToPdfBuffer.start', { contractId: opts.contractId, serverless: IS_SERVERLESS })
+  pdfLog('start', { contractId: opts.contractId, serverless: IS_SERVERLESS })
 
   const signersInlined = await inlineSignerImages(opts.signers)
   opts = { ...opts, signers: signersInlined }
@@ -416,65 +488,85 @@ export async function htmlToPdfBuffer(opts: RenderOptions): Promise<Buffer> {
   const footerWithMini    = buildFooterTemplate(opts)
   const footerWithoutMini = buildFooterTemplate({ ...opts, features: { ...opts.features, miniSignatures: false } })
 
+  // Log HTML size — very large HTML (>500 KB) can noticeably slow Chromium.
+  const htmlBytes = Buffer.byteLength(html, 'utf8')
+  pdfLog('html.size', { bytes: htmlBytes, kb: Math.round(htmlBytes / 1024) })
+  if (htmlBytes > 500 * 1024) {
+    pdfLog('html.size.warning', { kb: Math.round(htmlBytes / 1024), msg: 'Large HTML may slow render' })
+  }
+
+  const memBefore = memMb()
+  pdfLog('memory.before', memBefore)
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let browser: any
   const isOwned = IS_SERVERLESS
 
+  let result: Buffer
   try {
     browser = IS_SERVERLESS
       ? await launchServerlessBrowser()
       : await launchLocalBrowser()
 
     if (!opts.features.miniSignatures || opts.signers.length === 0) {
-      log('htmlToPdfBuffer.singlePass')
-      return await renderPdf(browser, html, headerTpl, footerWithMini, PDF_MARGIN)
+      pdfLog('singlePass')
+      result = await renderPdf(browser, html, headerTpl, footerWithMini, PDF_MARGIN)
+    } else {
+      // Two-pass strategy — hide mini-sigs on last page only:
+      //   Pass 1: full PDF with mini-sigs footer → keep pages [1..N-1]
+      //   Pass 2: same HTML with no-mini footer  → keep only page N
+      //   Merge: [1..N-1] from pass 1 + [N] from pass 2
+      pdfLog('twoPass.pass1')
+      const fullPdf = await renderPdf(browser, html, headerTpl, footerWithMini, PDF_MARGIN)
+      const fullDoc = await loadPdfDocument(fullPdf)
+      const totalPages = fullDoc.getPageCount()
+      pdfLog('twoPass.pass1.done', { totalPages })
+
+      if (totalPages <= 1) {
+        pdfLog('twoPass.singlePage')
+        result = await renderPdf(browser, html, headerTpl, footerWithoutMini, PDF_MARGIN)
+      } else {
+        pdfLog('twoPass.pass2')
+        const noMiniPdf = await renderPdf(browser, html, headerTpl, footerWithoutMini, PDF_MARGIN)
+        const noMiniDoc = await loadPdfDocument(noMiniPdf)
+        const noMiniPageCount = noMiniDoc.getPageCount()
+        pdfLog('twoPass.pass2.done', { noMiniPageCount })
+
+        if (noMiniPageCount !== totalPages) {
+          pdfLog('twoPass.pageCountMismatch', { totalPages, noMiniPageCount })
+          result = fullPdf
+        } else {
+          const merged = await createPdfDocument()
+          const firstPages = await merged.copyPages(
+            fullDoc,
+            Array.from({ length: totalPages - 1 }, (_, i) => i),
+          )
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          firstPages.forEach((p: any) => merged.addPage(p))
+          const [lastPage] = await merged.copyPages(noMiniDoc, [totalPages - 1])
+          merged.addPage(lastPage)
+          const mergedBytes = await merged.save()
+          pdfLog('twoPass.merge.done', { pages: totalPages })
+          result = Buffer.from(mergedBytes)
+        }
+      }
     }
-
-    // Two-pass strategy — hide mini-sigs on last page only:
-    //   Pass 1: full PDF with mini-sigs footer → keep pages [1..N-1]
-    //   Pass 2: same HTML with no-mini footer  → keep only page N
-    //   Merge: [1..N-1] from pass 1 + [N] from pass 2
-    log('htmlToPdfBuffer.twoPass.pass1')
-    const fullPdf = await renderPdf(browser, html, headerTpl, footerWithMini, PDF_MARGIN)
-    const fullDoc = await loadPdfDocument(fullPdf)
-    const totalPages = fullDoc.getPageCount()
-    log('htmlToPdfBuffer.twoPass.pass1.done', { totalPages })
-
-    if (totalPages <= 1) {
-      log('htmlToPdfBuffer.twoPass.singlePage')
-      return await renderPdf(browser, html, headerTpl, footerWithoutMini, PDF_MARGIN)
-    }
-
-    log('htmlToPdfBuffer.twoPass.pass2')
-    const noMiniPdf = await renderPdf(browser, html, headerTpl, footerWithoutMini, PDF_MARGIN)
-    const noMiniDoc = await loadPdfDocument(noMiniPdf)
-    const noMiniPageCount = noMiniDoc.getPageCount()
-    log('htmlToPdfBuffer.twoPass.pass2.done', { noMiniPageCount })
-
-    if (noMiniPageCount !== totalPages) {
-      log('htmlToPdfBuffer.twoPass.pageCountMismatch', { totalPages, noMiniPageCount })
-      return fullPdf
-    }
-
-    const merged = await createPdfDocument()
-    const firstPages = await merged.copyPages(
-      fullDoc,
-      Array.from({ length: totalPages - 1 }, (_, i) => i),
-    )
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    firstPages.forEach((p: any) => merged.addPage(p))
-    const [lastPage] = await merged.copyPages(noMiniDoc, [totalPages - 1])
-    merged.addPage(lastPage)
-
-    const mergedBytes = await merged.save()
-    log('htmlToPdfBuffer.merge.done', { pages: totalPages })
-    return Buffer.from(mergedBytes)
   } finally {
     if (isOwned && browser) {
-      log('browser.serverless.close')
-      await browser.close().catch((e: Error) => log('browser.close.error', { error: e.message }))
+      chromiumLog('close.serverless')
+      await browser.close().catch((e: Error) => chromiumLog('close.error', { error: e.message }))
     }
   }
+
+  const memAfter = memMb()
+  pdfLog('memory.after', memAfter)
+  pdfLog('memory.delta', {
+    rss:  memAfter.rss  - memBefore.rss,
+    heap: memAfter.heap - memBefore.heap,
+  })
+  pdfLog('done', { contractId: opts.contractId, bytes: result!.length })
+
+  return result!
 }
 
 export async function closePdfBrowser(): Promise<void> {

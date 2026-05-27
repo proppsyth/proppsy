@@ -894,6 +894,43 @@ export async function getContractPreviewHtml(
   }
 }
 
+// ─── PDF upload helper ─────────────────────────────────────────
+// Uploads a PDF buffer to Supabase storage with one automatic retry on failure.
+// Logs duration and each attempt with [UPLOAD] prefix.
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function uploadPdfToStorage(
+  supabase: any,
+  userId: string,
+  contractId: string,
+  buffer: Buffer,
+): Promise<{ url: string } | { error: string }> {
+  const ts = Date.now()
+  const storagePath = `${userId}/${contractId}-${ts}.pdf`
+  console.log(`[UPLOAD ${new Date().toISOString()}] start`, JSON.stringify({ contractId, bytes: buffer.length, path: storagePath }))
+  const t0 = Date.now()
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    if (attempt > 1) {
+      await new Promise(r => setTimeout(r, 2000))
+      console.log(`[UPLOAD ${new Date().toISOString()}] retry`, JSON.stringify({ attempt, contractId }))
+    }
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('documents')
+      .upload(storagePath, buffer, { contentType: 'application/pdf', upsert: false })
+    if (!uploadError && uploadData) {
+      const durationMs = Date.now() - t0
+      console.log(`[UPLOAD ${new Date().toISOString()}] done`, JSON.stringify({ attempt, durationMs, path: storagePath }))
+      const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(storagePath)
+      return { url: publicUrl }
+    }
+    const errMsg = uploadError?.message ?? 'unknown'
+    console.error(`[UPLOAD ${new Date().toISOString()}] attempt.failed`, JSON.stringify({ attempt, error: errMsg }))
+  }
+
+  return { error: 'อัปโหลด PDF ไม่สำเร็จ กรุณาลองใหม่' }
+}
+
 // ─── Generate PDF ─────────────────────────────────────────────
 
 export async function generateContractPdf(
@@ -997,18 +1034,10 @@ export async function generateContractPdf(
         customerSignatureUrl: (contract.customer as { signature_url?: string | null } | null)?.signature_url ?? null,
       })
 
-      // Use same storage bucket + URL strategy as the main dispatch below
-      const ts = Date.now()
-      const storagePath = `${user.id}/${contract.id}-${ts}.pdf`
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(storagePath, buffer, { contentType: 'application/pdf', upsert: false })
-      if (uploadError || !uploadData) {
-        return { error: 'อัปโหลด PDF ไม่สำเร็จ: ' + uploadError?.message }
-      }
-      const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(storagePath)
-      await supabase.from('contracts').update({ pdf_url: publicUrl }).eq('id', contractId)
-      return { url: publicUrl }
+      const uploadResult = await uploadPdfToStorage(supabase, user.id, contract.id, buffer)
+      if ('error' in uploadResult) return uploadResult
+      await supabase.from('contracts').update({ pdf_url: uploadResult.url }).eq('id', contractId)
+      return { url: uploadResult.url }
     }
 
     const templateSlugForPdf = (contract as { template_slug?: string | null }).template_slug
@@ -1126,23 +1155,12 @@ export async function generateContractPdf(
       buffer = await renderToBuffer(element as any)
     }
 
-    const ts = Date.now()
-    const path = `${user.id}/${contractId}-${ts}.pdf`
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('documents')
-      .upload(path, buffer, { contentType: 'application/pdf', upsert: false })
-
-    if (uploadError || !uploadData) {
-      return { error: 'อัปโหลด PDF ไม่สำเร็จ: ' + uploadError?.message }
-    }
-
-    const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
-
-    await supabase.from('contracts').update({ pdf_url: publicUrl }).eq('id', contractId)
-
-    return { url: publicUrl }
+    const mainUpload = await uploadPdfToStorage(supabase, user.id, contractId, buffer)
+    if ('error' in mainUpload) return mainUpload
+    await supabase.from('contracts').update({ pdf_url: mainUpload.url }).eq('id', contractId)
+    return { url: mainUpload.url }
   } catch (err) {
-    console.error('PDF generation error:', err)
+    console.error('[PDF] generateContractPdf error:', err)
     return { error: 'สร้าง PDF ไม่สำเร็จ กรุณาลองใหม่' }
   }
 }

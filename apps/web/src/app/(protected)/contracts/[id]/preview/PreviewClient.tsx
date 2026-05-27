@@ -14,13 +14,15 @@ function isMobileDevice(): boolean {
 }
 
 export default function PreviewClient({ contractId, docLabel }: Props) {
-  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [state, setState]     = useState<'loading' | 'ready' | 'error'>('loading')
+  const [pdfUrl, setPdfUrl]   = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const [mobile, setMobile] = useState(false)
+  const [mobile, setMobile]   = useState(false)
+  const [elapsed, setElapsed] = useState(0)
 
   const fetchUrl = useCallback(async () => {
     setState('loading')
+    setElapsed(0)
     setErrorMsg(null)
     try {
       const res = await fetch(`/api/contracts/${contractId}/preview-pdf?mode=json`, {
@@ -40,17 +42,38 @@ export default function PreviewClient({ contractId, docLabel }: Props) {
     }
   }, [contractId])
 
+  // Tick elapsed seconds while loading so the user can see progress
+  useEffect(() => {
+    if (state !== 'loading') return
+    const id = setInterval(() => setElapsed(s => s + 1), 1000)
+    return () => clearInterval(id)
+  }, [state])
+
   useEffect(() => {
     setMobile(isMobileDevice())
     fetchUrl()
   }, [fetchUrl])
 
   if (state === 'loading') {
+    const takingLong = elapsed >= 20
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-gray-900">
         <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" />
         <p className="text-white/70 text-sm font-medium">กำลังสร้าง PDF...</p>
-        <p className="text-white/40 text-xs">อาจใช้เวลา 20–45 วินาที</p>
+        {!takingLong ? (
+          <p className="text-white/40 text-xs">
+            อาจใช้เวลา 20–45 วินาที{elapsed > 0 ? ` (${elapsed}s)` : ''}
+          </p>
+        ) : (
+          <div className="text-center">
+            <p className="text-amber-400/80 text-xs font-medium">
+              ใช้เวลานานกว่าปกติ ({elapsed}s)
+            </p>
+            <p className="text-white/40 text-xs mt-1">
+              กำลังโหลด Chromium ครั้งแรก — รอสักครู่...
+            </p>
+          </div>
+        )}
       </div>
     )
   }

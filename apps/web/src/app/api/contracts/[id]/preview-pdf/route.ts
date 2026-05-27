@@ -9,9 +9,11 @@
 // ?mode=json — returns { url: string } instead of a 302 redirect.
 //   Used by PreviewClient (client component) to display a loading state.
 //
-// Caching — non-finalized PDFs are cached in-memory for 5 minutes keyed by
-//   contractId + updated_at. Avoids regenerating identical PDFs on re-visits
-//   within the same warm serverless instance.
+// Cache layers (fastest → slowest):
+//   1. Finalized PDF   → contracts.finalized_pdf_url (immutable, always serve)
+//   2. In-memory cache → Map keyed by contractId:updatedAt (5-min TTL, single instance)
+//   3. DB cache        → contracts.pdf_url if contract last updated >30s ago
+//   4. Generate        → call generateContractPdf, 55s timeout
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
@@ -20,8 +22,24 @@ import { generateContractPdf } from '@/app/(protected)/contracts/actions'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-// In-memory cache — survives warm serverless instance restarts (~5 min).
-// Key = `${contractId}:${updatedAt}`
+// ─── Structured logging ───────────────────────────────────────────────────────
+
+function makeLog(prefix: string) {
+  return (step: string, data?: Record<string, unknown>): void => {
+    const ts = new Date().toISOString()
+    const msg = `[${prefix} ${ts}] ${step}`
+    data ? console.log(msg, JSON.stringify(data)) : console.log(msg)
+  }
+}
+
+const previewLog = makeLog('PREVIEW')
+const cacheLog   = makeLog('CACHE')
+
+// ─── In-memory cache ──────────────────────────────────────────────────────────
+// Survives within a warm serverless instance (~5 min lifespan).
+// Key = `${contractId}:${updatedAt}` — naturally invalidated when the contract
+// is modified (updated_at changes → different key).
+
 const pdfCache = new Map<string, { url: string; expiresAt: number }>()
 
 function getCachedUrl(contractId: string, updatedAt: string): string | null {
@@ -38,18 +56,19 @@ function getCachedUrl(contractId: string, updatedAt: string): string | null {
 function setCachedUrl(contractId: string, updatedAt: string, url: string): void {
   const key = `${contractId}:${updatedAt}`
   pdfCache.set(key, { url, expiresAt: Date.now() + 5 * 60 * 1000 })
-  // Prevent unbounded growth in long-lived processes
   if (pdfCache.size > 200) {
     const oldest = pdfCache.keys().next().value
     if (oldest) pdfCache.delete(oldest)
   }
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`PDF generation timed out after ${ms / 1000}s`)), ms)
+      setTimeout(() => reject(new Error(`สร้าง PDF หมดเวลา (${ms / 1000}s) — กรุณาลองใหม่`)), ms)
     ),
   ])
 }
@@ -58,67 +77,87 @@ export async function GET(
   req: Request,
   ctx: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  const t0 = Date.now()
   const { id } = await ctx.params
   const url = new URL(req.url)
   const modeJson = url.searchParams.get('mode') === 'json'
 
-  const respond = (payload: { url: string }) =>
-    modeJson
+  previewLog('request.start', { contractId: id, modeJson })
+
+  const respond = (payload: { url: string }) => {
+    previewLog('request.done', { contractId: id, ms: Date.now() - t0 })
+    return modeJson
       ? NextResponse.json(payload)
       : NextResponse.redirect(payload.url, { status: 302 })
+  }
 
-  const respondError = (error: string, status: number) =>
-    NextResponse.json({ error }, { status })
+  const respondError = (error: string, status: number) => {
+    previewLog('request.error', { contractId: id, error, status, ms: Date.now() - t0 })
+    return NextResponse.json({ error }, { status })
+  }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return respondError('unauthorized', 401)
-  }
+  if (!user) return respondError('unauthorized', 401)
 
   const { data: contract } = await supabase
     .from('contracts')
-    .select('id, is_finalized, finalized_pdf_url, updated_at')
+    .select('id, is_finalized, finalized_pdf_url, pdf_url, updated_at')
     .eq('id', id)
     .eq('agent_uid', user.id)
     .single()
 
-  if (!contract) {
-    return respondError('not found', 404)
-  }
+  if (!contract) return respondError('not found', 404)
 
   const c = contract as typeof contract & {
     finalized_pdf_url?: string | null
-    updated_at?: string | null
+    pdf_url?:           string | null
+    updated_at?:        string | null
   }
 
-  // Finalized contracts: serve locked PDF directly, never regenerate
+  // ── Layer 1: Finalized PDF (immutable) ──────────────────────────────────────
   if (c.is_finalized && c.finalized_pdf_url) {
-    console.log(`[PDF] Finalized contract ${id}, serving cached URL`)
+    cacheLog('finalized.hit', { contractId: id })
     return respond({ url: c.finalized_pdf_url })
   }
 
-  // Check in-memory cache keyed by contract version
   const updatedAt = c.updated_at ?? ''
+
+  // ── Layer 2: In-memory cache (same instance) ─────────────────────────────────
   const cachedUrl = getCachedUrl(id, updatedAt)
   if (cachedUrl) {
-    console.log(`[PDF] Cache hit for ${id}`)
+    cacheLog('memory.hit', { contractId: id })
     return respond({ url: cachedUrl })
   }
 
-  // Generate PDF with 55s hard timeout (maxDuration = 60, leave 5s buffer)
-  console.log(`[PDF] Generating PDF for ${id}`)
+  // ── Layer 3: DB cache (cross-instance) ───────────────────────────────────────
+  // Serve contracts.pdf_url directly if:
+  //   a) it is set (was generated before), AND
+  //   b) the contract was last updated more than 30s ago
+  //      (if < 30s, the agent may have just edited the contract so we regenerate)
+  if (c.pdf_url && updatedAt) {
+    const ageMs = Date.now() - new Date(updatedAt).getTime()
+    if (ageMs > 30_000) {
+      cacheLog('db.hit', { contractId: id, ageMs })
+      // Warm the in-memory cache so the next request on this instance is instant
+      setCachedUrl(id, updatedAt, c.pdf_url)
+      return respond({ url: c.pdf_url })
+    }
+    cacheLog('db.skip', { contractId: id, ageMs, reason: 'contract updated recently, regenerating' })
+  }
+
+  // ── Layer 4: Generate ────────────────────────────────────────────────────────
+  previewLog('generate.start', { contractId: id })
   const result = await withTimeout(generateContractPdf(id), 55000).catch((err: Error) => ({
     error: err.message,
     url: undefined as string | undefined,
   }))
 
   if (result.error || !result.url) {
-    console.error(`[PDF] Generation failed for ${id}:`, result.error)
     return respondError(result.error ?? 'PDF generation failed', 500)
   }
 
   setCachedUrl(id, updatedAt, result.url)
-  console.log(`[PDF] Done for ${id}, url cached`)
+  cacheLog('memory.set', { contractId: id })
   return respond({ url: result.url })
 }
