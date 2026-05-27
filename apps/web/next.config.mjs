@@ -11,6 +11,8 @@ const nextConfig = {
     'puppeteer',
     'puppeteer-core',
     '@puppeteer/browsers',
+    '@sparticuz/chromium-min',
+    '@sparticuz/chromium',
     'pdf-lib',
   ],
   experimental: {

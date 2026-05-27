@@ -1,27 +1,80 @@
 // HTML → PDF via Puppeteer (Chromium-native Thai text rendering)
+//
+// Production/Vercel: uses @sparticuz/chromium-min + puppeteer-core
+//   → Chromium is NOT bundled; it's downloaded from GitHub to /tmp on cold start.
+//   → Fresh browser per call (serverless functions can't keep a persistent process).
+//
+// Local dev: uses full puppeteer with its bundled Chromium (singleton).
 
 import path from 'path'
 import fs from 'fs'
 
-// Use `unknown` here to avoid pulling puppeteer types into module graph at
-// import time (Next.js 16 + Turbopack RSC streaming chokes on it otherwise).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _browser: any | null = null
+const IS_SERVERLESS = !!process.env.VERCEL
 
-async function getBrowser(): Promise<any> {
-  if (_browser && _browser.connected) return _browser
-  // Dynamic import so Turbopack/RSC don't try to bundle puppeteer's heavy
-  // graph (native bindings, fs paths) into the server component chunk.
+// Sparticuz chromium binary download URL — fetched to /tmp on first cold start.
+// Must match the version of @sparticuz/chromium-min installed.
+const CHROMIUM_REMOTE_URL =
+  'https://github.com/Sparticuz/chromium/releases/download/v133.0.0/chromium-v133.0.0-pack.tar'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _localBrowser: any | null = null
+
+function log(step: string, data?: Record<string, unknown>): void {
+  const ts = new Date().toISOString()
+  if (data) {
+    console.log(`[PDF ${ts}] ${step}`, JSON.stringify(data))
+  } else {
+    console.log(`[PDF ${ts}] ${step}`)
+  }
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout: ${label} after ${ms}ms`)), ms)
+    ),
+  ])
+}
+
+async function launchServerlessBrowser(): Promise<any> {
+  log('browser.serverless.start')
+  const chromiumMod = await import('@sparticuz/chromium-min')
+  const chromium = chromiumMod.default
+  const puppeteerCore = await import('puppeteer-core')
+  log('browser.chromium.resolve.start', { remoteUrl: CHROMIUM_REMOTE_URL })
+  const executablePath = await withTimeout(
+    chromium.executablePath(CHROMIUM_REMOTE_URL),
+    30000,
+    'chromium.executablePath'
+  )
+  log('browser.chromium.resolve.done', { executablePath })
+  const browser = await puppeteerCore.launch({
+    args: [...chromium.args, '--disable-dev-shm-usage'],
+    defaultViewport: chromium.defaultViewport,
+    executablePath,
+    headless: chromium.headless,
+  })
+  log('browser.serverless.launched')
+  return browser
+}
+
+async function launchLocalBrowser(): Promise<any> {
+  if (_localBrowser && _localBrowser.connected) {
+    log('browser.local.reuse')
+    return _localBrowser
+  }
+  log('browser.local.launch')
   const { default: puppeteer } = await import('puppeteer')
-  _browser = await puppeteer.launch({
+  _localBrowser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none'],
   })
-  return _browser
+  log('browser.local.launched')
+  return _localBrowser
 }
 
 async function loadPdfDocument(buf: Buffer): Promise<any> {
-  // Dynamic import for the same reason
   const { PDFDocument } = await import('pdf-lib')
   return PDFDocument.load(buf)
 }
@@ -31,7 +84,7 @@ async function createPdfDocument(): Promise<any> {
   return PDFDocument.create()
 }
 
-// ─── Font data (embed Noto Sans Thai as base64 for CSS @font-face) ─
+// ─── Font data (embed Noto Sans Thai as base64 for CSS @font-face) ───────────
 
 function fontDataUrl(file: string): string | null {
   const p = path.join(process.cwd(), 'public', 'fonts', file)
@@ -43,9 +96,9 @@ function fontDataUrl(file: string): string | null {
 const FONT_REG_URL  = fontDataUrl('NotoSansThai-Regular.ttf')
 const FONT_BOLD_URL = fontDataUrl('NotoSansThai-Bold.ttf')
 
-// ─── Fetch external image and convert to base64 data URL ─────────
-// Puppeteer's footerTemplate runs in an isolated context with restricted
-// resource loading — external URLs often fail. We inline images as data URLs.
+// ─── Fetch external image and convert to base64 data URL ─────────────────────
+// Puppeteer's footerTemplate runs in an isolated context — external URLs often
+// fail. Inline images as data URLs.
 
 async function urlToDataUrl(url: string): Promise<string | null> {
   try {
@@ -68,7 +121,7 @@ async function inlineSignerImages(signers: PdfSigner[]): Promise<PdfSigner[]> {
   }))
 }
 
-// ─── Public API ────────────────────────────────────────────────────
+// ─── Public API ───────────────────────────────────────────────────────────────
 
 export interface PdfSigner {
   label:         string
@@ -108,7 +161,6 @@ function buildFullHtml(opts: RenderOptions): string {
     }
   ` : ''
 
-  // Final-sig block (rendered at end of body, last page)
   const finalSigHtml = features.finalSignature && signers.length > 0 ? `
     <div class="final-sig">
       ${signers.map(sig => `
@@ -140,7 +192,6 @@ function buildFullHtml(opts: RenderOptions): string {
     color: #1A1A1A;
     line-height: 1.7;
   }
-  /* Header rendered via Puppeteer's headerTemplate; body has its own padding via @page margin */
 
   h1 {
     font-size: 13pt; font-weight: 700;
@@ -181,7 +232,6 @@ function buildFullHtml(opts: RenderOptions): string {
   }
   strong { font-weight: 700; }
 
-  /* Final signature block (last page) */
   .final-sig {
     margin-top: 40pt;
     padding-top: 16pt;
@@ -230,7 +280,6 @@ function escapeAttr(s: string): string {
 }
 
 function buildHeaderTemplate(opts: RenderOptions): string {
-  // Puppeteer requires inline styles in header/footer templates.
   const { docTypeLabel, contractId, statusText, agentName, agentPhone } = opts
   const fontStack = "'Noto Sans Thai', 'Tahoma', sans-serif"
   return `
@@ -262,8 +311,6 @@ function buildHeaderTemplate(opts: RenderOptions): string {
 }
 
 function buildFooterTemplate(opts: RenderOptions): string {
-  // Puppeteer provides page numbers via <span class="pageNumber|totalPages">.
-  // Mini-sigs on every page EXCEPT last: handled via CSS using totalPages comparison.
   const { signers, features } = opts
   const fontStack = "'Noto Sans Thai', 'Tahoma', sans-serif"
   const miniSigBlock = features.miniSignatures && signers.length > 0 ? `
@@ -312,10 +359,6 @@ function buildFooterTemplate(opts: RenderOptions): string {
   `
 }
 
-// PDF margins (Puppeteer uses mm, not pt).
-// CRITICAL: must be identical for both passes (with-mini and without-mini),
-// otherwise the body content area differs → page count differs → pageRanges
-// for the second render points beyond the actual page count.
 const PDF_MARGIN = {
   top:    '32mm',
   bottom: '42mm',
@@ -323,94 +366,120 @@ const PDF_MARGIN = {
   right:  '18mm',
 }
 
-/** Render full HTML to PDF buffer with given header/footer templates */
 async function renderPdf(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  browser: any,
   html: string,
   headerTemplate: string,
   footerTemplate: string,
   margin: typeof PDF_MARGIN,
   pageRanges?: string,
 ): Promise<Buffer> {
-  const browser = await getBrowser()
+  log('renderPdf.start', { pageRanges: pageRanges ?? 'all' })
   const page = await browser.newPage()
   try {
-    await page.setContent(html, { waitUntil: 'load' })
-    const buf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      displayHeaderFooter: true,
-      headerTemplate,
-      footerTemplate,
-      margin,
-      ...(pageRanges ? { pageRanges } : {}),
-    })
-    return Buffer.from(buf)
+    await withTimeout(
+      page.setContent(html, { waitUntil: 'load' }),
+      30000,
+      'page.setContent'
+    )
+    log('renderPdf.setContent.done')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const buf: any = await withTimeout(
+      page.pdf({
+        format: 'A4',
+        printBackground: true,
+        displayHeaderFooter: true,
+        headerTemplate,
+        footerTemplate,
+        margin,
+        ...(pageRanges ? { pageRanges } : {}),
+      }),
+      40000,
+      'page.pdf'
+    )
+    log('renderPdf.done', { bytes: (buf as Buffer).length })
+    return Buffer.from(buf as Uint8Array)
   } finally {
-    await page.close()
+    await page.close().catch((e: Error) => log('renderPdf.page.close.error', { error: e.message }))
   }
 }
 
 export async function htmlToPdfBuffer(opts: RenderOptions): Promise<Buffer> {
-  // Inline signature images as base64 data URLs so Puppeteer's footerTemplate
-  // can render them (external URLs don't load in isolated footer context).
+  log('htmlToPdfBuffer.start', { contractId: opts.contractId, serverless: IS_SERVERLESS })
+
   const signersInlined = await inlineSignerImages(opts.signers)
   opts = { ...opts, signers: signersInlined }
 
-  const html         = buildFullHtml(opts)
-  const headerTpl    = buildHeaderTemplate(opts)
+  const html              = buildFullHtml(opts)
+  const headerTpl         = buildHeaderTemplate(opts)
   const footerWithMini    = buildFooterTemplate(opts)
   const footerWithoutMini = buildFooterTemplate({ ...opts, features: { ...opts.features, miniSignatures: false } })
 
-  // If mini-sigs are NOT enabled, just render once
-  if (!opts.features.miniSignatures || opts.signers.length === 0) {
-    return renderPdf(html, headerTpl, footerWithMini, PDF_MARGIN)
-  }
-
-  // Two-pass strategy to hide mini-sigs on LAST page only:
-  //   1) Render full PDF with mini-sigs footer → keep pages [1..N-1]
-  //   2) Render same PDF with footer-without-mini-sigs → keep only page N
-  //   3) Merge: [1..N-1] from #1 + [N] from #2
-  // Both renders MUST use identical margins → identical page count.
-  const fullPdf = await renderPdf(html, headerTpl, footerWithMini, PDF_MARGIN)
-  const fullDoc = await loadPdfDocument(fullPdf)
-  const totalPages = fullDoc.getPageCount()
-
-  if (totalPages <= 1) {
-    // Single page → render without mini-sigs
-    return renderPdf(html, headerTpl, footerWithoutMini, PDF_MARGIN)
-  }
-
-  // Second pass: full doc again, but with no-mini footer. Same margins → same N pages.
-  const noMiniPdf = await renderPdf(html, headerTpl, footerWithoutMini, PDF_MARGIN)
-  const noMiniDoc = await loadPdfDocument(noMiniPdf)
-  const noMiniPageCount = noMiniDoc.getPageCount()
-
-  // Defensive: if page counts diverge (shouldn't happen with same margins),
-  // fall back to single full render.
-  if (noMiniPageCount !== totalPages) {
-    return fullPdf
-  }
-
-  const merged = await createPdfDocument()
-  // Pages 0..N-2 from fullPdf (with mini-sigs)
-  const firstPages = await merged.copyPages(
-    fullDoc,
-    Array.from({ length: totalPages - 1 }, (_, i) => i),
-  )
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  firstPages.forEach((p: any) => merged.addPage(p))
-  // Last page from noMiniPdf (no mini-sigs)
-  const [lastPage] = await merged.copyPages(noMiniDoc, [totalPages - 1])
-  merged.addPage(lastPage)
+  let browser: any
+  const isOwned = IS_SERVERLESS
 
-  const mergedBytes = await merged.save()
-  return Buffer.from(mergedBytes)
+  try {
+    browser = IS_SERVERLESS
+      ? await launchServerlessBrowser()
+      : await launchLocalBrowser()
+
+    if (!opts.features.miniSignatures || opts.signers.length === 0) {
+      log('htmlToPdfBuffer.singlePass')
+      return await renderPdf(browser, html, headerTpl, footerWithMini, PDF_MARGIN)
+    }
+
+    // Two-pass strategy — hide mini-sigs on last page only:
+    //   Pass 1: full PDF with mini-sigs footer → keep pages [1..N-1]
+    //   Pass 2: same HTML with no-mini footer  → keep only page N
+    //   Merge: [1..N-1] from pass 1 + [N] from pass 2
+    log('htmlToPdfBuffer.twoPass.pass1')
+    const fullPdf = await renderPdf(browser, html, headerTpl, footerWithMini, PDF_MARGIN)
+    const fullDoc = await loadPdfDocument(fullPdf)
+    const totalPages = fullDoc.getPageCount()
+    log('htmlToPdfBuffer.twoPass.pass1.done', { totalPages })
+
+    if (totalPages <= 1) {
+      log('htmlToPdfBuffer.twoPass.singlePage')
+      return await renderPdf(browser, html, headerTpl, footerWithoutMini, PDF_MARGIN)
+    }
+
+    log('htmlToPdfBuffer.twoPass.pass2')
+    const noMiniPdf = await renderPdf(browser, html, headerTpl, footerWithoutMini, PDF_MARGIN)
+    const noMiniDoc = await loadPdfDocument(noMiniPdf)
+    const noMiniPageCount = noMiniDoc.getPageCount()
+    log('htmlToPdfBuffer.twoPass.pass2.done', { noMiniPageCount })
+
+    if (noMiniPageCount !== totalPages) {
+      log('htmlToPdfBuffer.twoPass.pageCountMismatch', { totalPages, noMiniPageCount })
+      return fullPdf
+    }
+
+    const merged = await createPdfDocument()
+    const firstPages = await merged.copyPages(
+      fullDoc,
+      Array.from({ length: totalPages - 1 }, (_, i) => i),
+    )
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    firstPages.forEach((p: any) => merged.addPage(p))
+    const [lastPage] = await merged.copyPages(noMiniDoc, [totalPages - 1])
+    merged.addPage(lastPage)
+
+    const mergedBytes = await merged.save()
+    log('htmlToPdfBuffer.merge.done', { pages: totalPages })
+    return Buffer.from(mergedBytes)
+  } finally {
+    if (isOwned && browser) {
+      log('browser.serverless.close')
+      await browser.close().catch((e: Error) => log('browser.close.error', { error: e.message }))
+    }
+  }
 }
 
-// Optional graceful shutdown hook
 export async function closePdfBrowser(): Promise<void> {
-  if (_browser) {
-    await _browser.close()
-    _browser = null
+  if (_localBrowser) {
+    await _localBrowser.close()
+    _localBrowser = null
   }
 }
