@@ -3,6 +3,7 @@
 
 import { parseTable as parseTableBlock } from './tableParser'
 import type { ColSpec as TableColSpec, ColAlign as TableColAlign } from './tableParser'
+import { sanitizeBlocks, sanitizeFeatures, validateDirectivePlacement } from './sanitize'
 
 // ─── Public types ──────────────────────────────────────────────────
 
@@ -160,6 +161,19 @@ export function parseTemplate(
   const deEscaped         = deEscape(mdContent)
   const substituted       = substituteVars(deEscaped, vars)
   const { features, cleaned } = extractDirectives(substituted)
-  const blocks            = parseBlocks(cleaned)
-  return { blocks, features }
+  let blocks: MdBlock[]
+  try {
+    blocks = parseBlocks(cleaned)
+  } catch (e) {
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.warn('[markdownParser] parseBlocks threw, falling back to empty body:', (e as Error).message)
+    }
+    blocks = []
+  }
+  // Defense in depth: sanitize every block + features before they ever reach
+  // the renderer. Malformed structures are downgraded, never propagated.
+  const safeBlocks   = validateDirectivePlacement(sanitizeBlocks(blocks))
+  const safeFeatures = sanitizeFeatures(features)
+  return { blocks: safeBlocks, features: safeFeatures }
 }
