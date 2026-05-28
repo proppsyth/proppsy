@@ -3,6 +3,7 @@
 
 import type { MdBlock, ColSpec } from './markdownParser'
 import { isSafeMode } from './sanitize'
+import { getBankLogoDataUrl } from './bankLogos'
 
 function safeWarn(...args: unknown[]): void {
   if (process.env.NODE_ENV === 'production' && !isSafeMode()) return
@@ -18,6 +19,24 @@ function renderBlock(block: MdBlock, blankCountRef: { n: number }): string {
   }
   if (block.type === 'break') {
     return `<div class="page-break"></div>`
+  }
+  if (block.type === 'line') {
+    return `<div class="hr-line"></div>`
+  }
+  if (block.type === 'divider') {
+    return `<div class="divider"></div>`
+  }
+  if (block.type === 'bankcard') {
+    const logoUrl = getBankLogoDataUrl(block.bankName)
+    const imgHtml = logoUrl
+      ? `<img src="${logoUrl}" style="max-width:54pt;max-height:54pt;object-fit:contain" />`
+      : `<span style="font-size:8pt;font-weight:700;color:#1B3B6F">${escapeHtml(block.bankName)}</span>`
+    const infoLines = [
+      block.bankName    ? `<div class="bankcard-bank">${escapeHtml(block.bankName)}</div>` : '',
+      block.accountName ? `<div class="bankcard-line">ชื่อบัญชี: ${escapeHtml(block.accountName)}</div>` : '',
+      block.accountNo   ? `<div class="bankcard-line">เลขบัญชี: ${escapeHtml(block.accountNo)}</div>` : '',
+    ].filter(Boolean).join('')
+    return `<div class="bankcard"><div class="bankcard-logo">${imgHtml}</div><div class="bankcard-info">${infoLines}</div></div>`
   }
   if (block.type === 'blank') {
     blankCountRef.n++
@@ -87,11 +106,9 @@ function escapeHtml(s: string): string {
     .replace(/'/g, '&#39;')
 }
 
-/** Convert **bold** markdown to <strong>, escape other HTML. */
-function inlineMd(text: unknown): string {
-  // Coerce non-string defensively — never throw on a stray null/number.
-  const s = typeof text === 'string' ? text : (text == null ? '' : String(text))
-  // Split by bold markers, escape each part, then wrap bold parts
+/** Process **bold** markers and escape HTML. Used by inlineMd after extracting
+ *  inline tags so those tags aren't escaped. */
+function processBoldAndEscape(s: string): string {
   const parts = s.split(/(\*\*[^*]+\*\*)/)
   return parts.map(p => {
     if (p.startsWith('**') && p.endsWith('**') && p.length >= 4) {
@@ -99,6 +116,42 @@ function inlineMd(text: unknown): string {
     }
     return escapeHtml(p)
   }).join('')
+}
+
+// Inline tag patterns (processed before HTML escaping so they can emit raw HTML):
+//   {size:N}text{/size}   — override font size, N clamped to 5–30 pt
+//   {banklogo:NAME}        — emit bank logo <img> from public/banks/; empty if not found
+const INLINE_RE = /\{size:(\d+(?:\.\d+)?)\}([\s\S]*?)\{\/size\}|\{banklogo:([^}]*)\}/g
+
+/** Convert inline markdown to HTML: bold, font-size overrides, bank logos. */
+function inlineMd(text: unknown): string {
+  const s = typeof text === 'string' ? text : (text == null ? '' : String(text))
+  let result = ''
+  let lastIndex = 0
+
+  // Reset regex state for reuse (module-level regex with /g flag)
+  INLINE_RE.lastIndex = 0
+  let m: RegExpExecArray | null
+  while ((m = INLINE_RE.exec(s)) !== null) {
+    result += processBoldAndEscape(s.slice(lastIndex, m.index))
+
+    if (m[1] !== undefined) {
+      // {size:N}text{/size}
+      const rawSize = parseFloat(m[1])
+      const sizeN = Number.isFinite(rawSize) ? Math.min(30, Math.max(5, rawSize)) : 9.5
+      result += `<span style="font-size:${sizeN}pt">${processBoldAndEscape(m[2] ?? '')}</span>`
+    } else if (m[3] !== undefined) {
+      // {banklogo:NAME} — if logo not found, emit nothing silently
+      const logoUrl = getBankLogoDataUrl(m[3])
+      if (logoUrl) {
+        result += `<img src="${logoUrl}" style="height:16pt;vertical-align:middle;display:inline-block" />`
+      }
+    }
+
+    lastIndex = m.index + m[0].length
+  }
+  result += processBoldAndEscape(s.slice(lastIndex))
+  return result
 }
 
 function alignClass(spec: ColSpec): string {

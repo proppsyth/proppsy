@@ -105,6 +105,16 @@ export function sanitizeBlock(block: unknown): MdBlock[] {
       return [{ type: 'blank' }]
     case 'break':
       return [{ type: 'break' }]
+    case 'line':
+      return [{ type: 'line' }]
+    case 'divider':
+      return [{ type: 'divider' }]
+    case 'bankcard': {
+      const bankName    = safeStr(b.bankName).trim()
+      const accountName = safeStr(b.accountName).trim()
+      const accountNo   = safeStr(b.accountNo).trim()
+      return [{ type: 'bankcard', bankName, accountName, accountNo }]
+    }
     case 'space': {
       const height = Math.max(0, safeNum(b.height, 0))
       return [{ type: 'space', height }]

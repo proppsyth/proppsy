@@ -17,6 +17,9 @@ export type MdBlock =
   | { type: 'blank' }
   | { type: 'space'; height: number }
   | { type: 'break' }
+  | { type: 'line' }
+  | { type: 'divider' }
+  | { type: 'bankcard'; bankName: string; accountName: string; accountNo: string }
   | { type: 'table'; rows: string[][]; cols: ColSpec[]; wide: boolean }
 
 /** Document-level features enabled by directives in the .md template */
@@ -103,6 +106,23 @@ function parseBlocks(md: string): MdBlock[] {
     }
     if (line.trim() === '{break}') {
       blocks.push({ type: 'break' }); i++; continue
+    }
+    if (line.trim() === '{line}') {
+      blocks.push({ type: 'line' }); i++; continue
+    }
+    if (line.trim() === '{divider}') {
+      blocks.push({ type: 'divider' }); i++; continue
+    }
+    const bankcardM = /^\{bankcard:([^}]*)\}$/.exec(line.trim())
+    if (bankcardM) {
+      const args = bankcardM[1]!.split('|')
+      blocks.push({
+        type:        'bankcard',
+        bankName:    (args[0] ?? '').trim(),
+        accountName: (args[1] ?? '').trim(),
+        accountNo:   (args[2] ?? '').trim(),
+      })
+      i++; continue
     }
 
     if (line.trimStart().startsWith('|')) {

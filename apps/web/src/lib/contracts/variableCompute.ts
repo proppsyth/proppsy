@@ -124,6 +124,11 @@ export function computeVariables(
     v['บัญชีธนาคารภาษาอังกฤษ']  = extra['บัญชีธนาคารภาษาอังกฤษ'] ?? owner.bank_name ?? '-'
     v['เลขที่บัญชี']             = owner.bank_account_no ?? agent?.bank_account_no ?? '-'
     v['เลขบัญชี']                = v['เลขที่บัญชี']
+    v['ชื่อบัญชีธนาคาร']         = owner.bank_account_name ?? '-'
+    // Auto-computed bank logo token — use <<bankLogo>> in templates to embed logo inline.
+    // Expands to {banklogo:BANKNAME} which inlineMd converts to <img>.
+    const _bankName = v['บัญชีธนาคาร']
+    v['bankLogo'] = (_bankName && _bankName !== '-') ? `{banklogo:${_bankName}}` : ''
   }
 
   // ─── Customer / Tenant ───────────────────────────────────────

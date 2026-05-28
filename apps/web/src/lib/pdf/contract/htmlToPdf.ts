@@ -249,34 +249,71 @@ function buildFullHtml(opts: RenderOptions): string {
   h1 {
     font-size: 13pt; font-weight: 700;
     color: #1B3B6F; text-align: center;
-    margin: 8pt 0 16pt 0;
+    margin: 6pt 0 12pt 0;
     letter-spacing: 0.5pt;
   }
   h2 {
     font-size: 10pt; font-weight: 700; color: #1B3B6F;
     padding: 2pt 0 4pt 0;
     border-bottom: 1.5pt solid #3B6CD4;
-    margin: 18pt 0 10pt 0;
+    margin: 14pt 0 8pt 0;
   }
   p.p, p.p-bold {
-    margin: 0 0 5pt 0;
+    margin: 0 0 4pt 0;
     text-align: left;
   }
   p.p-bold { font-weight: 700; }
-  .blank   { height: 6pt; }
+  .blank   { height: 4pt; }
   .space   { /* height set inline */ }
   .page-break { page-break-before: always; }
 
-  .table { display: block; margin: 0; }
+  /* Horizontal rule — thin separator line */
+  .hr-line {
+    border: none;
+    border-bottom: 0.8pt solid #C8D6E8;
+    margin: 6pt 0;
+  }
+  /* Section divider — prominent line with vertical rhythm */
+  .divider {
+    border: none;
+    border-bottom: 2pt solid #3B6CD4;
+    margin: 14pt 0 10pt 0;
+  }
+
+  .table { display: block; margin: 2pt 0 6pt 0; }
   .row {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
+    border-bottom: 0.4pt solid #ECF0F8;
     page-break-inside: avoid;
   }
+  .row:last-child { border-bottom: none; }
   .cell {
-    padding: 2pt 4pt;
-    line-height: 1.7;
+    padding: 3pt 6pt;
+    line-height: 1.75;
+    word-break: break-word;
   }
+
+  /* Bank info card — {bankcard:BANK|ACCOUNTNAME|ACCOUNTNO} */
+  .bankcard {
+    display: flex;
+    align-items: center;
+    gap: 12pt;
+    padding: 8pt 12pt;
+    border: 0.5pt solid #D0DBF0;
+    border-radius: 6pt;
+    margin: 6pt 0;
+    page-break-inside: avoid;
+  }
+  .bankcard-logo {
+    flex-shrink: 0;
+    width: 56pt; height: 56pt;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .bankcard-logo img { max-width: 54pt; max-height: 54pt; object-fit: contain; }
+  .bankcard-info { flex: 1; }
+  .bankcard-bank { font-weight: 700; font-size: 10.5pt; margin-bottom: 4pt; }
+  .bankcard-line { font-size: 9pt; color: #4A4A4A; margin-top: 2pt; }
   .a-l { text-align: left; }
   .a-c { text-align: center; }
   .a-r { text-align: right; }
