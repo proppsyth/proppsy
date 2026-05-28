@@ -1,95 +1,62 @@
 'use client'
 
-/**
- * PdfViewer — in-app PDF renderer using PDF.js (pdfjs-dist).
- *
- * Architecture:
- *  - pdfjs-dist is loaded via dynamic `import()` inside useEffect — never
- *    bundled into the main JS chunk; only downloads on preview pages.
- *  - Pages render lazily via IntersectionObserver; off-screen pages are
- *    sized placeholder divs until they scroll into view.
- *  - When zoom changes, the IntersectionObserver is re-created so visible
- *    pages re-render at the new scale immediately; off-screen pages render
- *    at the new scale when scrolled to.
- *  - Any unrecoverable error calls onFallback() so the caller can open
- *    the PDF in a new tab without crashing the page.
- *
- * Extensibility:
- *  - Each page wrapper has `data-page={idx}` — annotation/highlight/signature
- *    overlays can be absolutely-positioned inside it using the same coordinate system.
- *  - pdfDocRef holds the raw pdfjs PDFDocumentProxy for future text extraction,
- *    search, form-field reading, or annotation parsing.
- */
-
 import {
   useEffect, useRef, useState, useCallback, type CSSProperties,
 } from 'react'
 import { Download, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 
-// ─── Public types ─────────────────────────────────────────────────────────────
-
 export interface PdfViewerProps {
-  /** Supabase signed URL to the generated PDF. */
   pdfUrl: string
-  /** Used as the filename when the user downloads. */
   docLabel: string
-  /** Called when PDF.js fails unrecoverably and we open a new tab instead. */
   onFallback?: () => void
 }
 
 interface PageInfo {
-  width:  number  // page width in PDF user-space units at scale=1
+  width:  number
   height: number
 }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const MIN_ZOOM   = 0.4
 const MAX_ZOOM   = 4.0
 const ZOOM_STEP  = 1.25
-const PRELOAD_PX = 400    // rootMargin to pre-render pages before they're visible
-
-// ─── Component ────────────────────────────────────────────────────────────────
+const PRELOAD_PX = 400
 
 export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerProps) {
+  // ── Mount guard: never render before hydration ──────────────────────────────
+  // Prevents SSR mismatch and iOS Safari blank-layer bug on first paint.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Refs — mutated without triggering re-renders
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pdfDocRef      = useRef<any>(null)
   const canvasRefs     = useRef(new Map<number, HTMLCanvasElement>())
-  const renderedScale  = useRef(new Map<number, number>())      // idx → scale of last completed render
+  const renderedScale  = useRef(new Map<number, number>())
   const renderTasksRef = useRef(new Map<number, { cancel: () => void }>())
 
-  // State
   const [viewState,   setViewState]   = useState<'loading' | 'ready' | 'error'>('loading')
   const [errorMsg,    setErrorMsg]    = useState<string | null>(null)
   const [pages,       setPages]       = useState<PageInfo[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [zoom,        setZoom]        = useState(1.0)
-  // fitScale: CSS-px per PDF-user-unit at zoom=1. 0 = not yet computed (blocks rendering).
-  const [fitScale, setFitScale]       = useState(0)
+  const [fitScale,    setFitScale]    = useState(0)
 
-  // Derived — the actual CSS/render scale applied to every page
   const effectiveScale = fitScale > 0 ? fitScale * zoom : 0
 
-  // ── Load PDF ────────────────────────────────────────────────────────────────
+  // ── Load PDF ─────────────────────────────────────────────────────────────────
 
   useEffect(() => {
+    if (!mounted) return
     let cancelled = false
 
     async function load() {
       try {
-        // Dynamic import: keeps pdfjs-dist out of the global bundle.
-        // Next.js code-splits this into a separate chunk fetched on demand.
         const pdfjsLib = await import('pdfjs-dist')
 
-        // Worker: CDN-hosted, version-matched to the installed package.
-        // Using pdfjsLib.version avoids mismatches between library and worker.
-        if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-          pdfjsLib.GlobalWorkerOptions.workerSrc =
-            `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
-        }
+        // Always set workerSrc — avoids stale cached worker on Safari.
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
 
         const res = await fetch(pdfUrl)
         if (!res.ok) throw new Error(`HTTP ${res.status} จากที่เก็บไฟล์`)
@@ -100,7 +67,6 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
         if (cancelled) return
         pdfDocRef.current = doc
 
-        // Collect page dimensions — fast, reads metadata only (no rendering)
         const infos: PageInfo[] = []
         for (let n = 1; n <= doc.numPages; n++) {
           const pg = await doc.getPage(n)
@@ -112,34 +78,58 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
         if (cancelled) return
         setPages(infos)
         setViewState('ready')
-
-        // Compute fit-to-width scale once the scroll container is in the DOM
-        requestAnimationFrame(() => {
-          if (cancelled || !scrollRef.current) return
-          const containerW = scrollRef.current.clientWidth - 32  // 16px padding × 2
-          const pageW      = infos[0]?.width ?? 595
-          setFitScale(Math.min(Math.max(containerW / pageW, 0.4), 2.0))
-        })
+        console.log('[PDFVIEW] loaded', { pages: infos.length, docLabel })
       } catch (err) {
         if (!cancelled) {
-          setErrorMsg(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ')
+          const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'
+          setErrorMsg(msg)
           setViewState('error')
+          console.warn('[PDFVIEW] load error', msg)
         }
       }
     }
 
     load()
     return () => { cancelled = true }
-  }, [pdfUrl])
+  }, [mounted, pdfUrl, docLabel])
 
-  // ── Render a single page onto its canvas ────────────────────────────────────
+  // ── fitScale: computed via ResizeObserver so it updates on any resize ────────
+  // Runs once viewState=ready; stays in sync as container resizes (e.g. rotation).
+  // Falls back to window.innerWidth when the ref isn't laid out yet.
+
+  useEffect(() => {
+    if (viewState !== 'ready' || pages.length === 0) return
+
+    const pageW = pages[0]?.width ?? 595
+
+    const compute = () => {
+      const el = scrollRef.current
+      let containerW: number
+      if (el && el.clientWidth > 0) {
+        containerW = el.clientWidth - 32        // 16px side padding × 2
+      } else {
+        containerW = (typeof window !== 'undefined' ? window.innerWidth : 400) - 32
+      }
+      const scale = Math.min(Math.max(containerW / pageW, MIN_ZOOM), 2.0)
+      setFitScale(scale)
+      console.log('[PDFVIEW] fitScale', { scale, containerW, pageW })
+    }
+
+    compute()
+
+    if (!scrollRef.current) return
+    const ro = new ResizeObserver(compute)
+    ro.observe(scrollRef.current)
+    return () => ro.disconnect()
+  }, [viewState, pages])
+
+  // ── Render a single page onto its canvas ─────────────────────────────────────
 
   const renderPage = useCallback(async (idx: number, scale: number) => {
     if (!pdfDocRef.current || scale <= 0) return
     const canvas = canvasRefs.current.get(idx)
     if (!canvas) return
 
-    // Cancel any in-progress render for this page (e.g. from a superseded zoom level)
     renderTasksRef.current.get(idx)?.cancel()
     renderTasksRef.current.delete(idx)
 
@@ -148,7 +138,6 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
       const pg  = await pdfDocRef.current.getPage(idx + 1)
       const vp  = pg.getViewport({ scale: scale * dpr })
 
-      // Physical pixel dimensions of the canvas buffer
       canvas.width  = Math.round(vp.width)
       canvas.height = Math.round(vp.height)
 
@@ -161,19 +150,18 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
       await task.promise
       renderedScale.current.set(idx, scale)
       pg.cleanup()
+      console.log('[PDFVIEW] rendered page', idx, 'scale', scale.toFixed(3))
     } catch (err: unknown) {
       const name = (err as { name?: string })?.name
       if (name !== 'RenderingCancelledException') {
-        console.warn('[PdfViewer] page render error', idx, err)
+        console.warn('[PDFVIEW] page render error', idx, err)
       }
     } finally {
       renderTasksRef.current.delete(idx)
     }
-  }, []) // no deps — accesses only refs
+  }, [])
 
-  // ── IntersectionObserver: lazy page rendering ────────────────────────────────
-  // Re-created whenever effectiveScale changes so visible pages immediately
-  // re-render at the new zoom level; off-screen pages render on scroll.
+  // ── IntersectionObserver: lazy page rendering ─────────────────────────────────
 
   useEffect(() => {
     if (viewState !== 'ready' || effectiveScale <= 0 || !scrollRef.current) return
@@ -195,10 +183,11 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
     })
 
     root.querySelectorAll<HTMLElement>('[data-page]').forEach(el => observer.observe(el))
+    console.log('[PDFVIEW] observer created', { effectiveScale: effectiveScale.toFixed(3), pages: pages.length, containerH: root.clientHeight })
     return () => observer.disconnect()
-  }, [viewState, effectiveScale, renderPage])
+  }, [viewState, effectiveScale, renderPage, pages.length])
 
-  // ── IntersectionObserver: current-page tracker ──────────────────────────────
+  // ── IntersectionObserver: current-page tracker ───────────────────────────────
 
   useEffect(() => {
     if (viewState !== 'ready' || !scrollRef.current) return
@@ -217,14 +206,12 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
     return () => obs.disconnect()
   }, [viewState, pages])
 
-  // ── Zoom ─────────────────────────────────────────────────────────────────────
+  // ── Zoom ──────────────────────────────────────────────────────────────────────
 
   const applyZoom = useCallback((next: number) => {
     const clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, next))
     setZoom(clamped)
-    // Invalidate render-scale cache → the new observer fires visible pages at new scale
     renderedScale.current.clear()
-    // Cancel renders that were in progress at the old scale
     renderTasksRef.current.forEach(task => task.cancel())
     renderTasksRef.current.clear()
   }, [])
@@ -233,7 +220,7 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
   const zoomOut  = useCallback(() => applyZoom(zoom / ZOOM_STEP),  [zoom, applyZoom])
   const fitWidth = useCallback(() => applyZoom(1.0),               [applyZoom])
 
-  // ── Download ─────────────────────────────────────────────────────────────────
+  // ── Download ──────────────────────────────────────────────────────────────────
 
   const handleDownload = useCallback(async () => {
     try {
@@ -253,8 +240,6 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
     }
   }, [pdfUrl, docLabel])
 
-  // ── Fallback ──────────────────────────────────────────────────────────────────
-
   const handleFallback = useCallback(() => {
     window.open(pdfUrl, '_blank', 'noopener')
     onFallback?.()
@@ -262,7 +247,8 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
-  if (viewState === 'loading') {
+  // Hold the spinner during SSR and the instant before mount — avoids flicker.
+  if (!mounted || viewState === 'loading') {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-gray-900">
         <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
@@ -287,26 +273,28 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
     )
   }
 
-  // ── Ready: toolbar + scrollable page area ─────────────────────────────────────
+  // ── Ready ─────────────────────────────────────────────────────────────────────
 
   const zoomPct = Math.round(zoom * 100)
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-gray-800 overflow-hidden">
+    // Outer: fill the remaining flex space granted by the preview page wrapper.
+    // IMPORTANT: do NOT add overflow:hidden here — on iOS Safari it creates an
+    // empty GPU compositing layer over the child scroll container, making it
+    // appear blank. Let the scroll area manage its own overflow.
+    <div className="flex-1 flex flex-col min-h-0 bg-gray-800">
 
       {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
       <div
         className="flex items-center gap-1 px-3 py-2 bg-gray-900 border-b border-white/10 flex-shrink-0"
         style={{ minHeight: 44 }}
       >
-        {/* Page counter */}
         <span className="text-white/40 text-xs tabular-nums select-none" style={{ minWidth: '4.5rem' }}>
           หน้า {currentPage} / {pages.length}
         </span>
 
         <div className="w-px h-4 bg-white/15 mx-1 flex-shrink-0" />
 
-        {/* Zoom out */}
         <button
           onClick={zoomOut}
           disabled={zoom <= MIN_ZOOM}
@@ -316,7 +304,6 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
           <ZoomOut className="w-4 h-4" />
         </button>
 
-        {/* Zoom level */}
         <span
           className="text-white/40 text-xs tabular-nums select-none"
           style={{ minWidth: '3.5rem', textAlign: 'center' }}
@@ -324,7 +311,6 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
           {zoomPct}%
         </span>
 
-        {/* Zoom in */}
         <button
           onClick={zoomIn}
           disabled={zoom >= MAX_ZOOM}
@@ -334,7 +320,6 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
           <ZoomIn className="w-4 h-4" />
         </button>
 
-        {/* Fit width */}
         <button
           onClick={fitWidth}
           aria-label="พอดีหน้าจอ"
@@ -346,7 +331,6 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
 
         <div className="flex-1" />
 
-        {/* Download */}
         <button
           onClick={handleDownload}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-semibold rounded-lg transition touch-manipulation"
@@ -357,25 +341,32 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
       </div>
 
       {/* ── Scroll area ──────────────────────────────────────────────────────── */}
+      {/*
+       * scroll container rules:
+       *  - flex-1 + min-h-0: fills remaining height without growing past parent
+       *  - overflow-y: auto  → vertical scroll when content taller than container
+       *  - overflow-x: auto  → horizontal scroll when zoomed wider than container
+       *  - overscroll-behavior: contain → stops scroll chaining to the document on
+       *    desktop trackpads and prevents iOS rubber-band from bouncing the page
+       *  - WebkitOverflowScrolling: touch → momentum scrolling on iOS < 13
+       *    (harmless no-op on modern iOS which enables this by default)
+       */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-auto"
-        // Momentum scrolling on iOS Safari
-        style={{ WebkitOverflowScrolling: 'touch' } as CSSProperties}
+        className="flex-1 min-h-0"
+        style={{
+          overflowY: 'auto',
+          overflowX: 'auto',
+          overscrollBehavior: 'contain',
+          WebkitOverflowScrolling: 'touch',
+        } as CSSProperties}
       >
-        <div className="flex flex-col items-center gap-4 py-4 px-4">
+        <div className="flex flex-col items-center gap-4 py-4 px-4 pb-10">
           {pages.map((pg, idx) => {
             const w = effectiveScale > 0 ? Math.round(pg.width  * effectiveScale) : Math.round(pg.width)
             const h = effectiveScale > 0 ? Math.round(pg.height * effectiveScale) : Math.round(pg.height)
 
             return (
-              /*
-               * Page wrapper:
-               *  - Controls the displayed CSS size of the page
-               *  - Is the target element for both IntersectionObservers
-               *  - data-page={idx} is the shared key for all ref maps
-               *  - position:relative is the anchor for future annotation overlays
-               */
               <div
                 key={idx}
                 data-page={idx}
@@ -391,13 +382,6 @@ export default function PdfViewer({ pdfUrl, docLabel, onFallback }: PdfViewerPro
                   overflow:        'hidden',
                 }}
               >
-                {/*
-                 * Canvas:
-                 *  - CSS size = 100% of the wrapper above (controlled by effectiveScale)
-                 *  - Physical pixel size = page.width * effectiveScale * devicePixelRatio
-                 *    (set inside renderPage() for HiDPI sharpness)
-                 *  - canvas.width=N clearing is handled internally in renderPage
-                 */}
                 <canvas
                   ref={el => {
                     if (el) canvasRefs.current.set(idx, el)

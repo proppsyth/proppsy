@@ -38,7 +38,10 @@ export default async function ContractPreviewPage({
   const pdfApiUrl = `/api/contracts/${id}/preview-pdf`
 
   return (
-    <div className="h-screen flex flex-col bg-gray-900">
+    // Use 100dvh (dynamic viewport height) so the viewer fills the visible
+    // area correctly on iOS Safari where 100vh can exceed the visible viewport
+    // when the address bar is shown. Falls back to 100vh on older browsers.
+    <div className="flex flex-col bg-gray-900" style={{ height: '100dvh' }}>
       <PreviewToolbar
         contractId={id}
         docLabel={docLabel}
