@@ -1080,6 +1080,7 @@ export async function generateContractPdf(
         agentName:    profile?.company_name ?? profile?.name ?? undefined,
         agentPhone:   (profile as { phone?: string | null } | null)?.phone ?? undefined,
         signers:      baseSigners,
+        contractDate: variables['ทำสัญญาวันที่ตัวอักษร'] ?? '',
       }
 
       if (template.mdFilename) {

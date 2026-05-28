@@ -20,10 +20,10 @@ export function toThaiDate(d: Date | string): string {
   return `${dt.getDate()} ${THAI_MONTHS[dt.getMonth()]} ${dt.getFullYear() + 543}`
 }
 
-/** "วันที่ 15 เดือนพฤษภาคม พ.ศ. 2569" */
+/** "15 พฤษภาคม 2569" */
 export function toThaiDateFull(d: Date | string): string {
   const dt = parseDate(d)
-  return `วันที่ ${dt.getDate()} เดือน${THAI_MONTHS[dt.getMonth()]} พ.ศ. ${dt.getFullYear() + 543}`
+  return `${dt.getDate()} ${THAI_MONTHS[dt.getMonth()]} ${dt.getFullYear() + 543}`
 }
 
 /** "15 May 2026" */

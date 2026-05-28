@@ -191,6 +191,8 @@ export interface RenderOptions {
   agentPhone:    string
   statusText:    string
   signers:       PdfSigner[]
+  /** Contract date string (e.g. "24 พฤษภาคม 2569") shown in signature-final when signer has no signedAt. */
+  contractDate?: string
   features: {
     pageNumbers:    boolean
     miniSignatures: boolean
@@ -199,7 +201,7 @@ export interface RenderOptions {
 }
 
 function buildFullHtml(opts: RenderOptions): string {
-  const { bodyHtml, contractId, docTypeLabel, statusText, signers, features } = opts
+  const { bodyHtml, contractId, docTypeLabel, statusText, signers, features, contractDate } = opts
 
   const fontFace = (FONT_REG_URL && FONT_BOLD_URL) ? `
     @font-face {
@@ -216,7 +218,12 @@ function buildFullHtml(opts: RenderOptions): string {
 
   const finalSigHtml = features.finalSignature && signers.length > 0 ? `
     <div class="final-sig">
-      ${signers.map(sig => `
+      ${signers.map(sig => {
+        // Prefer the actual e-signature date; fall back to contract date; last resort: blank placeholder.
+        const dateText = sig.signedAt
+          ? escapeAttr(sig.signedAt)
+          : (contractDate ? `วันที่ ${escapeAttr(contractDate)}` : 'วันที่  .......... / .......... / ..........')
+        return `
         <div class="final-sig-box">
           <div class="final-sig-imgarea">
             ${sig.signatureUrl ? `<img class="final-sig-img" src="${sig.signatureUrl}" />` : ''}
@@ -224,9 +231,9 @@ function buildFullHtml(opts: RenderOptions): string {
           <div class="final-sig-line"></div>
           <div class="final-sig-role">${escapeAttr(sig.label)}</div>
           ${sig.name ? `<div class="final-sig-name">(${escapeAttr(sig.name)})</div>` : ''}
-          <div class="final-sig-date">${escapeAttr(sig.signedAt ?? 'วันที่  .......... / .......... / ..........')}</div>
-        </div>
-      `).join('')}
+          <div class="final-sig-date">${dateText}</div>
+        </div>`
+      }).join('')}
     </div>
   ` : ''
 
@@ -259,11 +266,11 @@ function buildFullHtml(opts: RenderOptions): string {
     margin: 14pt 0 8pt 0;
   }
   p.p, p.p-bold {
-    margin: 0 0 4pt 0;
+    margin: 0 0 2pt 0;
     text-align: left;
   }
   p.p-bold { font-weight: 700; }
-  .blank   { height: 4pt; }
+  .blank   { height: 2pt; }
   .space   { /* height set inline */ }
   .page-break { page-break-before: always; }
 
@@ -271,16 +278,16 @@ function buildFullHtml(opts: RenderOptions): string {
   .hr-line {
     border: none;
     border-bottom: 0.8pt solid #C8D6E8;
-    margin: 6pt 0;
+    margin: 4pt 0;
   }
   /* Section divider — prominent line with vertical rhythm */
   .divider {
     border: none;
     border-bottom: 2pt solid #3B6CD4;
-    margin: 14pt 0 10pt 0;
+    margin: 10pt 0 6pt 0;
   }
 
-  .table { display: block; margin: 2pt 0 6pt 0; }
+  .table { display: block; margin: 0 0 2pt 0; }
   .row {
     display: flex;
     align-items: flex-start;
@@ -289,7 +296,7 @@ function buildFullHtml(opts: RenderOptions): string {
   }
   .row:last-child { border-bottom: none; }
   .cell {
-    padding: 3pt 6pt;
+    padding: 2pt 5pt;
     line-height: 1.75;
     word-break: break-word;
   }
@@ -371,9 +378,14 @@ function escapeAttr(s: string): string {
 
 function buildHeaderTemplate(opts: RenderOptions): string {
   const { docTypeLabel, contractId, statusText, agentName, agentPhone } = opts
-  const fontStack = "'Noto Sans Thai', 'Tahoma', sans-serif"
+  const fontFace = (FONT_REG_URL && FONT_BOLD_URL) ? `
+    @font-face { font-family: 'NotoThai'; src: url('${FONT_REG_URL}') format('truetype'); font-weight: 400; }
+    @font-face { font-family: 'NotoThai'; src: url('${FONT_BOLD_URL}') format('truetype'); font-weight: 700; }
+  ` : ''
+  const fontStack = "'NotoThai', 'Noto Sans Thai', 'Tahoma', sans-serif"
   return `
     <style>
+      ${fontFace}
       .h { font-family: ${fontStack}; font-size: 8pt; color: #1A1A1A;
            width: 100%; padding: 0 52pt; box-sizing: border-box;
            border-bottom: 1px solid #D0D8E8; padding-bottom: 6pt; padding-top: 10pt;
@@ -402,7 +414,11 @@ function buildHeaderTemplate(opts: RenderOptions): string {
 
 function buildFooterTemplate(opts: RenderOptions): string {
   const { signers, features } = opts
-  const fontStack = "'Noto Sans Thai', 'Tahoma', sans-serif"
+  const fontFace = (FONT_REG_URL && FONT_BOLD_URL) ? `
+    @font-face { font-family: 'NotoThai'; src: url('${FONT_REG_URL}') format('truetype'); font-weight: 400; }
+    @font-face { font-family: 'NotoThai'; src: url('${FONT_BOLD_URL}') format('truetype'); font-weight: 700; }
+  ` : ''
+  const fontStack = "'NotoThai', 'Noto Sans Thai', 'Tahoma', sans-serif"
   const miniSigBlock = features.miniSignatures && signers.length > 0 ? `
     <div class="mini-sigs-row">
       ${[0, 1].map(i => {
@@ -421,6 +437,7 @@ function buildFooterTemplate(opts: RenderOptions): string {
 
   return `
     <style>
+      ${fontFace}
       * { box-sizing: border-box; }
       .footer-wrap {
         font-family: ${fontStack};

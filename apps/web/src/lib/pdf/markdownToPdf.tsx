@@ -33,6 +33,7 @@ export interface PdfMeta {
   isFinalized?:  boolean
   generatedAt?:  string
   signers?:      PdfSigner[]
+  contractDate?: string
 }
 
 const DEFAULT_SIGNERS: PdfSigner[] = [
@@ -61,6 +62,7 @@ export async function renderMarkdownAsPdf(
     agentPhone:   meta?.agentPhone   ?? '',
     statusText,
     signers:      meta?.signers      ?? DEFAULT_SIGNERS,
+    contractDate: meta?.contractDate,
     features,
   })
 }
