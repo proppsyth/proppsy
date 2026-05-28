@@ -447,11 +447,11 @@ function buildFooterTemplate(opts: RenderOptions): string {
         display: flex; justify-content: space-between; align-items: flex-end;
         padding-bottom: 4pt;
       }
-      .mini-sig { width: 100pt; text-align: center; }
-      .mini-sig-img { height: 18pt; }
-      .mini-sig-img img { max-width: 60pt; max-height: 18pt; object-fit: contain; }
-      .mini-sig-line { width: 90pt; border-bottom: 0.8pt solid #1A1A1A; margin: 0 auto 2pt auto; }
-      .mini-sig-label { font-size: 7pt; color: #4A4A4A; }
+      .mini-sig { width: 112pt; text-align: center; }
+      .mini-sig-img { height: 22pt; }
+      .mini-sig-img img { max-width: 68pt; max-height: 22pt; object-fit: contain; }
+      .mini-sig-line { width: 104pt; border-bottom: 0.8pt solid #1A1A1A; margin: 0 auto 2pt auto; }
+      .mini-sig-label { font-size: 7.5pt; color: #4A4A4A; }
       .page-num {
         text-align: center;
         font-size: 9pt; color: #4A4A4A;
