@@ -325,6 +325,15 @@ const AUTO_TEMPLATE_SLUGS: Partial<Record<ContractDocType, string>> = {
   end_contract:        'end_contract_th_en',
 }
 
+// Reference/financial doc types always use the universal bilingual TH-EN MD templates
+// regardless of the parent contract's language selection.
+const REFERENCE_DOC_TYPES = new Set<ContractDocType>([
+  'invoice_reservation', 'receipt_reservation',
+  'invoice_deposit', 'receipt_deposit',
+  'notice', 'warning',
+  'termination', 'cancellation', 'end_contract',
+])
+
 export type ChildDocInput = {
   amount?: number | null
   paymentDate?: string | null
@@ -414,7 +423,8 @@ export async function createChildDocument(
     stock_id:            lease.stock_id,
     owner_id:            lease.owner_id,
     customer_id:         lease.customer_id,
-    language_version:    lease.language_version ?? 'th',
+    // Reference docs always use th_en bilingual layout regardless of parent language
+    language_version:    REFERENCE_DOC_TYPES.has(docType) ? 'th_en' : (lease.language_version ?? 'th'),
     template_slug:       AUTO_TEMPLATE_SLUGS[docType] ?? null,
     rent_price:          lease.rent_price,
     deposit_months:      lease.deposit_months,
@@ -452,10 +462,18 @@ export async function createChildDocument(
   }
 
   if (['invoice_reservation','receipt_reservation','invoice_deposit','receipt_deposit'].includes(docType)) {
-    if (input.amount != null)    row.deposit_amount = input.amount
-    if (input.paymentDate)       row.payment_date = input.paymentDate
-    if (input.paymentMethod)     row.payment_method = input.paymentMethod
-    if (input.bankRef)           row.bank_ref = input.bankRef
+    if (input.amount != null) {
+      row.deposit_amount = input.amount
+    } else if (docType === 'invoice_reservation' || docType === 'receipt_reservation') {
+      // Booking fee = 1 month rent (business rule)
+      row.deposit_amount = lease.rent_price ?? 0
+    } else {
+      // Security deposit = deposit_months × rent (business rule, typically 2 months)
+      row.deposit_amount = (lease.deposit_months ?? 2) * (lease.rent_price ?? 0)
+    }
+    if (input.paymentDate)   row.payment_date = input.paymentDate
+    if (input.paymentMethod) row.payment_method = input.paymentMethod
+    if (input.bankRef)       row.bank_ref = input.bankRef
   }
 
   if (docType === 'receipt_rent') {

@@ -263,12 +263,14 @@ export function computeVariables(
 
   // ─── Invoice / Receipt specific ──────────────────────────────
   const docType = contract.doc_type ?? ''
+  const unitRef = [stock?.project_name, stock?.unit_no ? `(${stock.unit_no})` : ''].filter(Boolean).join(' ')
   if (docType.includes('reservation')) {
-    v['รายละเอียดใบแจ้งหนี้'] = `ค่ามัดจำการจอง / Booking Deposit — ${stock?.project_name ?? ''} (${stock?.unit_no ?? ''})`
+    v['รายละเอียดใบแจ้งหนี้'] = `ค่ามัดจำการจอง 1 เดือน / Booking Deposit (1 month) — ${unitRef}`
   } else if (docType.includes('deposit')) {
-    v['รายละเอียดใบแจ้งหนี้'] = `เงินประกันสัญญา / Security Deposit — ${stock?.project_name ?? ''} (${stock?.unit_no ?? ''})`
+    const depositMonths = contract.deposit_months ?? 2
+    v['รายละเอียดใบแจ้งหนี้'] = `เงินประกันสัญญา ${depositMonths} เดือน / Security Deposit (${depositMonths} months) — ${unitRef}`
   } else {
-    v['รายละเอียดใบแจ้งหนี้'] = extra['รายละเอียดใบแจ้งหนี้'] ?? `ค่าเช่า / Rental Fee — ${stock?.project_name ?? ''} (${stock?.unit_no ?? ''})`
+    v['รายละเอียดใบแจ้งหนี้'] = extra['รายละเอียดใบแจ้งหนี้'] ?? `ค่าเช่า / Rental Fee — ${unitRef}`
   }
 
   const paymentMethodMap: Record<string, string> = {
