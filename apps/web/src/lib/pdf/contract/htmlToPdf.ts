@@ -321,6 +321,12 @@ function buildFullHtml(opts: RenderOptions): string {
   .bankcard-info { flex: 1; }
   .bankcard-bank { font-weight: 700; font-size: 10.5pt; margin-bottom: 4pt; }
   .bankcard-line { font-size: 9pt; color: #4A4A4A; margin-top: 2pt; }
+
+  /* Compact bankcard variant — {bankcard:compact:...} — Invoice/Receipt only */
+  .bankcard-compact { padding: 4pt 10pt; margin: 2pt 0; gap: 8pt; }
+  .bankcard-compact .bankcard-logo { width: 36pt; height: 36pt; }
+  .bankcard-compact .bankcard-bank { font-size: 9.5pt; margin-bottom: 2pt; }
+  .bankcard-compact .bankcard-line { font-size: 8.5pt; margin-top: 1pt; }
   .a-l { text-align: left; }
   .a-c { text-align: center; }
   .a-r { text-align: right; }
@@ -373,18 +379,30 @@ function buildFullHtml(opts: RenderOptions): string {
     border-bottom: none !important;
   }
 
+  /* Compact metadata info row: muted right-aligned labels + soft underlined values */
+  .row-info .cell.a-r.label,
+  .row-info .cell.a-c.label {
+    color: #6B7A99;
+    font-size: 8.5pt;
+  }
+  .row-info .cell.value {
+    border-bottom: 0.6pt solid #8090B0;
+  }
+
   .final-sig {
-    margin-top: 40pt;
-    padding-top: 16pt;
-    display: flex;
-    justify-content: space-around;
-    padding-left: 20pt;
-    padding-right: 20pt;
+    margin-top: 12pt;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 20pt;
+    padding: 8pt 20pt 0;
     page-break-inside: avoid;
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
   }
   .final-sig-box {
-    width: 42%;
     text-align: center;
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
   .final-sig-imgarea {
     height: 54pt;
@@ -510,12 +528,18 @@ function buildFooterTemplate(opts: RenderOptions): string {
   `
 }
 
-const PDF_MARGIN = {
-  top:    '32mm',
-  bottom: '42mm',
-  left:   '18mm',
-  right:  '18mm',
+// Bottom margin is sized for the footer content:
+//   42mm — accommodates mini-signature footer (two sig boxes + page number ≈ 30mm actual content)
+//   20mm — page-number-only footer (~10mm actual content, 20mm gives comfortable buffer)
+// Using 42mm when no mini-sigs wastes ~32mm = ~91pt of content area per page — enough to force
+// the final-sig block to page 2 even when content would otherwise fit.
+const PDF_MARGIN_BASE = {
+  top:   '32mm',
+  left:  '18mm',
+  right: '18mm',
 }
+const PDF_MARGIN      = { ...PDF_MARGIN_BASE, bottom: '42mm' }  // with mini-sigs
+const PDF_MARGIN_SLIM = { ...PDF_MARGIN_BASE, bottom: '20mm' }  // page-number only
 
 async function renderPdf(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -607,8 +631,12 @@ export async function htmlToPdfBuffer(opts: RenderOptions): Promise<Buffer> {
       : await launchLocalBrowser()
 
     if (!opts.features.miniSignatures || opts.signers.length === 0) {
-      pdfLog('singlePass')
-      result = await renderPdf(browser, html, headerTpl, footerWithMini, PDF_MARGIN)
+      // No mini-signature footer → page number only → use slim bottom margin.
+      // 42mm was sized for the mini-sig footer; using it here wastes ~91pt of
+      // content area and can force the final-sig block onto a second page.
+      const margin = opts.features.miniSignatures ? PDF_MARGIN : PDF_MARGIN_SLIM
+      pdfLog('singlePass', { bottomMargin: margin.bottom })
+      result = await renderPdf(browser, html, headerTpl, footerWithMini, margin)
     } else {
       // Two-pass strategy — hide mini-sigs on last page only:
       //   Pass 1: full PDF with mini-sigs footer → keep pages [1..N-1]

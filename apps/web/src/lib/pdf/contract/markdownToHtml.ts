@@ -28,15 +28,17 @@ function renderBlock(block: MdBlock, blankCountRef: { n: number }): string {
   }
   if (block.type === 'bankcard') {
     const logoUrl = getBankLogoDataUrl(block.bankName)
+    const logoSize = block.compact ? '36pt' : '54pt'
     const imgHtml = logoUrl
-      ? `<img src="${logoUrl}" style="max-width:54pt;max-height:54pt;object-fit:contain" />`
+      ? `<img src="${logoUrl}" style="max-width:${logoSize};max-height:${logoSize};object-fit:contain" />`
       : `<span style="font-size:8pt;font-weight:700;color:#1B3B6F">${escapeHtml(block.bankName)}</span>`
     const infoLines = [
       block.bankName    ? `<div class="bankcard-bank">${escapeHtml(block.bankName)}</div>` : '',
       block.accountName ? `<div class="bankcard-line">ชื่อบัญชี: ${escapeHtml(block.accountName)}</div>` : '',
       block.accountNo   ? `<div class="bankcard-line">เลขบัญชี: ${escapeHtml(block.accountNo)}</div>` : '',
     ].filter(Boolean).join('')
-    return `<div class="bankcard"><div class="bankcard-logo">${imgHtml}</div><div class="bankcard-info">${infoLines}</div></div>`
+    const cls = block.compact ? 'bankcard bankcard-compact' : 'bankcard'
+    return `<div class="${cls}"><div class="bankcard-logo">${imgHtml}</div><div class="bankcard-info">${infoLines}</div></div>`
   }
   if (block.type === 'blank') {
     blankCountRef.n++
@@ -161,7 +163,7 @@ function alignClass(spec: ColSpec): string {
 }
 
 /** Classify a row for styling. Runs on RAW cell content (before inlineMd). */
-function classifyRow(row: string[]): string {
+function classifyRow(row: string[], cols: ColSpec[]): string {
   const nonEmpty = row.filter(c => c.trim().length > 0)
   if (nonEmpty.length === 0) return 'row'
 
@@ -178,6 +180,9 @@ function classifyRow(row: string[]): string {
   // Amount-in-words row: single meaningful cell wrapping {size:N}
   else if (nonEmpty.length === 1 && nonEmpty[0]?.includes('{size:')) cls = 'row row-amtwords'
 
+  // Compact info row: 4-col layout with right-aligned label in col 0 (non-bold)
+  else if (row.length >= 4 && cols[0]?.align === 'right' && !isBold(row[0] ?? '')) cls = 'row row-info'
+
   if (cls !== 'row' && process.env.NODE_ENV !== 'production') {
     // eslint-disable-next-line no-console
     console.log(`[pdf:classify] ${cls}`, JSON.stringify(nonEmpty.map(c => c.slice(0, 50))))
@@ -188,7 +193,7 @@ function classifyRow(row: string[]): string {
 
 function renderTable(rows: string[][], cols: ColSpec[]): string {
   const cells = rows.map(row =>
-    `<div class="${classifyRow(row)}">${
+    `<div class="${classifyRow(row, cols)}">${
       row.map((cell, ci) => {
         const spec: ColSpec = cols[ci] ?? { align: 'none', flex: 1, underline: false }
         const klass = alignClass(spec)

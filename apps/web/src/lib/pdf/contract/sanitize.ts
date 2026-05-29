@@ -113,7 +113,8 @@ export function sanitizeBlock(block: unknown): MdBlock[] {
       const bankName    = safeStr(b.bankName).trim()
       const accountName = safeStr(b.accountName).trim()
       const accountNo   = safeStr(b.accountNo).trim()
-      return [{ type: 'bankcard', bankName, accountName, accountNo }]
+      const compact     = b.compact === true
+      return [{ type: 'bankcard', bankName, accountName, accountNo, compact }]
     }
     case 'space': {
       const height = Math.max(0, safeNum(b.height, 0))

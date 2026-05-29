@@ -19,7 +19,7 @@ export type MdBlock =
   | { type: 'break' }
   | { type: 'line' }
   | { type: 'divider' }
-  | { type: 'bankcard'; bankName: string; accountName: string; accountNo: string }
+  | { type: 'bankcard'; bankName: string; accountName: string; accountNo: string; compact: boolean }
   | { type: 'table'; rows: string[][]; cols: ColSpec[]; wide: boolean }
 
 /** Document-level features enabled by directives in the .md template */
@@ -115,12 +115,19 @@ function parseBlocks(md: string): MdBlock[] {
     }
     const bankcardM = /^\{bankcard:([^}]*)\}$/.exec(line.trim())
     if (bankcardM) {
-      const args = bankcardM[1]!.split('|')
+      let payload = bankcardM[1]!
+      let compact = false
+      if (payload.startsWith('compact:')) {
+        compact = true
+        payload = payload.slice('compact:'.length)
+      }
+      const args = payload.split('|')
       blocks.push({
         type:        'bankcard',
         bankName:    (args[0] ?? '').trim(),
         accountName: (args[1] ?? '').trim(),
         accountNo:   (args[2] ?? '').trim(),
+        compact,
       })
       i++; continue
     }
