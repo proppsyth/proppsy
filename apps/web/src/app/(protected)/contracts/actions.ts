@@ -987,10 +987,13 @@ export async function generateContractPdf(
 
   try {
     let buffer: Buffer
+    const _slug = (contract as { template_slug?: string | null }).template_slug ?? null
+    console.log(`[PDF:ROUTE ${new Date().toISOString()}] start`, JSON.stringify({ contractId, doc_type: contract.doc_type, template_slug: _slug }))
 
     // ─── Route: invoice / receipt → legacy navy renderer (only for old contracts without template_slug) ───
     const invoiceLikeTypes = ['invoice_reservation', 'receipt_reservation', 'invoice_deposit', 'receipt_deposit']
-    if (invoiceLikeTypes.includes(contract.doc_type) && !(contract as { template_slug?: string | null }).template_slug) {
+    if (invoiceLikeTypes.includes(contract.doc_type) && !_slug) {
+      console.log(`[PDF:ROUTE ${new Date().toISOString()}] route=A (legacy-invoice) doc_type=${contract.doc_type}`)
       const { renderInvoiceReceiptPdf } = await import('@/lib/pdf/contract/invoiceReceiptPdf')
       const isReceipt = contract.doc_type === 'receipt_reservation' || contract.doc_type === 'receipt_deposit'
 
@@ -1070,8 +1073,9 @@ export async function generateContractPdf(
       return { url: uploadResult.url }
     }
 
-    const templateSlugForPdf = (contract as { template_slug?: string | null }).template_slug
+    const templateSlugForPdf = _slug
     if (templateSlugForPdf) {
+      console.log(`[PDF:ROUTE ${new Date().toISOString()}] route=B slug=${templateSlugForPdf}`)
       const { getTemplateBySlug } = await import('@/lib/contracts/templateRegistry')
       const { computeVariables } = await import('@/lib/contracts/variableCompute')
       const { generateDocx } = await import('@/lib/contracts/docxGenerator')
@@ -1114,20 +1118,23 @@ export async function generateContractPdf(
       }
 
       if (template.mdFilename) {
-        // Preferred: Markdown→PDF pipeline (from Google Docs .md templates)
+        // Preferred: Markdown→PDF pipeline
         const { readFileSync } = await import('fs')
         const { join } = await import('path')
         const { renderMarkdownAsPdf } = await import('@/lib/pdf/markdownToPdf')
         const mdPath = join(process.cwd(), 'public', 'template-md', template.mdFilename)
+        console.log(`[PDF:ROUTE ${new Date().toISOString()}] route=B-md file=${template.mdFilename} path=${mdPath}`)
         const mdContent = readFileSync(mdPath, 'utf-8')
         buffer = await renderMarkdownAsPdf(mdContent, variables, pdfMeta)
       } else {
         // Fallback: DOCX→mammoth→HTML→PDF pipeline
+        console.log(`[PDF:ROUTE ${new Date().toISOString()}] route=B-docx file=${template.filename}`)
         const docxBuffer = await generateDocx(template.filename, variables)
         const { value: html } = await mammoth.convertToHtml({ buffer: docxBuffer })
         buffer = await renderMammothHtmlAsPdf(html, pdfMeta)
       }
     } else {
+      console.log(`[PDF:ROUTE ${new Date().toISOString()}] route=C (legacy-react-pdf) doc_type=${contract.doc_type}`)
       const { renderToBuffer } = await import('@react-pdf/renderer')
       const { ContractDocument } = await import('@/lib/pdf/ContractDocument')
       const { createElement } = await import('react')

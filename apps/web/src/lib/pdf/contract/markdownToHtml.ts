@@ -167,16 +167,23 @@ function classifyRow(row: string[]): string {
 
   const isBold = (c: string) => { const t = c.trim(); return t.startsWith('**') && t.endsWith('**') && t.length >= 4 }
 
+  let cls = 'row'
+
   // Total-net row: bold cell that contains a digit AND 'บาท'
-  if (row.some(c => isBold(c) && /\d/.test(c) && c.includes('บาท'))) return 'row row-total'
+  if (row.some(c => isBold(c) && /\d/.test(c) && c.includes('บาท'))) cls = 'row row-total'
 
   // Column-header row: every non-empty cell is bold (labels, not amounts)
-  if (nonEmpty.length > 1 && nonEmpty.every(isBold)) return 'row row-header'
+  else if (nonEmpty.length > 1 && nonEmpty.every(isBold)) cls = 'row row-header'
 
   // Amount-in-words row: single meaningful cell wrapping {size:N}
-  if (nonEmpty.length === 1 && nonEmpty[0]?.includes('{size:')) return 'row row-amtwords'
+  else if (nonEmpty.length === 1 && nonEmpty[0]?.includes('{size:')) cls = 'row row-amtwords'
 
-  return 'row'
+  if (cls !== 'row' && process.env.NODE_ENV !== 'production') {
+    // eslint-disable-next-line no-console
+    console.log(`[pdf:classify] ${cls}`, JSON.stringify(nonEmpty.map(c => c.slice(0, 50))))
+  }
+
+  return cls
 }
 
 function renderTable(rows: string[][], cols: ColSpec[]): string {
