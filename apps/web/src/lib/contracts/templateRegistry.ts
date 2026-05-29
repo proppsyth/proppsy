@@ -1,5 +1,5 @@
-// Registry of all 9 canonical .docx contract templates
-// Source of truth: apps/web/public/template-doc/
+// Registry of all canonical contract templates
+// Source of truth: apps/web/public/template-doc/ (docx) and public/template-md/ (markdown)
 
 import type { ContractDocType } from '@/types'
 
@@ -194,6 +194,140 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     ],
     imageVars: ['iสำเนาบัตรประชาชน'],
   },
+
+  // ─── Invoice ─────────────────────────────────────────────────
+  {
+    slug: 'invoice_reservation_th_en',
+    docType: 'invoice_reservation' as ContractDocType,
+    language: 'th_en',
+    filename: 'invoice_th_en.docx',
+    mdFilename: 'invoice_th_en.md',
+    label: 'ใบแจ้งหนี้ (จอง)',
+    languageLabel: 'ไทย + อังกฤษ',
+    hasFurniture: false,
+    hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
+    requiredVars: ['ชื่อผู้เช่า', 'ชื่อผู้ให้เช่า', 'รายละเอียดใบแจ้งหนี้', 'ยอดรวมสุทธิ'],
+    imageVars: [],
+  },
+  {
+    slug: 'invoice_deposit_th_en',
+    docType: 'invoice_deposit' as ContractDocType,
+    language: 'th_en',
+    filename: 'invoice_th_en.docx',
+    mdFilename: 'invoice_th_en.md',
+    label: 'ใบแจ้งหนี้ (เงินประกัน)',
+    languageLabel: 'ไทย + อังกฤษ',
+    hasFurniture: false,
+    hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
+    requiredVars: ['ชื่อผู้เช่า', 'ชื่อผู้ให้เช่า', 'รายละเอียดใบแจ้งหนี้', 'ยอดรวมสุทธิ'],
+    imageVars: [],
+  },
+
+  // ─── Receipt ─────────────────────────────────────────────────
+  {
+    slug: 'receipt_reservation_th_en',
+    docType: 'receipt_reservation' as ContractDocType,
+    language: 'th_en',
+    filename: 'receipt_th_en.docx',
+    mdFilename: 'receipt_th_en.md',
+    label: 'ใบเสร็จรับเงิน (จอง)',
+    languageLabel: 'ไทย + อังกฤษ',
+    hasFurniture: false,
+    hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
+    requiredVars: ['ชื่อผู้เช่า', 'ชื่อผู้ให้เช่า', 'รายละเอียดใบแจ้งหนี้', 'ยอดรวมสุทธิ', 'วิธีชำระเงิน'],
+    imageVars: [],
+  },
+  {
+    slug: 'receipt_deposit_th_en',
+    docType: 'receipt_deposit' as ContractDocType,
+    language: 'th_en',
+    filename: 'receipt_th_en.docx',
+    mdFilename: 'receipt_th_en.md',
+    label: 'ใบเสร็จรับเงิน (เงินประกัน)',
+    languageLabel: 'ไทย + อังกฤษ',
+    hasFurniture: false,
+    hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
+    requiredVars: ['ชื่อผู้เช่า', 'ชื่อผู้ให้เช่า', 'รายละเอียดใบแจ้งหนี้', 'ยอดรวมสุทธิ', 'วิธีชำระเงิน'],
+    imageVars: [],
+  },
+
+  // ─── Notice / Warning ────────────────────────────────────────
+  {
+    slug: 'notice_th_en',
+    docType: 'notice' as ContractDocType,
+    language: 'th_en',
+    filename: 'notice_th_en.docx',
+    mdFilename: 'notice_th_en.md',
+    label: 'หนังสือแจ้ง',
+    languageLabel: 'ไทย + อังกฤษ',
+    hasFurniture: false,
+    hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
+    requiredVars: ['ชื่อผู้เช่า', 'ชื่อผู้ให้เช่า', 'เหตุผล', 'รายละเอียด'],
+    imageVars: [],
+  },
+  {
+    slug: 'warning_th_en',
+    docType: 'warning' as ContractDocType,
+    language: 'th_en',
+    filename: 'notice_th_en.docx',
+    mdFilename: 'notice_th_en.md',
+    label: 'หนังสือเตือน',
+    languageLabel: 'ไทย + อังกฤษ',
+    hasFurniture: false,
+    hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
+    requiredVars: ['ชื่อผู้เช่า', 'ชื่อผู้ให้เช่า', 'เหตุผล', 'รายละเอียด'],
+    imageVars: [],
+  },
+
+  // ─── Termination / Cancellation / End ────────────────────────
+  {
+    slug: 'termination_th_en',
+    docType: 'termination' as ContractDocType,
+    language: 'th_en',
+    filename: 'termination_th_en.docx',
+    mdFilename: 'termination_th_en.md',
+    label: 'หนังสือบอกเลิกสัญญา',
+    languageLabel: 'ไทย + อังกฤษ',
+    hasFurniture: false,
+    hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
+    requiredVars: ['ชื่อผู้เช่า', 'ชื่อผู้ให้เช่า', 'สิ้นสุดสัญญาวันที่', 'รายละเอียด'],
+    imageVars: [],
+  },
+  {
+    slug: 'cancellation_th_en',
+    docType: 'cancellation' as ContractDocType,
+    language: 'th_en',
+    filename: 'termination_th_en.docx',
+    mdFilename: 'termination_th_en.md',
+    label: 'หนังสือยกเลิกสัญญา',
+    languageLabel: 'ไทย + อังกฤษ',
+    hasFurniture: false,
+    hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
+    requiredVars: ['ชื่อผู้เช่า', 'ชื่อผู้ให้เช่า', 'สิ้นสุดสัญญาวันที่', 'รายละเอียด'],
+    imageVars: [],
+  },
+  {
+    slug: 'end_contract_th_en',
+    docType: 'end_contract' as ContractDocType,
+    language: 'th_en',
+    filename: 'termination_th_en.docx',
+    mdFilename: 'termination_th_en.md',
+    label: 'หนังสือสิ้นสุดสัญญา',
+    languageLabel: 'ไทย + อังกฤษ',
+    hasFurniture: false,
+    hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
+    requiredVars: ['ชื่อผู้เช่า', 'ชื่อผู้ให้เช่า', 'สิ้นสุดสัญญาวันที่', 'รายละเอียด'],
+    imageVars: [],
+  },
 ]
 
 export function getTemplateBySlug(slug: string): TemplateDefinition | undefined {
@@ -214,7 +348,11 @@ export const LANGUAGE_LABELS: Record<LanguageVersion, string> = {
   th_en_zh: 'ไทย + อังกฤษ + จีน',
 }
 
-// Doc types that have canonical .docx template support
+// Doc types that have canonical markdown template support
 export const TEMPLATE_SUPPORTED_TYPES = new Set<string>([
   'rental', 'reservation', 'renewal', 'co_agent',
+  'invoice_reservation', 'invoice_deposit',
+  'receipt_reservation', 'receipt_deposit',
+  'notice', 'warning',
+  'termination', 'cancellation', 'end_contract',
 ])

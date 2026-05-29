@@ -313,6 +313,18 @@ export async function createLeaseFromReservation(
 
 // ─── Create Child Document From Lease ────────────────────────
 
+const AUTO_TEMPLATE_SLUGS: Partial<Record<ContractDocType, string>> = {
+  invoice_reservation: 'invoice_reservation_th_en',
+  receipt_reservation: 'receipt_reservation_th_en',
+  invoice_deposit:     'invoice_deposit_th_en',
+  receipt_deposit:     'receipt_deposit_th_en',
+  notice:              'notice_th_en',
+  warning:             'warning_th_en',
+  termination:         'termination_th_en',
+  cancellation:        'cancellation_th_en',
+  end_contract:        'end_contract_th_en',
+}
+
 export type ChildDocInput = {
   amount?: number | null
   paymentDate?: string | null
@@ -403,7 +415,7 @@ export async function createChildDocument(
     owner_id:            lease.owner_id,
     customer_id:         lease.customer_id,
     language_version:    lease.language_version ?? 'th',
-    template_slug:       null,
+    template_slug:       AUTO_TEMPLATE_SLUGS[docType] ?? null,
     rent_price:          lease.rent_price,
     deposit_months:      lease.deposit_months,
     deposit_amount:      lease.deposit_amount,
@@ -958,9 +970,9 @@ export async function generateContractPdf(
   try {
     let buffer: Buffer
 
-    // ─── Route: invoice / receipt → Puppeteer (Noto Thai, navy theme) ───
+    // ─── Route: invoice / receipt → legacy navy renderer (only for old contracts without template_slug) ───
     const invoiceLikeTypes = ['invoice_reservation', 'receipt_reservation', 'invoice_deposit', 'receipt_deposit']
-    if (invoiceLikeTypes.includes(contract.doc_type)) {
+    if (invoiceLikeTypes.includes(contract.doc_type) && !(contract as { template_slug?: string | null }).template_slug) {
       const { renderInvoiceReceiptPdf } = await import('@/lib/pdf/contract/invoiceReceiptPdf')
       const isReceipt = contract.doc_type === 'receipt_reservation' || contract.doc_type === 'receipt_deposit'
 

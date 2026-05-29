@@ -83,6 +83,7 @@ export function computeVariables(
     : `${months} เดือน`
   v['ทำสัญญาวันที่อย่างเดียว'] = String(paymentDay)
   v['พ้นกำหนดชำระได้ไม่เกิน'] = String(graceDays)
+  v['พ้นกำหนดชำระได้']         = String(graceDays)
 
   // ─── 12-month payment schedule ────────────────────────────────
   // <<1>> = Thai month name, <<1+5>> = grace-period end label
@@ -102,10 +103,11 @@ export function computeVariables(
   if (owner) {
     const ownerName = [owner.prefix, owner.first_name_th, owner.last_name_th]
       .filter(Boolean).join(' ') || '-'
-    v['ชื่อผู้ให้เช่า']            = ownerName
-    v['ชื่อ - สกุล เจ้าของ']      = ownerName
+    v['ชื่อผู้ให้เช่า']              = ownerName
+    v['ชื่อ - สกุล เจ้าของ']        = ownerName
     v['ฟอแมทบัตรประชาชนผู้ให้เช่า'] = formatNationalId(owner.national_id)
-    v['เลขเสียภาษี เจ้าของ']      = owner.national_id ?? '-'
+    v['ผู้ให้เช่าบัตรประชาชนเลขที่'] = owner.national_id?.replace(/\D/g, '') ?? '-'
+    v['เลขเสียภาษี เจ้าของ']        = owner.national_id ?? '-'
     v['บ้านเลขที่ เจ้าของ']       = owner.address_no ?? '-'
     v['หมู่ที่ เจ้าของ']          = owner.moo ?? extra['หมู่ที่ เจ้าของ'] ?? ''
     v['ถนน เจ้าของ']             = owner.address_road ?? '-'
@@ -161,6 +163,7 @@ export function computeVariables(
     v['project']               = stock.project_name ?? '-'
     v['view']                  = stock.project_name ?? '-'
     v['showp']                 = stock.project_name ?? '-'
+    v['โครงการ']               = stock.project_name ?? '-'
     v['เลขที่ห้องชุด']         = stock.unit_no ?? '-'
     v['เลขที่ห้อง']            = stock.unit_no ?? '-'
     v['ขนาด']                  = stock.size_sqm ? `${stock.size_sqm} ตร.ม.` : '-'
@@ -190,6 +193,10 @@ export function computeVariables(
   // ─── Agent ───────────────────────────────────────────────────
 
   v['agent'] = agent?.company_name ?? agent?.name ?? '-'
+
+  // ─── Contract reference ──────────────────────────────────────
+
+  v['เลขที่สัญญา'] = (contract as { code?: string }).code ?? extra['เลขที่สัญญา'] ?? contract.id ?? '-'
 
   // ─── Financials ──────────────────────────────────────────────
 
@@ -253,6 +260,25 @@ export function computeVariables(
   v['รวมหัก']                 = withCommas(wht3Amt)
   v['รวมหักตัวอักษร']         = bahtText(wht3Amt)
   v['รวมหักตัวอักษรen']       = bahtTextEn(wht3Amt)
+
+  // ─── Invoice / Receipt specific ──────────────────────────────
+  const docType = contract.doc_type ?? ''
+  if (docType.includes('reservation')) {
+    v['รายละเอียดใบแจ้งหนี้'] = `ค่ามัดจำการจอง / Booking Deposit — ${stock?.project_name ?? ''} (${stock?.unit_no ?? ''})`
+  } else if (docType.includes('deposit')) {
+    v['รายละเอียดใบแจ้งหนี้'] = `เงินประกันสัญญา / Security Deposit — ${stock?.project_name ?? ''} (${stock?.unit_no ?? ''})`
+  } else {
+    v['รายละเอียดใบแจ้งหนี้'] = extra['รายละเอียดใบแจ้งหนี้'] ?? `ค่าเช่า / Rental Fee — ${stock?.project_name ?? ''} (${stock?.unit_no ?? ''})`
+  }
+
+  const paymentMethodMap: Record<string, string> = {
+    cash:     'เงินสด / Cash',
+    transfer: 'โอนเงิน / Bank Transfer',
+    cheque:   'เช็ค / Cheque',
+    credit:   'บัตรเครดิต / Credit Card',
+  }
+  const rawMethod = (contract as { payment_method?: string }).payment_method ?? extra['วิธีชำระเงิน'] ?? ''
+  v['วิธีชำระเงิน'] = paymentMethodMap[rawMethod] ?? (rawMethod || 'โอนเงิน / Bank Transfer')
 
   // ─── Notice / Warning specific ───────────────────────────────
   v['เหตุผล']           = extra['เหตุผล']    ?? '-'
