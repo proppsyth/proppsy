@@ -329,6 +329,50 @@ function buildFullHtml(opts: RenderOptions): string {
   }
   strong { font-weight: 700; }
 
+  /* ── Financial table row variants ───────────────────────────── */
+
+  /* Column-header row: bold labels over a light navy tint */
+  .row-header {
+    background: #EDF1FB;
+    border-bottom: 1pt solid #3B6CD4;
+  }
+  .row-header .cell {
+    color: #1B3B6F;
+    font-weight: 700;
+    font-size: 8.5pt;
+    padding: 3.5pt 5pt;
+  }
+
+  /* Total-net row: strong emphasis with navy border top+bottom */
+  .row.row-total {
+    background: #EEF3FF;
+    border-top:    1.5pt solid #1B3B6F !important;
+    border-bottom: 1.5pt solid #1B3B6F !important;
+    margin: 3pt 0;
+  }
+  .row-total .cell {
+    color: #1B3B6F;
+    font-weight: 700;
+    font-size: 10.5pt;
+    padding: 5pt 5pt;
+    border-bottom: none !important;
+  }
+
+  /* Amount-in-words row: muted framed box below total */
+  .row.row-amtwords {
+    background: #F7F9FF;
+    border: 0.6pt solid #C8D3EB;
+    border-radius: 3pt;
+    margin-top: 3pt;
+    border-bottom: 0.6pt solid #C8D3EB !important;
+  }
+  .row-amtwords .cell {
+    color: #556080;
+    padding: 4pt 10pt;
+    font-style: italic;
+    border-bottom: none !important;
+  }
+
   .final-sig {
     margin-top: 40pt;
     padding-top: 16pt;

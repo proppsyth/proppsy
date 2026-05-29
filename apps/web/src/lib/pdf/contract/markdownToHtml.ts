@@ -160,9 +160,28 @@ function alignClass(spec: ColSpec): string {
   return 'a-l'
 }
 
+/** Classify a row for styling. Runs on RAW cell content (before inlineMd). */
+function classifyRow(row: string[]): string {
+  const nonEmpty = row.filter(c => c.trim().length > 0)
+  if (nonEmpty.length === 0) return 'row'
+
+  const isBold = (c: string) => { const t = c.trim(); return t.startsWith('**') && t.endsWith('**') && t.length >= 4 }
+
+  // Total-net row: bold cell that contains a digit AND 'บาท'
+  if (row.some(c => isBold(c) && /\d/.test(c) && c.includes('บาท'))) return 'row row-total'
+
+  // Column-header row: every non-empty cell is bold (labels, not amounts)
+  if (nonEmpty.length > 1 && nonEmpty.every(isBold)) return 'row row-header'
+
+  // Amount-in-words row: single meaningful cell wrapping {size:N}
+  if (nonEmpty.length === 1 && nonEmpty[0]?.includes('{size:')) return 'row row-amtwords'
+
+  return 'row'
+}
+
 function renderTable(rows: string[][], cols: ColSpec[]): string {
   const cells = rows.map(row =>
-    `<div class="row">${
+    `<div class="${classifyRow(row)}">${
       row.map((cell, ci) => {
         const spec: ColSpec = cols[ci] ?? { align: 'none', flex: 1, underline: false }
         const klass = alignClass(spec)
