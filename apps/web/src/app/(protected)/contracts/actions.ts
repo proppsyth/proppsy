@@ -987,10 +987,21 @@ export async function generateContractPdf(
 
   try {
     let buffer: Buffer
-    const _slug = (contract as { template_slug?: string | null }).template_slug ?? null
+    let _slug = (contract as { template_slug?: string | null }).template_slug ?? null
+
+    // Auto-resolve: contracts created before AUTO_TEMPLATE_SLUGS was added have template_slug=null.
+    // For any reference doc type with a known MD template, resolve it now so Route B-md is used.
+    if (!_slug) {
+      const resolved = AUTO_TEMPLATE_SLUGS[contract.doc_type as ContractDocType]
+      if (resolved) {
+        _slug = resolved
+        console.log(`[PDF:ROUTE ${new Date().toISOString()}] auto-slug doc_type=${contract.doc_type} → ${_slug}`)
+      }
+    }
+
     console.log(`[PDF:ROUTE ${new Date().toISOString()}] start`, JSON.stringify({ contractId, doc_type: contract.doc_type, template_slug: _slug }))
 
-    // ─── Route: invoice / receipt → legacy navy renderer (only for old contracts without template_slug) ───
+    // ─── Route A: legacy navy renderer (only fires when no template_slug AND not a known reference type) ───
     const invoiceLikeTypes = ['invoice_reservation', 'receipt_reservation', 'invoice_deposit', 'receipt_deposit']
     if (invoiceLikeTypes.includes(contract.doc_type) && !_slug) {
       console.log(`[PDF:ROUTE ${new Date().toISOString()}] route=A (legacy-invoice) doc_type=${contract.doc_type}`)
