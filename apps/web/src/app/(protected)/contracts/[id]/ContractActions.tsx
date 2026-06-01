@@ -2,11 +2,12 @@
 
 import { useTransition, useState } from 'react'
 import {
-  Loader2, Send, X, FileDown, ExternalLink, Eye, Lock, CheckCircle2, ClipboardCheck,
+  Loader2, Send, X, FileDown, ExternalLink, Eye, Lock, CheckCircle2, ClipboardCheck, Package,
 } from 'lucide-react'
 import type { ContractStatus } from '@/types'
 import {
   updateContractStatus, generateContractDocx, generateContractPdf, finalizeManually, activateLease,
+  generateLeaseAttachmentsPdf,
 } from '../actions'
 import Link from 'next/link'
 
@@ -14,37 +15,44 @@ interface Props {
   contractId: string
   status: ContractStatus
   contractCategory?: string | null
+  docType?: string | null
   pdfUrl?: string | null
   docxUrl?: string | null
   finalizedDocxUrl?: string | null
   finalizedPdfUrl?: string | null
+  attachmentPdfUrl?: string | null
   templateSlug?: string | null
   isFinalized?: boolean
   finalizedAt?: string | null
 }
 
 export default function ContractActions({
-  contractId, status, contractCategory, pdfUrl, docxUrl, finalizedDocxUrl, finalizedPdfUrl,
+  contractId, status, contractCategory, docType,
+  pdfUrl, docxUrl, finalizedDocxUrl, finalizedPdfUrl, attachmentPdfUrl,
   templateSlug, isFinalized, finalizedAt,
 }: Props) {
   const [isStatusPending, startStatus] = useTransition()
-  const [isDocxPending, startDocx] = useTransition()
-  const [isPdfPending, startPdf] = useTransition()
+  const [isDocxPending, startDocx]     = useTransition()
+  const [isPdfPending, startPdf]       = useTransition()
   const [isFinalizePending, startFinalize] = useTransition()
   const [isActivatePending, startActivate] = useTransition()
-  const [activateError, setActivateError] = useState('')
+  const [isAttPending, startAtt]       = useTransition()
 
-  const [statusError, setStatusError] = useState('')
-  const [docxError, setDocxError] = useState('')
-  const [pdfError, setPdfError] = useState('')
+  const [activateError, setActivateError] = useState('')
+  const [statusError, setStatusError]     = useState('')
+  const [docxError, setDocxError]         = useState('')
+  const [pdfError, setPdfError]           = useState('')
   const [finalizeError, setFinalizeError] = useState('')
+  const [attError, setAttError]           = useState('')
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false)
 
   const [currentDocxUrl, setCurrentDocxUrl] = useState(docxUrl ?? '')
-  const [currentPdfUrl, setCurrentPdfUrl] = useState(pdfUrl ?? '')
-  const [missingVars, setMissingVars] = useState<string[]>([])
+  const [currentPdfUrl, setCurrentPdfUrl]   = useState(pdfUrl ?? '')
+  const [currentAttUrl, setCurrentAttUrl]   = useState(attachmentPdfUrl ?? '')
+  const [missingVars, setMissingVars]       = useState<string[]>([])
 
-  const hasTemplate = !!templateSlug
+  const hasTemplate  = !!templateSlug
+  const isRental     = docType === 'rental'
 
   // Finalized contracts show permanent download links — no regeneration allowed
   if (isFinalized) {
@@ -100,6 +108,44 @@ export default function ContractActions({
           </div>
         )}
 
+        {/* Attachment package — separate document, available independently of finalization */}
+        {isRental && (
+          <div className="bg-white rounded-xl border border-teal-100 shadow-sm overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-teal-100 bg-teal-50/60">
+              <div className="flex items-center gap-2">
+                <Package className="w-3.5 h-3.5 text-teal-600" />
+                <h2 className="text-sm font-semibold text-teal-800">เอกสารแนบ (ชุดส่งมอบ)</h2>
+              </div>
+            </div>
+            <div className="p-4 space-y-2">
+              {currentAttUrl && (
+                <a
+                  href={currentAttUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-sm text-teal-600 hover:underline mb-2"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  เปิดเอกสารแนบล่าสุด
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={handleGenerateAtt}
+                disabled={isAttPending}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-teal-200 text-teal-700 bg-teal-50 hover:bg-teal-100 text-sm font-medium rounded-xl transition disabled:opacity-50"
+              >
+                {isAttPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
+                {isAttPending ? 'กำลังสร้าง...' : currentAttUrl ? 'สร้างเอกสารแนบใหม่' : 'สร้างเอกสารแนบ'}
+              </button>
+              {attError && <p className="text-xs text-red-600">{attError}</p>}
+              <p className="text-xs text-gray-400 leading-relaxed">
+                เอกสารแยกจากสัญญา · บัตรประชาชน · ทรัพย์สินในห้อง · รูปถ่าย · กุญแจ
+              </p>
+            </div>
+          </div>
+        )}
+
         {hasTemplate && (
           <Link
             href={`/contracts/${contractId}/preview`}
@@ -145,6 +191,18 @@ export default function ContractActions({
       if (res.error) { setPdfError(res.error); return }
       if (res.url) {
         setCurrentPdfUrl(res.url)
+        window.open(res.url, '_blank')
+      }
+    })
+  }
+
+  function handleGenerateAtt() {
+    setAttError('')
+    startAtt(async () => {
+      const res = await generateLeaseAttachmentsPdf(contractId)
+      if (res.error) { setAttError(res.error); return }
+      if (res.url) {
+        setCurrentAttUrl(res.url)
         window.open(res.url, '_blank')
       }
     })
@@ -215,7 +273,7 @@ export default function ContractActions({
         </div>
       )}
 
-      {/* PDF */}
+      {/* PDF (legal contract document) */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
           <h2 className="text-sm font-semibold text-gray-700">PDF (เอกสารทางการ)</h2>
@@ -244,6 +302,44 @@ export default function ContractActions({
           {pdfError && <p className="text-xs text-red-600">{pdfError}</p>}
         </div>
       </div>
+
+      {/* Lease Attachments — separate handover document, rental contracts only */}
+      {isRental && (
+        <div className="bg-white rounded-xl border border-teal-100 shadow-sm overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-teal-100 bg-teal-50/60">
+            <div className="flex items-center gap-2">
+              <Package className="w-3.5 h-3.5 text-teal-600" />
+              <h2 className="text-sm font-semibold text-teal-800">เอกสารแนบ (ชุดส่งมอบ)</h2>
+            </div>
+          </div>
+          <div className="p-4 space-y-2">
+            {currentAttUrl && (
+              <a
+                href={currentAttUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-sm text-teal-600 hover:underline mb-2"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                เปิดเอกสารแนบล่าสุด
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={handleGenerateAtt}
+              disabled={isAttPending}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
+            >
+              {isAttPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
+              {isAttPending ? 'กำลังสร้าง...' : currentAttUrl ? 'สร้างเอกสารแนบใหม่' : 'สร้างเอกสารแนบ'}
+            </button>
+            {attError && <p className="text-xs text-red-600">{attError}</p>}
+            <p className="text-xs text-gray-400 leading-relaxed">
+              เอกสารแยกจากสัญญา · บัตรประชาชน · ทรัพย์สินในห้อง · รูปถ่าย · กุญแจ
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Status Actions */}
       {(canSend || canCancel || canActivate) && (

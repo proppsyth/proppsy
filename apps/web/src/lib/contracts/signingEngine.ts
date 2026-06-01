@@ -3,10 +3,11 @@
 // Called from lib/sign/actions.ts (service-client context).
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { setStockRented } from './lifecycleEngine'
 
 // Called after every signature submission.
-// If all signers have signed: auto-finalizes and activates lease.
+// When all signers have signed: moves to 'signed' status only.
+// Locking (is_finalized) and stock activation are intentionally separate —
+// the agent must explicitly press "ล็อกสัญญา" to finalize.
 export async function handleAllSignedIfComplete(
   supabase: SupabaseClient,
   contractId: string,
@@ -25,32 +26,12 @@ export async function handleAllSignedIfComplete(
     return
   }
 
-  const { data: contract } = await supabase
-    .from('contracts')
-    .select('doc_type, stock_id, docx_url, pdf_url, agent_uid, contract_category')
-    .eq('id', contractId)
-    .single()
-
-  if (!contract) return
-
-  const isLease = (contract as { contract_category?: string }).contract_category === 'lease'
-
+  // All signed → mark as 'signed' but do NOT auto-lock (is_finalized stays false).
+  // The agent reviews, may regenerate documents, then manually locks via finalizeManually().
   await supabase.from('contracts').update({
-    status: isLease ? 'active' : 'signed',
+    status: 'signed',
     signed_at: now,
-    is_finalized: true,
-    finalized_at: now,
-    finalized_docx_url: (contract as { docx_url?: string | null }).docx_url ?? null,
-    finalized_pdf_url:  (contract as { pdf_url?: string | null }).pdf_url ?? null,
   }).eq('id', contractId)
-
-  if (isLease && (contract as { stock_id?: string | null }).stock_id) {
-    await setStockRented(
-      supabase,
-      (contract as { stock_id: string }).stock_id,
-      (contract as { agent_uid: string }).agent_uid,
-    )
-  }
 }
 
 // Transition contract to sent_for_sign status

@@ -47,6 +47,10 @@ export type ContractInput = {
   commission_rate_pct?: number | null
   commission_from_owner?: number | null
   commission_from_customer?: number | null
+  security_deposit?: number | null
+  co_agent_info?: Record<string, string> | null
+  co_agent_split_pct?: number | null
+  co_agent_commission?: number | null
   extra_vars?: Record<string, string> | null
   parent_contract_id?: string | null
   contract_relation_type?: string | null
@@ -183,6 +187,7 @@ export type LeaseExtras = {
   rent_price?: number | null
   deposit_months?: number | null
   deposit_amount?: number | null
+  security_deposit?: number | null
   cleaning_fee?: number | null
   ac_count?: number | null
   ac_wash_per_unit?: number | null
@@ -266,6 +271,7 @@ export async function createLeaseFromReservation(
     rent_price:           extras.rent_price ?? reservation.rent_price,
     deposit_months:       extras.deposit_months ?? reservation.deposit_months ?? 2,
     deposit_amount:       extras.deposit_amount ?? reservation.deposit_amount,
+    security_deposit:     extras.security_deposit ?? null,
     contract_months:      contractMonths,
     move_in_date:         moveIn,
     end_date:             endDate,
@@ -341,6 +347,9 @@ export type ChildDocInput = {
   bankRef?: string | null
   periodDate?: string | null
   commissionNet?: number | null
+  coAgentSplitPct?: number | null
+  coAgentCommission?: number | null
+  coAgentInfo?: Record<string, string> | null
   vat7?: boolean
   wht3?: boolean
   newRentPrice?: number | null
@@ -449,6 +458,10 @@ export async function createChildDocument(
     commission_rate_pct: lease.commission_rate_pct,
     commission_from_owner: lease.commission_from_owner,
     commission_from_customer: lease.commission_from_customer,
+    security_deposit:    (lease as { security_deposit?: number | null }).security_deposit ?? null,
+    co_agent_split_pct:  (lease as { co_agent_split_pct?: number | null }).co_agent_split_pct ?? null,
+    co_agent_commission: (lease as { co_agent_commission?: number | null }).co_agent_commission ?? null,
+    co_agent_info:       (lease as { co_agent_info?: Record<string, string> | null }).co_agent_info ?? null,
     occupant_count:      lease.occupant_count,
     extra_vars:          {},
   }
@@ -489,9 +502,20 @@ export async function createChildDocument(
   }
 
   if (docType === 'commission' || docType === 'commission_confirm') {
-    if (input.commissionNet != null) row.commission_net = input.commissionNet
-    if (input.vat7 !== undefined)    row.vat_7 = input.vat7
-    if (input.wht3 !== undefined)    row.wht_3 = input.wht3
+    if (input.commissionNet != null)    row.commission_net = input.commissionNet
+    if (input.vat7 !== undefined)       row.vat_7 = input.vat7
+    if (input.wht3 !== undefined)       row.wht_3 = input.wht3
+    if (input.coAgentSplitPct != null)  row.co_agent_split_pct = input.coAgentSplitPct
+    if (input.coAgentCommission != null) row.co_agent_commission = input.coAgentCommission
+  }
+
+  if (docType === 'co_agent') {
+    if (input.commissionNet != null)    row.commission_net = input.commissionNet
+    if (input.coAgentSplitPct != null)  row.co_agent_split_pct = input.coAgentSplitPct
+    if (input.coAgentCommission != null) row.co_agent_commission = input.coAgentCommission
+    if (input.coAgentInfo)              row.co_agent_info = input.coAgentInfo
+    if (input.vat7 !== undefined)       row.vat_7 = input.vat7
+    if (input.wht3 !== undefined)       row.wht_3 = input.wht3
   }
 
   if (['termination','cancellation','end_contract'].includes(docType)) {
@@ -563,6 +587,10 @@ export type DraftFields = {
   commission_rate_pct?: number | null
   commission_from_owner?: number | null
   commission_from_customer?: number | null
+  security_deposit?: number | null
+  co_agent_split_pct?: number | null
+  co_agent_commission?: number | null
+  co_agent_info?: Record<string, string> | null
   extra_vars?: Record<string, string> | null
 }
 
@@ -1214,6 +1242,138 @@ export async function generateContractPdf(
   }
 }
 
+// ─── Lease Agreement Attachments PDF (separate document) ─────
+//
+// Generates a standalone "Lease Agreement Attachments" PDF, separate from
+// the rental contract itself. The user explicitly triggers this (e.g. via
+// "สร้างเอกสารแนบ" button on the contract page).
+//
+// Data sources:
+//   inventory  ← contract_furniture_items (already in DB)
+//   id-cards   ← owner.id_card_url + customer.id_card_url
+//   photos     ← stock.photo_thumb_urls
+//   facilities ← Phase 3: project facilities (DB table TBD)
+//   keys       ← Phase 4: contract key records (DB table TBD)
+
+export async function generateLeaseAttachmentsPdf(
+  contractId: string
+): Promise<{ error?: string; url?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const [{ data: contract }, { data: profile }, { data: furnitureRows }, { data: keyRows }] = await Promise.all([
+    supabase
+      .from('contracts')
+      .select('*, stock:stock(*, project:projects(*)), owner:owners(*), customer:customers(*)')
+      .eq('id', contractId)
+      .eq('agent_uid', user.id)
+      .single(),
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase
+      .from('contract_furniture_items')
+      .select('*')
+      .eq('contract_id', contractId)
+      .eq('agent_uid', user.id)
+      .order('sort_order'),
+    supabase
+      .from('contract_key_items')
+      .select('*')
+      .eq('contract_id', contractId)
+      .eq('agent_uid', user.id)
+      .order('sort_order'),
+  ])
+
+  if (!contract) return { error: 'ไม่พบสัญญา' }
+  if (contract.doc_type !== 'rental') return { error: 'เอกสารแนบใช้ได้เฉพาะสัญญาเช่า' }
+
+  try {
+    const { buildAttachmentHtml } = await import('@/lib/pdf/attachments/buildAttachments')
+    const { htmlToPdfBuffer }     = await import('@/lib/pdf/contract/htmlToPdf')
+    const { toThaiDateFull }      = await import('@/lib/contracts/formatters')
+
+    const stock = contract.stock as (typeof contract.stock & {
+      photo_thumb_urls?: string[] | null
+      photo_urls?:       string[] | null
+      unit_no?:          string | null
+      project_name?:     string | null
+    }) | null
+
+    const ownerName = [contract.owner?.prefix, contract.owner?.first_name_th, contract.owner?.last_name_th]
+      .filter(Boolean).join(' ') || ''
+    const customerName = [contract.customer?.prefix, contract.customer?.first_name_th, contract.customer?.last_name_th]
+      .filter(Boolean).join(' ') || ''
+
+    const contractDate = toThaiDateFull(
+      new Date(contract.move_in_date ?? contract.created_at ?? new Date())
+    )
+
+    const photoUrls: string[] = (
+      stock?.photo_thumb_urls?.length ? stock.photo_thumb_urls : stock?.photo_urls
+    ) ?? []
+
+    console.log(`[ATT ${new Date().toISOString()}] start`, JSON.stringify({
+      contractId, furnitureItems: furnitureRows?.length ?? 0, keyItems: keyRows?.length ?? 0, photos: photoUrls.length,
+    }))
+
+    const attachmentHtml = await buildAttachmentHtml({
+      contractId,
+      contractDate,
+      ownerName,
+      ownerNationalId:    contract.owner?.national_id ?? '',
+      ownerIdCardUrl:     (contract.owner    as { id_card_url?: string | null } | null)?.id_card_url ?? null,
+      customerName,
+      customerNationalId: contract.customer?.national_id ?? '',
+      customerIdCardUrl:  (contract.customer as { id_card_url?: string | null } | null)?.id_card_url ?? null,
+      stockUnitNo:        stock?.unit_no      ?? '',
+      stockProjectName:   stock?.project_name ?? '',
+      stockPhotoUrls:     photoUrls,
+      agentName:          profile?.company_name ?? profile?.name ?? '',
+      sections:           ['id-cards', 'inventory', 'photos', 'facilities', 'keys'],
+      furnitureItems: (furnitureRows ?? []) as Parameters<typeof buildAttachmentHtml>[0]['furnitureItems'],
+      keyItems: (keyRows ?? []).map(r => ({
+        id:             r.id,
+        name:           (r as { item_name_th: string }).item_name_th,
+        nameEn:         (r as { item_name_en: string }).item_name_en,
+        quantity:       (r as { quantity: number }).quantity,
+        penalty_amount: (r as { penalty_amount: number }).penalty_amount,
+      })),
+      // projectFacilities: Phase 3 — no table yet
+    })
+
+    console.log(`[ATT ${new Date().toISOString()}] html built`, JSON.stringify({
+      htmlBytes: Buffer.byteLength(attachmentHtml, 'utf8'),
+    }))
+
+    const buffer = await htmlToPdfBuffer({
+      bodyHtml:     attachmentHtml,
+      contractId,
+      docTypeLabel: 'เอกสารแนบประกอบสัญญาเช่า',
+      agentName:    profile?.company_name ?? profile?.name ?? '',
+      agentPhone:   (profile as { phone?: string | null } | null)?.phone ?? '',
+      statusText:   'เอกสารแนบ',
+      signers:      [],
+      features:     { pageNumbers: true, miniSignatures: false, finalSignature: false },
+    })
+
+    // Upload with `_att` suffix to distinguish from the contract PDF
+    const uploadResult = await uploadPdfToStorage(supabase, user.id, `${contractId}_att`, buffer)
+    if ('error' in uploadResult) return uploadResult
+
+    await supabase
+      .from('contracts')
+      .update({ attachment_pdf_url: uploadResult.url } as Record<string, unknown>)
+      .eq('id', contractId)
+
+    revalidatePath(`/contracts/${contractId}`)
+    console.log(`[ATT ${new Date().toISOString()}] done url=${uploadResult.url}`)
+    return { url: uploadResult.url }
+  } catch (err) {
+    console.error('[ATT] generateLeaseAttachmentsPdf error:', err)
+    return { error: 'สร้างเอกสารแนบไม่สำเร็จ กรุณาลองใหม่' }
+  }
+}
+
 // ─── Furniture Items ──────────────────────────────────────────
 
 export type FurnitureItemInput = {
@@ -1258,6 +1418,74 @@ export async function saveFurnitureItems(
   if (error) return { error: 'บันทึกรายการไม่สำเร็จ: ' + error.message }
 
   revalidatePath(`/contracts/${contractId}`)
+  return {}
+}
+
+// ─── Key & Equipment Items ────────────────────────────────────
+
+export type KeyItemInput = {
+  item_name_th: string
+  item_name_en: string
+  quantity: number
+  penalty_amount: number
+  sort_order?: number
+}
+
+export async function saveKeyItems(
+  contractId: string,
+  items: KeyItemInput[]
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { error: delErr } = await supabase
+    .from('contract_key_items')
+    .delete()
+    .eq('contract_id', contractId)
+    .eq('agent_uid', user.id)
+
+  if (delErr) return { error: 'ลบรายการเดิมไม่สำเร็จ: ' + delErr.message }
+
+  if (items.length === 0) return {}
+
+  const rows = items.map((item, i) => ({
+    contract_id:    contractId,
+    agent_uid:      user.id,
+    item_name_th:   item.item_name_th,
+    item_name_en:   item.item_name_en,
+    quantity:       item.quantity,
+    penalty_amount: item.penalty_amount,
+    sort_order:     item.sort_order ?? i,
+  }))
+
+  const { error } = await supabase.from('contract_key_items').insert(rows)
+  if (error) return { error: 'บันทึกรายการไม่สำเร็จ: ' + error.message }
+
+  revalidatePath(`/contracts/${contractId}`)
+  return {}
+}
+
+// ─── Stock Photos ─────────────────────────────────────────────
+
+export async function updateStockPhotos(
+  stockId: string,
+  photoUrls: string[],
+  thumbUrls: string[],
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { error } = await supabase
+    .from('stock')
+    .update({ photo_urls: photoUrls, photo_thumb_urls: thumbUrls })
+    .eq('id', stockId)
+    .eq('agent_uid', user.id)
+
+  if (error) return { error: 'บันทึกรูปไม่สำเร็จ: ' + error.message }
+
+  revalidatePath(`/stock/${stockId}`)
   return {}
 }
 

@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { resolvePlan } from '@/types'
 import { getPlanLimitsByUserPlan } from '@/lib/planLimits'
 import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
+import { identifyAndEnrichProject } from '@/lib/ai/projectIdentity'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -317,13 +318,14 @@ ${rawText.slice(0, 4000)}`
     }
   }
 
-  // ── Find or create project ────────────────────────────────
+  // ── Find or create project (bilingual search + canonical names) ──
   const projectName = stockData.project_name
   if (projectName) {
+    // Bilingual search: match on name_th OR name_en so English input finds Thai records
     const { data: existing } = await supabase
       .from('projects')
-      .select('id, name_th')
-      .ilike('name_th', `%${projectName}%`)
+      .select('id, name_th, name_en')
+      .or(`name_th.ilike.%${projectName}%,name_en.ilike.%${projectName}%`)
       .limit(1)
       .maybeSingle()
 
@@ -331,49 +333,42 @@ ${rawText.slice(0, 4000)}`
       result.project_id = existing.id
       result.project_display = existing.name_th
     } else {
-      // Enrich via AI then create
+      // Not found — identify canonically + enrich, then create
       try {
-        const enrichRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: `คุณเป็นผู้เชี่ยวชาญด้านอสังหาริมทรัพย์ไทย วิเคราะห์โครงการ "${projectName}" และส่งคืน JSON เท่านั้น:\n{"name_en":null,"developer":null,"built_year":null,"total_floors":null,"total_units":null,"facilities":[],"bts_mrt":[],"address_road":null,"province":null,"district":null,"subdistrict":null,"zip":null}\nหากไม่แน่ใจให้ใส่ null` }] }],
-              generationConfig: { temperature: 0.1, responseMimeType: 'application/json' },
-            }),
-          }
-        )
-        const enrichData = enrichRes.ok ? await enrichRes.json() : null
-        const enrichText: string = enrichData?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-        const enrichCleaned = enrichText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-        const enrich = JSON.parse(enrichCleaned || '{}')
+        const enrich = await identifyAndEnrichProject(projectName, apiKey)
+
+        // Use canonical names when AI is confident enough (≥ 60 for automated flow)
+        const CONFIDENCE_THRESHOLD = 60
+        const saveName_th = enrich.confidence >= CONFIDENCE_THRESHOLD
+          ? enrich.name_th
+          : projectName
 
         const { data: pIds } = await supabase
           .from('projects').select('id').like('id', 'PRJ-%').order('id', { ascending: false }).limit(1)
         const pNum = pIds?.[0]?.id ? (parseInt(pIds[0].id.slice(4)) || 0) : 0
-        const pId = `PRJ-${String(pNum + 1).padStart(4, '0')}`
+        const pId  = `PRJ-${String(pNum + 1).padStart(4, '0')}`
 
         await supabase.from('projects').insert({
-          id: pId,
-          created_by: user.id,
-          name_th: projectName,
-          name_en: enrich.name_en ?? null,
-          developer: enrich.developer ?? null,
-          built_year: enrich.built_year ?? null,
+          id:           pId,
+          created_by:   user.id,
+          name_th:      saveName_th,
+          name_en:      enrich.name_en      ?? null,
+          developer:    enrich.developer    ?? null,
+          built_year:   enrich.built_year   ?? null,
           total_floors: enrich.total_floors ?? null,
-          total_units: enrich.total_units ?? null,
-          facilities: enrich.facilities ?? [],
-          bts_mrt: enrich.bts_mrt ?? [],
+          total_units:  enrich.total_units  ?? null,
+          parking_pct:  enrich.parking_pct  ?? null,
+          facilities:   enrich.facilities   ?? [],
+          bts_mrt:      enrich.bts_mrt      ?? [],
           address_road: enrich.address_road ?? null,
-          province: enrich.province ?? null,
-          district: enrich.district ?? null,
-          subdistrict: enrich.subdistrict ?? null,
-          zip: enrich.zip ?? null,
+          province:     enrich.province     ?? null,
+          district:     enrich.district     ?? null,
+          subdistrict:  enrich.subdistrict  ?? null,
+          zip:          enrich.zip          ?? null,
         })
-        result.project_id = pId
+        result.project_id      = pId
         result.project_created = true
-        result.project_display = projectName
+        result.project_display = saveName_th
         revalidatePath('/projects')
       } catch {
         // project creation failed — not critical

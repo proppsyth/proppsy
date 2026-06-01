@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Loader2, ChevronRight, ChevronLeft, Check, FileText, X, Globe, Info, AlertCircle,
+  Loader2, ChevronRight, ChevronLeft, Check, FileText, X, Globe, Info, AlertCircle, Sparkles,
 } from 'lucide-react'
 import { DOC_TYPE_LABELS } from '@/types'
 import type { ContractDocType, PaymentMethod } from '@/types'
@@ -18,6 +18,7 @@ import {
   type LanguageVersion, LANGUAGE_LABELS,
   type TemplateDefinition,
 } from '@/lib/contracts/templateRegistry'
+import { calculateCommission, commissionHint } from '@/lib/contracts/commissionRules'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -171,8 +172,16 @@ export default function ContractWizard() {
     setState(s => {
       const rent = parseFloat(v)
       const depositMonths = parseFloat(s.deposit_months) || 1
-      const depositAmount = rent > 0 ? String(rent * depositMonths) : s.deposit_amount
-      return { ...s, rent_price: v, deposit_amount: depositAmount }
+      const contractMonths = parseInt(s.contract_months) || 0
+      const next: WizardState = {
+        ...s,
+        rent_price: v,
+        deposit_amount: rent > 0 ? String(rent * depositMonths) : s.deposit_amount,
+      }
+      if (rent > 0 && contractMonths > 0 && !s.commission_net) {
+        next.commission_net = String(calculateCommission(contractMonths, rent).commission_amount)
+      }
+      return next
     })
   }
 
@@ -192,9 +201,7 @@ export default function ContractWizard() {
         const d = new Date(v)
         d.setMonth(d.getMonth() + months)
         next.end_date = d.toISOString().split('T')[0]!
-        if (!s.payment_day_of_month) {
-          next.payment_day_of_month = String(new Date(v).getDate())
-        }
+        next.payment_day_of_month = String(new Date(v).getDate())
         // Auto-fill payment_date from contract date
         next.payment_date = v
       }
@@ -203,13 +210,20 @@ export default function ContractWizard() {
   }
 
   function handleContractMonthsChange(v: string) {
-    set('contract_months', v)
-    const months = parseInt(v) || 12
-    if (state.move_in_date) {
-      const d = new Date(state.move_in_date)
-      d.setMonth(d.getMonth() + months)
-      set('end_date', d.toISOString().split('T')[0]!)
-    }
+    setState(s => {
+      const months = parseInt(v) || 12
+      const rent = parseFloat(s.rent_price) || 0
+      const next: WizardState = { ...s, contract_months: v }
+      if (s.move_in_date) {
+        const d = new Date(s.move_in_date)
+        d.setMonth(d.getMonth() + months)
+        next.end_date = d.toISOString().split('T')[0]!
+      }
+      if (rent > 0 && months > 0 && !s.commission_net) {
+        next.commission_net = String(calculateCommission(months, rent).commission_amount)
+      }
+      return next
+    })
   }
 
   // ─── Entity select handlers ─────────────────────────────────
@@ -494,11 +508,11 @@ export default function ContractWizard() {
         <div className="space-y-4">
           {isRental && (
             <>
-              <Section title="ราคาและมัดจำ">
+              <Section title="ราคาและเงินประกัน">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="ค่าเช่า / เดือน (บาท)" value={state.rent_price} onChange={handleRentChange} type="number" placeholder="0" required hasError={showErrors && !state.rent_price} />
-                  <Field label="จำนวนเดือนมัดจำ" value={state.deposit_months} onChange={handleDepositMonthsChange} type="number" placeholder="2" />
-                  <Field label="เงินมัดจำ (บาท)" value={state.deposit_amount} onChange={v => set('deposit_amount', v)} type="number" placeholder="คำนวณอัตโนมัติ" />
+                  <Field label="จำนวนเดือนประกัน (เงินประกัน)" value={state.deposit_months} onChange={handleDepositMonthsChange} type="number" placeholder="2" />
+                  <Field label="เงินประกัน (บาท)" value={state.deposit_amount} onChange={v => set('deposit_amount', v)} type="number" placeholder="คำนวณอัตโนมัติ" />
                   <Field label="ระยะสัญญา (เดือน)" value={state.contract_months} onChange={handleContractMonthsChange} type="number" placeholder="12" required hasError={showErrors && !state.contract_months} />
                   <Field label="วันที่เข้าอยู่" value={state.move_in_date} onChange={handleMoveInChange} type="date" required hasError={showErrors && !state.move_in_date} />
                   <Field label="วันสิ้นสุดสัญญา" value={state.end_date} onChange={v => set('end_date', v)} type="date" />
@@ -537,8 +551,17 @@ export default function ContractWizard() {
               </Section>
 
               <Section title="ค่าคอมมิชชัน">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <Field label="อัตราค่าคอม (%)" value={state.commission_rate_pct} onChange={v => set('commission_rate_pct', v)} type="number" placeholder="0" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2 space-y-1">
+                    <Field label="ค่าคอมสุทธิ (บาท)" value={state.commission_net} onChange={v => set('commission_net', v)} type="number" placeholder="คำนวณอัตโนมัติ" />
+                    {commissionHint(parseInt(state.contract_months) || 0, parseFloat(state.rent_price) || 0) && (
+                      <p className="flex items-center gap-1.5 text-xs text-violet-600 mt-1">
+                        <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+                        {commissionHint(parseInt(state.contract_months) || 0, parseFloat(state.rent_price) || 0)}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-400">วันรับค่าคอม = วันลงนามสัญญาเช่า</p>
+                  </div>
                   <Field label="ค่าคอมจากเจ้าของ (บาท)" value={state.commission_from_owner} onChange={v => set('commission_from_owner', v)} type="number" placeholder="0" />
                   <Field label="ค่าคอมจากลูกค้า (บาท)" value={state.commission_from_customer} onChange={v => set('commission_from_customer', v)} type="number" placeholder="0" />
                 </div>

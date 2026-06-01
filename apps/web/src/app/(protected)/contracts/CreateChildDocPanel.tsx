@@ -2,10 +2,11 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, ChevronLeft, Loader2, X, AlertCircle } from 'lucide-react'
+import { Plus, ChevronLeft, Loader2, X, AlertCircle, Sparkles } from 'lucide-react'
 import { DOC_TYPE_LABELS } from '@/types'
 import type { ContractDocType } from '@/types'
 import { createChildDocument } from './actions'
+import { calculateCommission, calculateCommissionSplit, commissionHint } from '@/lib/contracts/commissionRules'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -20,6 +21,8 @@ interface LeaseSummary {
   commissionFromOwner: number | null
   commissionFromCustomer: number | null
   commissionRatePct: number | null
+  coAgentSplitPct: number | null
+  coAgentCommission: number | null
   vat7: boolean
   wht3: boolean
   paymentDayOfMonth: number | null
@@ -41,6 +44,8 @@ interface FormValues {
   bankRef: string
   periodDate: string
   commissionNet: string
+  coAgentSplitPct: string
+  coAgentCommission: string
   vat7: boolean
   wht3: boolean
   newRentPrice: string
@@ -50,8 +55,14 @@ interface FormValues {
   effectiveEndDate: string
   penaltyAmount: string
   issueDate: string
+  // Co-agent profile
   coAgentName: string
   coAgentNationalId: string
+  coAgentAddress: string
+  coAgentBankName: string
+  coAgentAccountName: string
+  coAgentAccountNo: string
+  coAgentTaxId: string
   noticeDetails: string
 }
 
@@ -152,13 +163,28 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
 
   function makeInitForm(type?: ContractDocType | null): FormValues {
     const today = todayStr()
+
+    // Autofill commission from lease data (business rule: amount calculated from rent × multiplier)
+    const commissionNet = leaseData.commissionNet
+      ?? (leaseData.rentPrice && leaseData.contractMonths
+        ? calculateCommission(leaseData.contractMonths, leaseData.rentPrice).commission_amount
+        : null)
+
+    // Default co-agent split from lease, or 50% if co-agent doc
+    const isCoAgentDoc = type === 'co_agent'
+    const splitPct = leaseData.coAgentSplitPct ?? (isCoAgentDoc ? 50 : null)
+    const coAgentCommission = leaseData.coAgentCommission
+      ?? (commissionNet && splitPct ? calculateCommissionSplit(commissionNet, splitPct).co_agent_amount : null)
+
     return {
       amount:             String(leaseData.depositAmount ?? ''),
       paymentDate:        today,
       paymentMethod:      'transfer',
       bankRef:            '',
       periodDate:         today,
-      commissionNet:      String(leaseData.commissionNet ?? ''),
+      commissionNet:      String(commissionNet ?? ''),
+      coAgentSplitPct:    String(splitPct ?? (isCoAgentDoc ? '50' : '')),
+      coAgentCommission:  String(coAgentCommission ?? ''),
       vat7:               leaseData.vat7,
       wht3:               leaseData.wht3,
       newRentPrice:       String(leaseData.rentPrice ?? ''),
@@ -170,6 +196,11 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
       issueDate:          today,
       coAgentName:        '',
       coAgentNationalId:  '',
+      coAgentAddress:     '',
+      coAgentBankName:    '',
+      coAgentAccountName: '',
+      coAgentAccountNo:   '',
+      coAgentTaxId:       '',
       noticeDetails:      '',
       ...(type === 'receipt_rent' ? { amount: String(leaseData.rentPrice ?? '') } : {}),
     }
@@ -186,6 +217,30 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
   const set = (k: keyof FormValues, v: string | boolean) =>
     setForm(f => ({ ...f, [k]: v }))
 
+  // When commission amount changes, recalculate co-agent's share
+  function handleCommissionChange(v: string) {
+    const total = parseFloat(v) || 0
+    const pct = parseInt(form.coAgentSplitPct) || 0
+    const coAmt = pct > 0 && total > 0 ? calculateCommissionSplit(total, pct).co_agent_amount : 0
+    setForm(f => ({
+      ...f,
+      commissionNet: v,
+      coAgentCommission: coAmt > 0 ? String(coAmt) : f.coAgentCommission,
+    }))
+  }
+
+  // When split % changes, recalculate co-agent's share
+  function handleSplitPctChange(v: string) {
+    const pct = parseInt(v) || 0
+    const total = parseFloat(form.commissionNet) || 0
+    const coAmt = pct > 0 && total > 0 ? calculateCommissionSplit(total, pct).co_agent_amount : 0
+    setForm(f => ({
+      ...f,
+      coAgentSplitPct: v,
+      coAgentCommission: coAmt > 0 ? String(coAmt) : f.coAgentCommission,
+    }))
+  }
+
   function handleSubmit() {
     if (!selectedType) return
     setError('')
@@ -194,14 +249,21 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
       const int = (v: string) => v.trim() ? parseInt(v) || null : null
 
       const extraVars: Record<string, string> = {}
-      if (selectedType === 'co_agent') {
-        extraVars['ชื่อ'] = form.coAgentName
-        extraVars['เลขเสียภาษี'] = form.coAgentNationalId
-      }
       if ((selectedType === 'notice' || selectedType === 'warning') && form.noticeDetails) {
         extraVars['เหตุผล'] = form.noticeDetails
         extraVars['รายละเอียด'] = form.noticeDetails
       }
+
+      // Co-agent profile snapshot for document generation
+      const coAgentInfo: Record<string, string> | null = selectedType === 'co_agent' ? {
+        ชื่อ:        form.coAgentName,
+        เลขบัตร:     form.coAgentNationalId,
+        เลขเสียภาษี: form.coAgentTaxId,
+        ที่อยู่:      form.coAgentAddress,
+        ธนาคาร:      form.coAgentBankName,
+        ชื่อบัญชี:   form.coAgentAccountName,
+        เลขบัญชี:    form.coAgentAccountNo,
+      } : null
 
       const result = await createChildDocument(leaseId, selectedType, {
         amount:             num(form.amount),
@@ -210,6 +272,9 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
         bankRef:            form.bankRef || null,
         periodDate:         form.periodDate || null,
         commissionNet:      num(form.commissionNet),
+        coAgentSplitPct:    int(form.coAgentSplitPct),
+        coAgentCommission:  num(form.coAgentCommission),
+        coAgentInfo:        coAgentInfo,
         vat7:               form.vat7,
         wht3:               form.wht3,
         newRentPrice:       num(form.newRentPrice),
@@ -281,10 +346,18 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
 
         {isCommission && (
           <>
-            <Field label="ค่านายหน้าสุทธิ (บาท)" value={form.commissionNet}
-              onChange={v => set('commissionNet', v)} type="number"
-              hint={leaseData.commissionNet ? `จากสัญญา: ฿${fmt(leaseData.commissionNet)}` : undefined}
-            />
+            <div className="space-y-1">
+              <Field label="ค่านายหน้าสุทธิ (บาท)" value={form.commissionNet}
+                onChange={handleCommissionChange} type="number"
+              />
+              {commissionHint(leaseData.contractMonths ?? 0, leaseData.rentPrice ?? 0) && (
+                <p className="flex items-center gap-1 text-xs text-violet-600">
+                  <Sparkles className="w-3 h-3 flex-shrink-0" />
+                  {commissionHint(leaseData.contractMonths ?? 0, leaseData.rentPrice ?? 0)}
+                </p>
+              )}
+              <p className="text-xs text-gray-400">วันรับค่าคอม = วันลงนามสัญญาเช่า (move-in date)</p>
+            </div>
             <div className="flex flex-wrap gap-3">
               <Toggle label="VAT 7%" checked={form.vat7} onChange={v => set('vat7', v)} />
               <Toggle label="หัก ณ ที่จ่าย 3%" checked={form.wht3} onChange={v => set('wht3', v)} />
@@ -341,10 +414,51 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
 
         {isCoAgent && (
           <>
+            <div className="px-3 py-2 bg-indigo-50 rounded-lg text-xs text-indigo-700 flex items-start gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              <span>ข้อมูลคอมมิชชันดึงจากสัญญาหลักอัตโนมัติ — ตรวจสอบและแก้ไขได้</span>
+            </div>
+
+            <p className="text-xs font-semibold text-gray-600 mt-1">ข้อมูล Co-Agent</p>
             <Field label="ชื่อ Co-Agent *" value={form.coAgentName}
               onChange={v => set('coAgentName', v)} placeholder="ชื่อเต็ม" />
             <Field label="เลขบัตรประชาชน / เลขทะเบียนนิติบุคคล *" value={form.coAgentNationalId}
               onChange={v => set('coAgentNationalId', v)} placeholder="13 หลัก" />
+            <Field label="เลขประจำตัวผู้เสียภาษี" value={form.coAgentTaxId}
+              onChange={v => set('coAgentTaxId', v)} placeholder="ไม่บังคับ" />
+            <Field label="ที่อยู่" value={form.coAgentAddress}
+              onChange={v => set('coAgentAddress', v)} placeholder="บ้านเลขที่ ถนน แขวง เขต จังหวัด" />
+
+            <p className="text-xs font-semibold text-gray-600 mt-1">ข้อมูลธนาคาร</p>
+            <Field label="ชื่อธนาคาร" value={form.coAgentBankName}
+              onChange={v => set('coAgentBankName', v)} placeholder="เช่น กสิกรไทย, ไทยพาณิชย์" />
+            <Field label="ชื่อบัญชี" value={form.coAgentAccountName}
+              onChange={v => set('coAgentAccountName', v)} placeholder="ชื่อเจ้าของบัญชี" />
+            <Field label="เลขบัญชี" value={form.coAgentAccountNo}
+              onChange={v => set('coAgentAccountNo', v)} placeholder="xxx-x-xxxxx-x" />
+
+            <p className="text-xs font-semibold text-gray-600 mt-1">คอมมิชชัน</p>
+            <div className="space-y-1">
+              <Field label="ค่าคอมรวม (บาท)" value={form.commissionNet}
+                onChange={handleCommissionChange} type="number"
+              />
+              {commissionHint(leaseData.contractMonths ?? 0, leaseData.rentPrice ?? 0) && (
+                <p className="flex items-center gap-1 text-xs text-violet-600">
+                  <Sparkles className="w-3 h-3 flex-shrink-0" />
+                  {commissionHint(leaseData.contractMonths ?? 0, leaseData.rentPrice ?? 0)}
+                </p>
+              )}
+            </div>
+            <Field label="สัดส่วน Co-Agent (%)" value={form.coAgentSplitPct}
+              onChange={handleSplitPctChange} type="number"
+              hint="ค่าเริ่มต้น 50% — Co-Agent รับครึ่งหนึ่ง"
+            />
+            <Field label="จำนวนที่ Co-Agent รับ (บาท)" value={form.coAgentCommission}
+              onChange={v => set('coAgentCommission', v)} type="number"
+              hint={form.commissionNet && form.coAgentSplitPct
+                ? `เราได้: ฿${fmt(calculateCommissionSplit(parseFloat(form.commissionNet) || 0, parseInt(form.coAgentSplitPct) || 0).our_amount)}`
+                : undefined}
+            />
           </>
         )}
 

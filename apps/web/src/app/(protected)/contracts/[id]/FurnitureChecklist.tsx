@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { Plus, Trash2, Loader2, Check, ChevronDown } from 'lucide-react'
 import { saveFurnitureItems, type FurnitureItemInput } from '../actions'
+import { useEditableRows } from '@/hooks/useEditableRows'
 
 // Common furniture presets for quick-add
 const PRESET_ITEMS = [
@@ -19,7 +20,7 @@ const CONDITION_LABELS: Record<string, { label: string; color: string }> = {
 }
 
 interface FurnitureRow extends FurnitureItemInput {
-  id: string  // local id for list key
+  id: string
 }
 
 interface Props {
@@ -27,7 +28,7 @@ interface Props {
   initialItems?: FurnitureRow[]
 }
 
-function makeRow(name: string = ''): FurnitureRow {
+function makeRow(name = ''): FurnitureRow {
   return {
     id: crypto.randomUUID(),
     item_name: name,
@@ -39,46 +40,14 @@ function makeRow(name: string = ''): FurnitureRow {
 }
 
 export default function FurnitureChecklist({ contractId, initialItems = [] }: Props) {
-  const [items, setItems] = useState<FurnitureRow[]>(
-    initialItems.length > 0 ? initialItems : [makeRow()]
-  )
-  const [saved, setSaved] = useState(false)
-  const [saveError, setSaveError] = useState('')
-  const [isPending, startTransition] = useTransition()
   const [showPresets, setShowPresets] = useState(false)
 
-  function addRow(name?: string) {
-    setItems(prev => [...prev, makeRow(name)])
-    setSaved(false)
-  }
-
-  function removeRow(id: string) {
-    setItems(prev => prev.filter(r => r.id !== id))
-    setSaved(false)
-  }
-
-  function updateRow(id: string, field: keyof FurnitureRow, value: string | number) {
-    setItems(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r))
-    setSaved(false)
-  }
-
-  function handleSave() {
-    setSaveError('')
-    setSaved(false)
-    startTransition(async () => {
-      const validItems = items.filter(r => r.item_name.trim())
-      const res = await saveFurnitureItems(contractId, validItems.map((r, i) => ({
-        item_name:  r.item_name,
-        quantity:   r.quantity,
-        condition:  r.condition,
-        notes:      r.notes || null,
-        serial_no:  r.serial_no || null,
-        sort_order: i,
-      })))
-      if (res.error) { setSaveError(res.error); return }
-      setSaved(true)
+  const { items, saved, saveError, isPending, addRow, removeRow, updateRow, handleSave } =
+    useEditableRows<FurnitureRow, 'id'>({
+      initialItems: initialItems.length > 0 ? initialItems : [makeRow()],
+      makeEmpty: makeRow,
+      keyField: 'id',
     })
-  }
 
   return (
     <div className="space-y-3">
@@ -99,7 +68,7 @@ export default function FurnitureChecklist({ contractId, initialItems = [] }: Pr
               <button
                 key={p}
                 type="button"
-                onClick={() => { addRow(p); setShowPresets(false) }}
+                onClick={() => { addRow(makeRow(p)); setShowPresets(false) }}
                 className="px-2.5 py-1 text-xs bg-gray-100 hover:bg-blue-50 hover:text-blue-700 rounded-full transition"
               >
                 {p}
@@ -130,7 +99,7 @@ export default function FurnitureChecklist({ contractId, initialItems = [] }: Pr
                   <input
                     type="text"
                     value={row.item_name}
-                    onChange={e => updateRow(row.id, 'item_name', e.target.value)}
+                    onChange={e => updateRow(row.id, { item_name: e.target.value })}
                     placeholder="ชื่อรายการ"
                     className="w-full px-2 py-1 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
                   />
@@ -140,14 +109,14 @@ export default function FurnitureChecklist({ contractId, initialItems = [] }: Pr
                     type="number"
                     min={1}
                     value={row.quantity}
-                    onChange={e => updateRow(row.id, 'quantity', parseInt(e.target.value) || 1)}
+                    onChange={e => updateRow(row.id, { quantity: parseInt(e.target.value) || 1 })}
                     className="w-full px-2 py-1 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 text-center"
                   />
                 </td>
                 <td className="py-1.5 pr-3">
                   <select
                     value={row.condition}
-                    onChange={e => updateRow(row.id, 'condition', e.target.value)}
+                    onChange={e => updateRow(row.id, { condition: e.target.value as FurnitureRow['condition'] })}
                     className={`w-full px-2 py-1 border rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-400 ${CONDITION_LABELS[row.condition]?.color ?? ''}`}
                   >
                     {Object.entries(CONDITION_LABELS).map(([v, { label }]) => (
@@ -159,7 +128,7 @@ export default function FurnitureChecklist({ contractId, initialItems = [] }: Pr
                   <input
                     type="text"
                     value={row.notes ?? ''}
-                    onChange={e => updateRow(row.id, 'notes', e.target.value)}
+                    onChange={e => updateRow(row.id, { notes: e.target.value })}
                     placeholder="หมายเหตุ (ไม่บังคับ)"
                     className="w-full px-2 py-1 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
                   />
@@ -168,7 +137,7 @@ export default function FurnitureChecklist({ contractId, initialItems = [] }: Pr
                   <button
                     type="button"
                     onClick={() => removeRow(row.id)}
-                    className="p-1 text-gray-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
+                    className="p-1 text-gray-300 hover:text-red-500 transition"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -193,14 +162,21 @@ export default function FurnitureChecklist({ contractId, initialItems = [] }: Pr
       <div className="flex items-center gap-3 pt-1">
         <button
           type="button"
-          onClick={handleSave}
+          onClick={() => handleSave(rows => saveFurnitureItems(contractId, rows.filter(r => r.item_name.trim()).map((r, i) => ({
+            item_name:  r.item_name,
+            quantity:   r.quantity,
+            condition:  r.condition,
+            notes:      r.notes || null,
+            serial_no:  r.serial_no || null,
+            sort_order: i,
+          }))))}
           disabled={isPending}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
         >
           {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
           {isPending ? 'กำลังบันทึก...' : 'บันทึกรายการ'}
         </button>
-        {saved && <span className="text-xs text-green-600 font-medium">บันทึกแล้ว</span>}
+        {saved     && <span className="text-xs text-green-600 font-medium">บันทึกแล้ว ✓</span>}
         {saveError && <span className="text-xs text-red-600">{saveError}</span>}
       </div>
     </div>

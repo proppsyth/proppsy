@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Pencil, X, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Pencil, X, Loader2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 import { updateContractDraft } from './actions'
+import { calculateCommission, commissionHint } from '@/lib/contracts/commissionRules'
 
 interface DraftData {
   contractId: string
@@ -32,6 +33,8 @@ interface DraftData {
   // Payment terms
   paymentGraceDays: number | null
   paymentDayOfMonth: number | null
+  // Security deposit (lease only)
+  securityDeposit: number | null
   // Flags
   vat7: boolean
   wht3: boolean
@@ -40,6 +43,8 @@ interface DraftData {
   commissionRatePct: number | null
   commissionFromOwner: number | null
   commissionFromCustomer: number | null
+  coAgentSplitPct: number | null
+  coAgentCommission: number | null
 }
 
 interface Props {
@@ -81,12 +86,15 @@ export default function EditDraftPanel({ data }: Props) {
     parkingFee:           str(data.parkingFee),
     paymentGraceDays:     str(data.paymentGraceDays),
     paymentDayOfMonth:    str(data.paymentDayOfMonth),
+    securityDeposit:      str(data.securityDeposit),
     vat7:                 data.vat7,
     wht3:                 data.wht3,
     commissionNet:        str(data.commissionNet),
     commissionRatePct:    str(data.commissionRatePct),
     commissionFromOwner:  str(data.commissionFromOwner),
     commissionFromCustomer: str(data.commissionFromCustomer),
+    coAgentSplitPct:      str(data.coAgentSplitPct),
+    coAgentCommission:    str(data.coAgentCommission),
   }))
 
   const set = (k: keyof typeof form, v: string | boolean) =>
@@ -94,12 +102,20 @@ export default function EditDraftPanel({ data }: Props) {
 
   function handleRentChange(v: string) {
     const rent = parseFloat(v) || 0
-    const months = parseFloat(form.depositMonths) || 1
-    setForm(f => ({
-      ...f,
-      rentPrice: v,
-      depositAmount: rent > 0 ? String(rent * months) : f.depositAmount,
-    }))
+    const depositMonths = parseFloat(form.depositMonths) || 1
+    const contractMonths = parseInt(form.contractMonths) || 0
+    setForm(f => {
+      const next: typeof f = {
+        ...f,
+        rentPrice: v,
+        depositAmount: rent > 0 ? String(rent * depositMonths) : f.depositAmount,
+        securityDeposit: isLease && rent > 0 ? String(rent * 2) : f.securityDeposit,
+      }
+      if (rent > 0 && contractMonths > 0 && !f.commissionNet) {
+        next.commissionNet = String(calculateCommission(contractMonths, rent).commission_amount)
+      }
+      return next
+    })
   }
 
   function handleDepositMonthsChange(v: string) {
@@ -120,9 +136,7 @@ export default function EditDraftPanel({ data }: Props) {
         const d = new Date(v)
         d.setMonth(d.getMonth() + months)
         next.endDate = d.toISOString().split('T')[0]!
-        if (!f.paymentDayOfMonth) {
-          next.paymentDayOfMonth = String(new Date(v).getDate())
-        }
+        next.paymentDayOfMonth = String(new Date(v).getDate())
       }
       return next
     })
@@ -131,11 +145,16 @@ export default function EditDraftPanel({ data }: Props) {
   function handleContractMonthsChange(v: string) {
     setForm(f => {
       const months = parseInt(v) || 12
-      const next = { ...f, contractMonths: v }
+      const rent = parseFloat(f.rentPrice) || 0
+      const next: typeof f = { ...f, contractMonths: v }
       if (f.moveInDate) {
         const d = new Date(f.moveInDate)
         d.setMonth(d.getMonth() + months)
         next.endDate = d.toISOString().split('T')[0]!
+      }
+      // Auto-fill commission only when it hasn't been manually set
+      if (rent > 0 && months > 0 && !f.commissionNet) {
+        next.commissionNet = String(calculateCommission(months, rent).commission_amount)
       }
       return next
     })
@@ -175,6 +194,9 @@ export default function EditDraftPanel({ data }: Props) {
         commission_rate_pct:   num(form.commissionRatePct),
         commission_from_owner: num(form.commissionFromOwner),
         commission_from_customer: num(form.commissionFromCustomer),
+        security_deposit:      num(form.securityDeposit),
+        co_agent_split_pct:    int(form.coAgentSplitPct),
+        co_agent_commission:   num(form.coAgentCommission),
       })
 
       if (result.error) { setError(result.error); return }
@@ -219,8 +241,9 @@ export default function EditDraftPanel({ data }: Props) {
           <Field label="ค่าเช่า / เดือน (บาท)" value={form.rentPrice} onChange={handleRentChange} type="number" />
           {!isReservation && (
             <>
-              <Field label="เดือนมัดจำ" value={form.depositMonths} onChange={handleDepositMonthsChange} type="number" />
-              <Field label="เงินมัดจำ (บาท)" value={form.depositAmount} onChange={v => set('depositAmount', v)} type="number" />
+              <Field label="เดือนมัดจำ/จอง" value={form.depositMonths} onChange={handleDepositMonthsChange} type="number" />
+              <Field label="เงินมัดจำ/จอง (บาท)" value={form.depositAmount} onChange={v => set('depositAmount', v)} type="number" />
+              <Field label="เงินประกัน (บาท)" value={form.securityDeposit} onChange={v => set('securityDeposit', v)} type="number" />
               <Field label="ระยะสัญญา (เดือน)" value={form.contractMonths} onChange={handleContractMonthsChange} type="number" />
               <Field label="วันเข้าอยู่" value={form.moveInDate} onChange={handleMoveInChange} type="date" />
               <Field label="วันสิ้นสุดสัญญา" value={form.endDate} onChange={v => set('endDate', v)} type="date" />
@@ -268,7 +291,16 @@ export default function EditDraftPanel({ data }: Props) {
                 <Field label="ค่าล้างแอร์ / เครื่อง (บาท)" value={form.acWashPerUnit} onChange={v => set('acWashPerUnit', v)} type="number" />
                 <Field label="ชำระทุกวันที่ (1–31)" value={form.paymentDayOfMonth} onChange={v => set('paymentDayOfMonth', v)} type="number" />
                 <Field label="ผ่อนผันชำระได้ไม่เกิน (วัน)" value={form.paymentGraceDays} onChange={v => set('paymentGraceDays', v)} type="number" />
-                <Field label="ค่าคอมสุทธิ (บาท)" value={form.commissionNet} onChange={v => set('commissionNet', v)} type="number" />
+                <div className="col-span-full space-y-1">
+                  <Field label="ค่าคอมสุทธิ (บาท)" value={form.commissionNet} onChange={v => set('commissionNet', v)} type="number" />
+                  {commissionHint(parseInt(form.contractMonths) || 0, parseFloat(form.rentPrice) || 0) && (
+                    <p className="flex items-center gap-1 text-xs text-violet-600">
+                      <Sparkles className="w-3 h-3 flex-shrink-0" />
+                      {commissionHint(parseInt(form.contractMonths) || 0, parseFloat(form.rentPrice) || 0)}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-400">วันรับค่าคอม = วันลงนามสัญญาเช่า (move-in date)</p>
+                </div>
               </div>
             )}
           </>

@@ -6,7 +6,9 @@ import { createClient } from '@/lib/supabase/server'
 import { DOC_TYPE_LABELS, ownerDisplayName, customerDisplayName, stockDisplayTitle } from '@/types'
 import type { ContractDocType, ContractStatus, Stock, Owner, Customer, ContractSigner } from '@/types'
 import ContractActions from './ContractActions'
+import ContractStockPhotos from './ContractStockPhotos'
 import FurnitureChecklist from './FurnitureChecklist'
+import KeyHandoverChecklist from './KeyHandoverChecklist'
 import SignersPanel from './SignersPanel'
 import CreateChildDocPanel from '../CreateChildDocPanel'
 import CreateLeasePanel from '../CreateLeasePanel'
@@ -67,7 +69,7 @@ export default async function ContractDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: contract }, { data: furnitureItems }, { data: signers }, { data: relatedDocs }] = await Promise.all([
+  const [{ data: contract }, { data: furnitureItems }, { data: keyItems }, { data: signers }, { data: relatedDocs }] = await Promise.all([
     supabase
       .from('contracts')
       .select('*, stock:stock(*), owner:owners(*), customer:customers(*)')
@@ -76,6 +78,11 @@ export default async function ContractDetailPage({
       .single(),
     supabase
       .from('contract_furniture_items')
+      .select('*')
+      .eq('contract_id', id)
+      .order('sort_order'),
+    supabase
+      .from('contract_key_items')
       .select('*')
       .eq('contract_id', id)
       .order('sort_order'),
@@ -185,7 +192,7 @@ export default async function ContractDetailPage({
         <div className="lg:col-span-2 space-y-4 min-w-0">
           {stock && (
             <Section title="ทรัพย์สิน">
-              <div className="flex items-start gap-2 justify-between min-w-0">
+              <div className="flex items-start gap-2 justify-between min-w-0 mb-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-gray-400 truncate">{stock.id}</p>
                   <p className="font-medium text-gray-900 text-sm break-words">{stockDisplayTitle(stock)}</p>
@@ -198,6 +205,11 @@ export default async function ContractDetailPage({
                   ดูทรัพย์ →
                 </Link>
               </div>
+              <ContractStockPhotos
+                stockId={stock.id}
+                initialMainUrls={(stock.photo_urls ?? []) as string[]}
+                initialThumbUrls={(stock.photo_thumb_urls ?? []) as string[]}
+              />
             </Section>
           )}
 
@@ -209,9 +221,15 @@ export default async function ContractDetailPage({
                 )}
                 {contract.deposit_amount != null && (
                   <FinRow
-                    label={`เงินมัดจำ${contract.deposit_months ? ` (${contract.deposit_months} เดือน)` : ''}`}
+                    label={isRental
+                      ? `เงินมัดจำ/จอง${contract.deposit_months ? ` (${contract.deposit_months} เดือน)` : ''}`
+                      : `เงินจอง${contract.deposit_months ? ` (${contract.deposit_months} เดือน)` : ''}`
+                    }
                     value={`฿${fmt(contract.deposit_amount)}`}
                   />
+                )}
+                {isRental && (contractMeta as { security_deposit?: number | null }).security_deposit != null && (
+                  <FinRow label="เงินประกัน" value={`฿${fmt((contractMeta as { security_deposit: number }).security_deposit)}`} />
                 )}
                 {contract.contract_months != null && (
                   <FinRow label="ระยะสัญญา" value={`${contract.contract_months} เดือน`} />
@@ -263,6 +281,21 @@ export default async function ContractDetailPage({
             </Section>
           )}
 
+          {isRental && (
+            <Section title="กุญแจและอุปกรณ์ส่งมอบ (รับมอบเข้า)">
+              <KeyHandoverChecklist
+                contractId={id}
+                initialItems={(keyItems ?? []).map(item => ({
+                  localId:        item.id,
+                  item_name_th:   (item as { item_name_th: string }).item_name_th,
+                  item_name_en:   (item as { item_name_en: string }).item_name_en ?? '',
+                  quantity:       (item as { quantity: number }).quantity ?? 1,
+                  penalty_amount: (item as { penalty_amount: number }).penalty_amount ?? 500,
+                }))}
+              />
+            </Section>
+          )}
+
           {/* ── Draft: Edit Panel ── */}
           {!isFinalized && contract.status === 'draft' && (
             <EditDraftPanel
@@ -296,6 +329,9 @@ export default async function ContractDetailPage({
                 commissionRatePct:     (contract as { commission_rate_pct?: number | null }).commission_rate_pct ?? null,
                 commissionFromOwner:   (contract as { commission_from_owner?: number | null }).commission_from_owner ?? null,
                 commissionFromCustomer: (contract as { commission_from_customer?: number | null }).commission_from_customer ?? null,
+                securityDeposit:       (contractMeta as { security_deposit?: number | null }).security_deposit ?? null,
+                coAgentSplitPct:       (contractMeta as { co_agent_split_pct?: number | null }).co_agent_split_pct ?? null,
+                coAgentCommission:     (contractMeta as { co_agent_commission?: number | null }).co_agent_commission ?? null,
               }}
             />
           )}
@@ -316,6 +352,8 @@ export default async function ContractDetailPage({
                 commissionFromOwner:   (contract as { commission_from_owner?: number | null }).commission_from_owner ?? null,
                 commissionFromCustomer: (contract as { commission_from_customer?: number | null }).commission_from_customer ?? null,
                 commissionRatePct:     (contract as { commission_rate_pct?: number | null }).commission_rate_pct ?? null,
+                coAgentSplitPct:       (contractMeta as { co_agent_split_pct?: number | null }).co_agent_split_pct ?? null,
+                coAgentCommission:     (contractMeta as { co_agent_commission?: number | null }).co_agent_commission ?? null,
                 vat7:                  contract.vat_7 ?? false,
                 wht3:                  contract.wht_3 ?? false,
                 paymentDayOfMonth:     (contract as { payment_day_of_month?: number | null }).payment_day_of_month ?? null,
@@ -384,6 +422,8 @@ export default async function ContractDetailPage({
                 commissionFromOwner:  (contract as { commission_from_owner?: number | null }).commission_from_owner ?? null,
                 commissionFromCustomer: (contract as { commission_from_customer?: number | null }).commission_from_customer ?? null,
                 commissionRatePct:    (contract as { commission_rate_pct?: number | null }).commission_rate_pct ?? null,
+                coAgentSplitPct:      (contractMeta as { co_agent_split_pct?: number | null }).co_agent_split_pct ?? null,
+                coAgentCommission:    (contractMeta as { co_agent_commission?: number | null }).co_agent_commission ?? null,
                 vat7:                 contract.vat_7 ?? false,
                 wht3:                 contract.wht_3 ?? false,
                 paymentDayOfMonth:    (contract as { payment_day_of_month?: number | null }).payment_day_of_month ?? null,
@@ -482,10 +522,12 @@ export default async function ContractDetailPage({
             contractId={contract.id}
             status={contract.status as ContractStatus}
             contractCategory={contractMeta.contract_category ?? null}
+            docType={contract.doc_type}
             pdfUrl={contract.pdf_url}
             docxUrl={contract.docx_url ?? null}
             finalizedDocxUrl={(contract as { finalized_docx_url?: string }).finalized_docx_url ?? null}
             finalizedPdfUrl={(contract as { finalized_pdf_url?: string }).finalized_pdf_url ?? null}
+            attachmentPdfUrl={(contract as { attachment_pdf_url?: string | null }).attachment_pdf_url ?? null}
             templateSlug={contract.template_slug ?? null}
             isFinalized={isFinalized}
             finalizedAt={(contract as { finalized_at?: string }).finalized_at ?? null}

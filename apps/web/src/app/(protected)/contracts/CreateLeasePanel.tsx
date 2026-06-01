@@ -46,12 +46,15 @@ export default function CreateLeasePanel({ reservation }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
 
-  const [form, setForm] = useState(() => ({
+  const [form, setForm] = useState(() => {
+    const rent = reservation.rentPrice ?? 0
+    return {
     moveInDate:        today(),
     contractMonths:    '12',
     rentPrice:         String(reservation.rentPrice ?? ''),
-    depositMonths:     String(reservation.depositMonths ?? '2'),
+    depositMonths:     String(reservation.depositMonths ?? '1'),
     depositAmount:     String(reservation.depositAmount ?? ''),
+    securityDeposit:   rent > 0 ? String(rent * 2) : '',
     cleaningFee:       String(reservation.cleaningFee ?? ''),
     acCount:           String(reservation.acCount ?? ''),
     acWashPerUnit:     String(reservation.acWashPerUnit ?? ''),
@@ -65,24 +68,24 @@ export default function CreateLeasePanel({ reservation }: Props) {
     commonFee:         String(reservation.commonFee ?? ''),
     parkingFee:        String(reservation.parkingFee ?? ''),
     language:          'th' as LanguageVersion,
-  }))
+  }})
 
   const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
 
-  // Compute deposit amount and end date reactively
   function handleRentChange(v: string) {
     const rent = parseFloat(v)
-    const months = parseFloat(form.depositMonths) || 2
+    const depositMonths = parseFloat(form.depositMonths) || 1
     setForm(f => ({
       ...f,
       rentPrice: v,
-      depositAmount: rent > 0 ? String(rent * months) : f.depositAmount,
+      depositAmount: rent > 0 ? String(rent * depositMonths) : f.depositAmount,
+      securityDeposit: rent > 0 ? String(rent * 2) : f.securityDeposit,
     }))
   }
 
   function handleDepositMonthsChange(v: string) {
     const rent = parseFloat(form.rentPrice)
-    const months = parseFloat(v) || 2
+    const months = parseFloat(v) || 1
     setForm(f => ({
       ...f,
       depositMonths: v,
@@ -124,6 +127,7 @@ export default function CreateLeasePanel({ reservation }: Props) {
         rent_price:        num(form.rentPrice),
         deposit_months:    num(form.depositMonths),
         deposit_amount:    num(form.depositAmount),
+        security_deposit:  num(form.securityDeposit),
         cleaning_fee:      num(form.cleaningFee),
         ac_count:          int(form.acCount),
         ac_wash_per_unit:  num(form.acWashPerUnit),
@@ -210,9 +214,11 @@ export default function CreateLeasePanel({ reservation }: Props) {
                 value={form.rentPrice} onChange={handleRentChange} type="number"
                 hint={reservation.rentPrice ? `จากใบจอง: ฿${fmt(reservation.rentPrice)}` : undefined}
               />
-              <Field label="เดือนมัดจำ" value={form.depositMonths} onChange={handleDepositMonthsChange} type="number" />
-              <Field label="เงินมัดจำ (บาท)"
+              <Field label="เดือนมัดจำ/จอง" value={form.depositMonths} onChange={handleDepositMonthsChange} type="number" />
+              <Field label="เงินมัดจำ/จอง (บาท)" hint="เงินจองที่เก็บตอนจอง"
                 value={form.depositAmount} onChange={v => set('depositAmount', v)} type="number" />
+              <Field label="เงินประกัน (บาท)" hint="ค่าประกัน 2 เดือนค่าเช่า (ค่าเริ่มต้น)"
+                value={form.securityDeposit} onChange={v => set('securityDeposit', v)} type="number" />
               <div>
                 <label className="block text-xs text-gray-500 mb-1 font-medium">วันสิ้นสุด (คำนวณอัตโนมัติ)</label>
                 <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600">
