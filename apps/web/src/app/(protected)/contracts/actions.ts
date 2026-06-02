@@ -776,8 +776,9 @@ export async function updateContractStatus(
   const stockId = (existing as { stock_id?: string | null } | null)?.stock_id
   const category = (existing as { contract_category?: string | null } | null)?.contract_category
 
-  if ((status === 'cancelled' || status === 'terminated') && stockId) {
-    // Reservation cancel → available; Lease cancel/terminate → available
+  const releasesStock = status === 'cancelled' || status === 'terminated' || status === 'completed' || status === 'renewed'
+  if (releasesStock && stockId) {
+    // Any terminal status on a reservation or lease → release the unit back to available
     if (category === 'reservation' || category === 'lease') {
       await setStockAvailable(supabase, stockId, user.id)
     }
@@ -1513,4 +1514,41 @@ export async function generateSignToken(
 
   revalidatePath(`/contracts/${contractId}`)
   return { token, link }
+}
+
+// ─── Soft Delete ──────────────────────────────────────────────
+
+const DELETABLE_STATUSES = new Set(['draft', 'cancelled', 'terminated'])
+
+export async function deleteContract(
+  contractId: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { data: contract } = await supabase
+    .from('contracts')
+    .select('status, is_finalized, contract_category')
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+    .is('deleted_at', null)
+    .single()
+
+  if (!contract) return { error: 'ไม่พบสัญญา' }
+  if (contract.is_finalized) return { error: 'ไม่สามารถลบสัญญาที่ล็อกแล้ว' }
+  if (!DELETABLE_STATUSES.has(contract.status)) {
+    return { error: `ลบได้เฉพาะสัญญาสถานะ ร่าง / ยกเลิก / บอกเลิก เท่านั้น (ปัจจุบัน: ${contract.status})` }
+  }
+
+  const { error } = await supabase
+    .from('contracts')
+    .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+
+  if (error) return { error: 'ลบสัญญาไม่สำเร็จ: ' + error.message }
+
+  revalidatePath('/contracts')
+  return {}
 }

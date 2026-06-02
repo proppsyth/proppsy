@@ -13,7 +13,10 @@ import SignersPanel from './SignersPanel'
 import CreateChildDocPanel from '../CreateChildDocPanel'
 import CreateLeasePanel from '../CreateLeasePanel'
 import EditDraftPanel from '../EditDraftPanel'
+import DeleteContractButton from './DeleteContractButton'
 import { TEMPLATE_SUPPORTED_TYPES } from '@/lib/contracts/templateRegistry'
+
+const DELETABLE_STATUSES = new Set(['draft', 'cancelled', 'terminated'])
 
 export const metadata: Metadata = { title: 'รายละเอียดสัญญา' }
 
@@ -167,15 +170,20 @@ export default async function ContractDetailPage({
             </div>
           </div>
 
-          {hasTemplate && (
-            <Link
-              href={`/contracts/${id}/preview`}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 text-sm font-medium rounded-lg transition w-full sm:w-auto sm:self-start"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              Preview เอกสาร
-            </Link>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {hasTemplate && (
+              <Link
+                href={`/contracts/${id}/preview`}
+                className="flex items-center justify-center gap-1.5 px-4 py-2 border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 text-sm font-medium rounded-lg transition"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                Preview เอกสาร
+              </Link>
+            )}
+            {!isFinalized && DELETABLE_STATUSES.has(contract.status) && (
+              <DeleteContractButton contractId={contract.id} />
+            )}
+          </div>
         </div>
       </div>
 

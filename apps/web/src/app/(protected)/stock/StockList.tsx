@@ -148,7 +148,7 @@ function StockGridCard({ stock: s }: { stock: Stock }) {
         <span className={`absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[s.status]}`}>
           {STATUS_LABELS[s.status]}
         </span>
-        {s.is_premium && (
+        {s.is_premium && s.status === 'available' && (
           <span className="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full font-bold text-white animate-hot-glow"
             style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}>
             HOT
@@ -232,7 +232,7 @@ function StockListRow({ stock: s }: { stock: Stock }) {
             <p className="font-medium text-gray-900 text-sm truncate">{stockDisplayTitle(s)}</p>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            {s.is_premium && (
+            {s.is_premium && s.status === 'available' && (
               <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold text-white animate-hot-glow"
                 style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}>
                 HOT

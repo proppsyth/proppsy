@@ -9,6 +9,7 @@ import PhotoGallery from './PhotoGallery'
 import DeleteStockButton from './DeleteStockButton'
 import PublishActions from './PublishActions'
 import StockShareButtons from './StockShareButtons'
+import ContractHistory from './ContractHistory'
 
 export const metadata: Metadata = { title: 'รายละเอียดทรัพย์' }
 
@@ -42,7 +43,7 @@ export default async function StockDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: stock }, { data: credit }, { data: inquiryRows }] = await Promise.all([
+  const [{ data: stock }, { data: credit }, { data: inquiryRows }, { data: contractRows }] = await Promise.all([
     supabase
       .from('stock')
       .select('*, owner:owners(*), project:projects(*)')
@@ -61,6 +62,13 @@ export default async function StockDetailPage({
       .eq('agent_uid', user.id)
       .order('created_at', { ascending: false })
       .limit(20),
+    supabase
+      .from('contracts')
+      .select('id, doc_type, status, created_at, move_in_date, end_date, rent_price, contract_category, customer:customers(first_name_th, last_name_th, nickname)')
+      .eq('stock_id', id)
+      .eq('agent_uid', user.id)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false }),
   ])
 
   if (!stock) notFound()
@@ -243,6 +251,9 @@ export default async function StockDetailPage({
               </div>
             </Section>
           )}
+
+          {/* ประวัติสัญญาเช่า */}
+          <ContractHistory contracts={(contractRows ?? []) as Parameters<typeof ContractHistory>[0]['contracts']} />
 
           {/* แชร์ (แสดงเฉพาะเมื่อเผยแพร่แล้ว) */}
           {s.is_published && (
