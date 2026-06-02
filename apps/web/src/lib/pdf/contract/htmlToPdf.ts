@@ -8,6 +8,7 @@
 
 import path from 'path'
 import fs from 'fs'
+import { ATTACHMENT_CSS } from '@/lib/pdf/attachments/attachmentStyles'
 
 const IS_SERVERLESS = !!process.env.VERCEL
 
@@ -420,6 +421,7 @@ function buildFullHtml(opts: RenderOptions): string {
   .final-sig-role { font-size: 9pt; font-weight: 700; color: #1B3B6F; margin-bottom: 3pt; }
   .final-sig-name { font-size: 8.5pt; color: #4A4A4A; margin-bottom: 10pt; }
   .final-sig-date { font-size: 7.5pt; color: #888; margin-top: 4pt; }
+  ${ATTACHMENT_CSS}
 </style>
 </head>
 <body>

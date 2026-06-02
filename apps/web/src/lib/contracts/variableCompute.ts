@@ -225,13 +225,20 @@ export function computeVariables(
   v['จำนวนแอร์']                  = String(acCount)
   v['ค่าล้างแอร์เติมลูกน้ำ']      = withCommas(acPerUnit)
   v['ค่าล้างแอร์ตัวอักษร']        = bahtText(acPerUnit)
+  v['ค่าล้างแอร์ตัวอักษรen']      = bahtTextEn(acPerUnit)
   const totalAc = acCount * acPerUnit
   v['รวมค่าล้างแอร์เติมลูกน้ำ']  = withCommas(totalAc)
   v['รวมค่าล้างแอร์ตัวอักษร']    = bahtText(totalAc)
+  v['รวมค่าล้างแอร์ตัวอักษรen']  = bahtTextEn(totalAc)
   v['รวมแอร์เติมลูกน้ำ']          = withCommas(totalAc)
 
   v['ค่าทำความสะอาดเติมลูกน้ำ']  = withCommas(cleaning)
   v['ค่าทำความสะอาดตัวอักษร']    = bahtText(cleaning)
+  v['ค่าทำความสะอาดตัวอักษรen']  = bahtTextEn(cleaning)
+  const grandTotal = cleaning + totalAc
+  v['รวมทำความสะอาดและล้างแอร์เติมลูกน้ำ'] = withCommas(grandTotal)
+  v['รวมทำความสะอาดและล้างแอร์ตัวอักษร']  = bahtText(grandTotal)
+  v['รวมทำความสะอาดและล้างแอร์ตัวอักษรen'] = bahtTextEn(grandTotal)
 
   v['จำนวนผู้พักอาศัย'] = String(ctx.contract.occupant_count ?? 1)
 

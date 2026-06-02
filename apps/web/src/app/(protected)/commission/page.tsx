@@ -32,20 +32,25 @@ export default async function CommissionPage({
 
   const { data: contracts } = await supabase
     .from('contracts')
-    .select('id, commission_net, created_at, doc_type')
+    .select('id, commission_net, created_at, move_in_date, doc_type')
     .eq('agent_uid', user.id)
     .eq('status', 'signed')
     .not('commission_net', 'is', null)
-    .order('created_at', { ascending: false })
+    .order('move_in_date', { ascending: false, nullsFirst: false })
+
+  // Commission date = move_in_date (lease signing date), fallback to created_at
+  function commissionDate(c: { created_at: string; move_in_date?: string | null }): string {
+    return c.move_in_date ?? c.created_at
+  }
 
   // All years available
-  const allYears = [...new Set((contracts ?? []).map(c => parseInt(c.created_at.slice(0, 4))))].sort((a, b) => b - a)
+  const allYears = [...new Set((contracts ?? []).map(c => parseInt(commissionDate(c).slice(0, 4))))].sort((a, b) => b - a)
   if (allYears.length === 0) allYears.push(currentYear)
 
   // Filter by selected year
-  const filtered = (contracts ?? []).filter(c => parseInt(c.created_at.slice(0, 4)) === selectedYear)
+  const filtered = (contracts ?? []).filter(c => parseInt(commissionDate(c).slice(0, 4)) === selectedYear)
 
-  // Group by year-month
+  // Group by year-month using commission date (move-in = signing = commission received)
   const byMonth = new Map<string, MonthEntry>()
   let grandTotal = 0
   let grandAllTotal = 0
@@ -55,7 +60,7 @@ export default async function CommissionPage({
   }
   for (const c of filtered) {
     if (!c.commission_net) continue
-    const ym = c.created_at.slice(0, 7)
+    const ym = commissionDate(c).slice(0, 7)
     const entry = byMonth.get(ym) ?? { ym, total: 0, count: 0 }
     entry.total += c.commission_net
     entry.count += 1
@@ -83,7 +88,7 @@ export default async function CommissionPage({
         </div>
         <div>
           <h1 className="text-xl font-bold text-gray-900">คอมมิชชัน</h1>
-          <p className="text-xs text-gray-400">รายได้จากสัญญาที่ลงนามแล้ว</p>
+          <p className="text-xs text-gray-400">รายได้จากสัญญาที่ลงนามแล้ว · วันรับค่าคอม = วันลงนามสัญญาเช่า</p>
         </div>
       </div>
 
@@ -204,7 +209,7 @@ export default async function CommissionPage({
                 <div>
                   <p className="text-sm font-medium text-gray-800">{c.id}</p>
                   <p className="text-xs text-gray-400">
-                    {new Date(c.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    {new Date(commissionDate(c)).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">

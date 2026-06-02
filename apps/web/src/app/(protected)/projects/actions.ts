@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { normalizeAddressFields } from '@/lib/address'
+import { identifyAndEnrichProject } from '@/lib/ai/projectIdentity'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -27,7 +27,14 @@ export type ProjectInput = {
 }
 
 export type AiEnrichResult = {
+  /** Canonical Thai name — may differ from user input if AI corrected it. */
+  name_th?: string | null
+  /** Canonical English name. */
   name_en?: string | null
+  /** AI confidence 0–100 that it correctly identified the project. */
+  confidence?: number | null
+  /** Other known aliases (abbreviations, old names, romanised variants). */
+  aliases?: string[] | null
   developer?: string | null
   built_year?: number | null
   total_floors?: number | null
@@ -41,6 +48,16 @@ export type AiEnrichResult = {
   district?: string | null
   subdistrict?: string | null
   zip?: string | null
+}
+
+// ─── Role helper ─────────────────────────────────────────────
+
+async function getIsAdmin(): Promise<boolean> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  return profile?.role === 'admin'
 }
 
 // ─── ID Generator ────────────────────────────────────────────
@@ -62,11 +79,30 @@ async function nextProjectId(): Promise<string> {
 // ─── Create ──────────────────────────────────────────────────
 
 export async function createProject(
-  input: ProjectInput
-): Promise<{ error?: string; id?: string }> {
+  input: ProjectInput,
+  force = false,
+): Promise<{ error?: string; id?: string; existingId?: string; existingName?: string; existingNameEn?: string | null }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  // Duplicate guard: exact case-insensitive match on Thai OR English name
+  if (!force) {
+    const [{ data: byTh }, { data: byEn }] = await Promise.all([
+      supabase.from('projects').select('id, name_th, name_en').ilike('name_th', input.name_th.trim()).limit(1).maybeSingle(),
+      input.name_en?.trim()
+        ? supabase.from('projects').select('id, name_th, name_en').ilike('name_en', input.name_en.trim()).limit(1).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ])
+    const existing = byTh ?? byEn
+    if (existing) {
+      return {
+        existingId:     existing.id,
+        existingName:   existing.name_th,
+        existingNameEn: existing.name_en ?? null,
+      }
+    }
+  }
 
   const id = await nextProjectId()
 
@@ -82,12 +118,14 @@ export async function createProject(
   return { id }
 }
 
-// ─── Update ──────────────────────────────────────────────────
+// ─── Update (admin only) ──────────────────────────────────────
 
 export async function updateProject(
   projectId: string,
   input: ProjectInput
 ): Promise<{ error?: string }> {
+  if (!(await getIsAdmin())) return { error: 'เฉพาะแอดมินเท่านั้นที่แก้ไขข้อมูลโครงการได้' }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
@@ -104,81 +142,18 @@ export async function updateProject(
   return {}
 }
 
-// ─── AI Enricher ─────────────────────────────────────────────
+// ─── AI Enricher (with bilingual normalization) ───────────────
 
 export async function enrichProject(
-  projectName: string
+  rawName: string
 ): Promise<AiEnrichResult | { error: string }> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'ไม่พบ Gemini API key' }
 
-  const prompt = `คุณเป็นผู้เชี่ยวชาญด้านอสังหาริมทรัพย์ไทย
-วิเคราะห์โครงการคอนโดมิเนียมชื่อ "${projectName}" และส่งคืน JSON เท่านั้น ไม่ต้องมีคำอธิบาย:
-
-{
-  "name_en": "ชื่อโครงการภาษาอังกฤษ หรือ null",
-  "developer": "ชื่อบริษัทผู้พัฒนา หรือ null",
-  "built_year": ปีที่สร้างเสร็จ (ค.ศ.) หรือ null,
-  "total_floors": จำนวนชั้นทั้งหมด หรือ null,
-  "total_units": จำนวนยูนิตทั้งหมด หรือ null,
-  "parking_pct": เปอร์เซ็นต์ที่จอดรถ (0-100) หรือ null,
-  "facilities": ["สิ่งอำนวยความสะดวก1", "สิ่งอำนวยความสะดวก2"],
-  "bts_mrt": ["BTS/MRT ที่ใกล้ที่สุด"],
-  "address_road": "ถนนหลัก หรือ null",
-  "moo": "หมู่บ้าน/ชุมชน (ข้อความ) หรือ null",
-  "province": "จังหวัด (ภาษาไทย) หรือ null",
-  "district": "เขต/อำเภอ (ภาษาไทย) หรือ null",
-  "subdistrict": "แขวง/ตำบล (ภาษาไทย) หรือ null",
-  "zip": "รหัสไปรษณีย์ หรือ null"
-}
-
-หากไม่มีข้อมูลที่แน่ชัด ให้ใส่ null ไม่ต้องเดา`
-
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.1,
-            responseMimeType: 'application/json',
-          },
-        }),
-      }
-    )
-
-    if (!res.ok) return { error: `Gemini API error ${res.status}` }
-
-    const data = await res.json()
-    const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    const raw = JSON.parse(cleaned || '{}') as AiEnrichResult
-
-    // Validate province/district/subdistrict against CSV — discard hallucinations
-    const normalized = normalizeAddressFields({
-      province: raw.province ?? undefined,
-      district: raw.district ?? undefined,
-      subdistrict: raw.subdistrict ?? undefined,
-    })
-
-    if (normalized) {
-      raw.province = normalized.province_th
-      raw.district = normalized.district_th
-      raw.subdistrict = normalized.subdistrict_th
-      raw.zip = normalized.zip
-    } else {
-      raw.province = null
-      raw.district = null
-      raw.subdistrict = null
-      raw.zip = null
-    }
-
-    return raw
-  } catch (err) {
-    console.error('Enricher error:', err)
+    const result = await identifyAndEnrichProject(rawName, apiKey)
+    return result
+  } catch {
     return { error: 'ค้นหาข้อมูลโครงการไม่สำเร็จ กรุณาลองใหม่' }
   }
 }

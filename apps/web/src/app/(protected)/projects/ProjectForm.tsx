@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Sparkles, Loader2, Plus, X } from 'lucide-react'
+import { Sparkles, Loader2, Plus, X, CheckCircle2, AlertCircle } from 'lucide-react'
 import type { Project } from '@/types'
 import { createProject, updateProject, enrichProject } from './actions'
 import type { ProjectInput } from './actions'
@@ -117,6 +117,18 @@ export default function ProjectForm({ initialData, projectId }: Props) {
   const [isEnriching, startEnrich] = useTransition()
   const [enrichMessage, setEnrichMessage] = useState('')
   const [btsInput, setBtsInput] = useState('')
+  const [bypassDuplicate, setBypassDuplicate] = useState(false)
+  const [duplicateSuggestion, setDuplicateSuggestion] = useState<{
+    id: string
+    name: string
+    nameEn: string | null
+  } | null>(null)
+  const [nameCorrection, setNameCorrection] = useState<{
+    original: string
+    corrected_th: string
+    name_en: string | null
+    confidence: number
+  } | null>(null)
 
   const set = (k: keyof FormState, v: string | string[]) =>
     setForm(f => ({ ...f, [k]: v }))
@@ -128,46 +140,71 @@ export default function ProjectForm({ initialData, projectId }: Props) {
     }))
   }
 
-  // ─── AI Enricher ─────────────────────────────────────────
+  // ─── AI Enricher (bilingual + name normalization) ────────
 
   function handleEnrich() {
-    const name = form.name_th.trim()
-    if (!name) { setEnrichMessage('กรุณาใส่ชื่อโครงการก่อน'); return }
+    // Accept Thai OR English project name as the search term
+    const rawInput = form.name_th.trim() || form.name_en.trim()
+    if (!rawInput) { setEnrichMessage('กรุณาใส่ชื่อโครงการก่อน'); return }
     setEnrichMessage('')
+    setNameCorrection(null)
     startEnrich(async () => {
-      const result = await enrichProject(name)
+      const result = await enrichProject(rawInput)
       if ('error' in result) {
         setEnrichMessage(result.error)
         return
       }
+
+      const CONFIDENCE_THRESHOLD = 70
+      const confidence = result.confidence ?? 0
       const fields: string[] = []
       const apply = (k: keyof FormState, v: string | number | null | undefined) => {
-        if (v != null) {
-          set(k, v.toString())
-          fields.push(k)
-        }
+        if (v != null) { set(k, v.toString()); fields.push(k) }
       }
-      apply('name_en', result.name_en)
-      apply('developer', result.developer)
-      apply('built_year', result.built_year)
-      apply('total_floors', result.total_floors)
+
+      // ── Canonical name normalization ──────────────────────
+      // When confidence is high enough, replace the name fields with the
+      // AI-canonical version even if the user typed it differently.
+      if (confidence >= CONFIDENCE_THRESHOLD) {
+        const canonicalTh = result.name_th?.trim() ?? ''
+        const canonicalEn = result.name_en?.trim() ?? null
+
+        // Track correction so the UI can display the before/after
+        const originalInput = rawInput
+        const nameChanged = canonicalTh && canonicalTh !== originalInput
+        if (nameChanged || canonicalEn) {
+          setNameCorrection({
+            original:     originalInput,
+            corrected_th: canonicalTh || originalInput,
+            name_en:      canonicalEn,
+            confidence,
+          })
+        }
+
+        if (canonicalTh) { set('name_th', canonicalTh); fields.push('name_th') }
+        if (canonicalEn) { set('name_en', canonicalEn); fields.push('name_en') }
+      } else {
+        // Low confidence: still apply name_en if available, keep user's name_th
+        if (result.name_en) { set('name_en', result.name_en); fields.push('name_en') }
+      }
+
+      // ── Enrichment fields ─────────────────────────────────
+      apply('developer',   result.developer)
+      apply('built_year',  result.built_year)
+      apply('total_floors',result.total_floors)
       apply('total_units', result.total_units)
       apply('parking_pct', result.parking_pct)
-      apply('moo', result.moo)
-      apply('address_road', result.address_road)
-      apply('province', result.province)
-      apply('district', result.district)
+      apply('moo',         result.moo)
+      apply('address_road',result.address_road)
+      apply('province',    result.province)
+      apply('district',    result.district)
       apply('subdistrict', result.subdistrict)
-      apply('zip', result.zip)
-      if (result.facilities?.length) {
-        set('facilities', result.facilities)
-        fields.push('facilities')
-      }
-      if (result.bts_mrt?.length) {
-        set('bts_mrt', result.bts_mrt)
-        fields.push('bts_mrt')
-      }
-      setEnrichMessage(fields.length ? `กรอกข้อมูลอัตโนมัติ ${fields.length} รายการ` : 'ไม่พบข้อมูลเพิ่มเติม')
+      apply('zip',         result.zip)
+      if (result.facilities?.length) { set('facilities', result.facilities); fields.push('facilities') }
+      if (result.bts_mrt?.length)    { set('bts_mrt',   result.bts_mrt);    fields.push('bts_mrt') }
+
+      const uniqueFields = [...new Set(fields)]
+      setEnrichMessage(uniqueFields.length ? `กรอกข้อมูลอัตโนมัติ ${uniqueFields.length} รายการ` : 'ไม่พบข้อมูลเพิ่มเติม')
     })
   }
 
@@ -176,6 +213,7 @@ export default function ProjectForm({ initialData, projectId }: Props) {
   function handleSubmit() {
     if (!form.name_th.trim()) { setError('กรุณาใส่ชื่อโครงการ'); return }
     setError('')
+    setDuplicateSuggestion(null)
     startTransition(async () => {
       const input = toInput(form)
       if (projectId) {
@@ -183,7 +221,15 @@ export default function ProjectForm({ initialData, projectId }: Props) {
         if (res.error) { setError(res.error); return }
         router.push(`/projects/${projectId}`)
       } else {
-        const res = await createProject(input)
+        const res = await createProject(input, bypassDuplicate)
+        if (res.existingId) {
+          setDuplicateSuggestion({
+            id:     res.existingId,
+            name:   res.existingName ?? '',
+            nameEn: res.existingNameEn ?? null,
+          })
+          return
+        }
         if (res.error) { setError(res.error); return }
         router.push(`/projects/${res.id}`)
       }
@@ -201,7 +247,9 @@ export default function ProjectForm({ initialData, projectId }: Props) {
           <span className="text-sm font-semibold text-violet-800">AI ค้นหาข้อมูลโครงการ</span>
         </div>
         <div className="p-4 space-y-3">
-          <p className="text-xs text-violet-700">ใส่ชื่อโครงการด้านล่าง แล้วกดปุ่มให้ AI กรอกข้อมูลให้อัตโนมัติ</p>
+          <p className="text-xs text-violet-700">
+            ใส่ชื่อโครงการด้านล่าง (ภาษาไทยหรือภาษาอังกฤษก็ได้) แล้วกดปุ่มให้ AI ระบุโครงการและกรอกข้อมูลอัตโนมัติ
+          </p>
           <button
             type="button"
             onClick={handleEnrich}
@@ -211,10 +259,46 @@ export default function ProjectForm({ initialData, projectId }: Props) {
             {isEnriching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
             {isEnriching ? 'กำลังค้นหา...' : 'ค้นหาข้อมูลโครงการ'}
           </button>
-          {enrichMessage && (
-            <p className={`text-xs font-medium ${enrichMessage.startsWith('กรอก') ? 'text-violet-700' : 'text-red-600'}`}>
+
+          {/* Name correction notice */}
+          {nameCorrection && (
+            <div className="bg-white border border-violet-200 rounded-lg p-3 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-violet-800">
+                <CheckCircle2 className="w-3.5 h-3.5 text-violet-600" />
+                AI ระบุโครงการและแก้ไขชื่อแล้ว
+              </div>
+              {nameCorrection.corrected_th !== nameCorrection.original && (
+                <div className="text-xs text-gray-500 flex items-start gap-1.5">
+                  <span className="text-gray-400 flex-shrink-0">จาก:</span>
+                  <span className="line-through text-gray-400">{nameCorrection.original}</span>
+                </div>
+              )}
+              <div className="text-xs flex items-start gap-1.5">
+                <span className="text-violet-500 flex-shrink-0 font-medium">ไทย:</span>
+                <span className="font-semibold text-gray-800">{nameCorrection.corrected_th}</span>
+              </div>
+              {nameCorrection.name_en && (
+                <div className="text-xs flex items-start gap-1.5">
+                  <span className="text-violet-500 flex-shrink-0 font-medium">EN:</span>
+                  <span className="font-semibold text-gray-800">{nameCorrection.name_en}</span>
+                </div>
+              )}
+              <div className="text-xs text-gray-400">
+                ความมั่นใจ {nameCorrection.confidence}%
+              </div>
+            </div>
+          )}
+
+          {enrichMessage && !nameCorrection && (
+            <div className={`flex items-center gap-1.5 text-xs font-medium ${enrichMessage.startsWith('กรอก') ? 'text-violet-700' : 'text-red-600'}`}>
+              {enrichMessage.startsWith('กรอก')
+                ? <CheckCircle2 className="w-3.5 h-3.5" />
+                : <AlertCircle className="w-3.5 h-3.5" />}
               {enrichMessage}
-            </p>
+            </div>
+          )}
+          {enrichMessage && nameCorrection && (
+            <p className="text-xs text-violet-600">{enrichMessage}</p>
           )}
         </div>
       </div>
@@ -222,7 +306,7 @@ export default function ProjectForm({ initialData, projectId }: Props) {
       {/* ชื่อโครงการ */}
       <Section title="ชื่อโครงการ *">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="ชื่อภาษาไทย *" value={form.name_th} onChange={v => set('name_th', v)} placeholder="ชื่อโครงการ" />
+          <Field label="ชื่อภาษาไทย *" value={form.name_th} onChange={v => { set('name_th', v); setNameCorrection(null) }} placeholder="ชื่อโครงการ (หรือพิมพ์ภาษาอังกฤษแล้วให้ AI แปล)" />
           <Field label="ชื่อภาษาอังกฤษ" value={form.name_en} onChange={v => set('name_en', v)} placeholder="Project name" />
         </div>
       </Section>
@@ -339,6 +423,35 @@ export default function ProjectForm({ initialData, projectId }: Props) {
           ))}
         </div>
       </Section>
+
+      {/* Duplicate suggestion */}
+      {duplicateSuggestion && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-2">
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-amber-800">
+            <AlertCircle className="w-4 h-4 text-amber-600" />
+            โครงการนี้มีอยู่ในระบบแล้ว
+          </div>
+          <p className="text-sm text-amber-700">
+            {duplicateSuggestion.name}
+            {duplicateSuggestion.nameEn && <span className="text-amber-500 ml-1">({duplicateSuggestion.nameEn})</span>}
+          </p>
+          <div className="flex gap-2 pt-1">
+            <Link
+              href={`/projects/${duplicateSuggestion.id}`}
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg transition"
+            >
+              ดูโครงการที่มีอยู่
+            </Link>
+            <button
+              type="button"
+              onClick={() => { setBypassDuplicate(true); setDuplicateSuggestion(null) }}
+              className="px-3 py-1.5 border border-amber-300 text-amber-700 text-xs font-medium rounded-lg hover:bg-amber-100 transition"
+            >
+              เพิ่มต่อไป (ชื่อซ้ำ)
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Error */}
       {error && (

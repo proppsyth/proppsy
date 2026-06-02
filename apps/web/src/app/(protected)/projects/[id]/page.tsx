@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, Pencil, Building2, MapPin, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Pencil, Building2, MapPin, ExternalLink, ShieldCheck } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import type { Project } from '@/types'
@@ -18,7 +18,7 @@ export default async function ProjectDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: project }, { data: stocks }] = await Promise.all([
+  const [{ data: project }, { data: stocks }, { data: profile }] = await Promise.all([
     supabase.from('projects').select('*').eq('id', id).single(),
     supabase
       .from('stock')
@@ -26,7 +26,10 @@ export default async function ProjectDetailPage({
       .eq('project_id', id)
       .eq('agent_uid', user.id)
       .order('unit_no'),
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
   ])
+
+  const isAdmin = profile?.role === 'admin'
 
   if (!project) notFound()
 
@@ -57,13 +60,20 @@ export default async function ProjectDetailPage({
               {p.name_en && <p className="text-sm text-gray-500 mt-0.5">{p.name_en}</p>}
             </div>
           </div>
-          <Link
-            href={`/projects/${id}/edit`}
-            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition flex-shrink-0"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-            แก้ไข
-          </Link>
+          {isAdmin ? (
+            <Link
+              href={`/projects/${id}/edit`}
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition flex-shrink-0"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              แก้ไข
+            </Link>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs text-gray-400 flex-shrink-0">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              จัดการโดยแอดมิน
+            </div>
+          )}
         </div>
       </div>
 

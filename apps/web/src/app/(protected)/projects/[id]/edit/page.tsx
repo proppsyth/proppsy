@@ -17,13 +17,15 @@ export default async function EditProjectPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: project } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('id', id)
-    .single()
+  const [{ data: project }, { data: profile }] = await Promise.all([
+    supabase.from('projects').select('*').eq('id', id).single(),
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+  ])
 
   if (!project) notFound()
+
+  // Only admins can edit project data
+  if (profile?.role !== 'admin') redirect(`/projects/${id}`)
 
   return (
     <div className="p-4 lg:p-8 pt-6 max-w-3xl">
