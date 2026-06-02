@@ -150,7 +150,7 @@ export default function PlanEditor({ plan, label, badge, row }: Props) {
                 className="flex-1 text-xs px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-300 bg-white"
               />
               <button type="button" onClick={() => removeFeature(i)}
-                className="text-gray-300 hover:text-red-400 transition opacity-0 group-hover:opacity-100">
+                className="text-gray-300 hover:text-red-400 active:text-red-500 transition flex-shrink-0">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>

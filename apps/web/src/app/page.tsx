@@ -10,6 +10,7 @@ import PublicNav from '@/components/shared/PublicNav'
 import FilterBar from './listing/FilterBar'
 import HeroBanner from './listing/HeroBanner'
 import StatsCounter from './listing/StatsCounter'
+import { BannerStrip } from '@/components/shared/BannerZone'
 
 export const metadata: Metadata = {
   title: 'Proppsy — ค้นหาที่พัก เช่า ขาย คอนโด บ้าน',
@@ -151,6 +152,9 @@ export default async function PublicListingPage({
       }>
         <HeroBanner currentQ={q ?? ''} />
       </Suspense>
+
+      {/* ── Listing top banner (below hero) ── */}
+      <BannerStrip position="listing_top" />
 
       {/* ── Filter bar ── */}
       <div className="bg-white border-b border-gray-100 shadow-sm sticky top-14 z-10">

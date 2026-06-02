@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { BannerStrip } from '@/components/shared/BannerZone'
 
 export const metadata: Metadata = { title: 'แดชบอร์ด' }
 
@@ -202,7 +203,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-4 lg:p-8 pt-6">
-      <div className="mb-4">
+      {/* Dashboard top banner */}
+      <BannerStrip position="dashboard_top" />
+
+      <div className="mb-4 mt-4">
         <h1 className="text-2xl font-bold text-gray-900">แดชบอร์ด</h1>
         <p className="text-gray-500 text-sm mt-0.5">ภาพรวมของคุณ</p>
       </div>

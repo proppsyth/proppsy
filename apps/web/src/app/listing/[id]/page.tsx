@@ -12,6 +12,7 @@ import ContactCard from './ContactCard'
 import ShareButtons from './ShareButtons'
 import StickyActionBar from './StickyActionBar'
 import ProjectSection from './ProjectSection'
+import { BannerSidebar } from '@/components/shared/BannerZone'
 
 export async function generateMetadata({
   params,
@@ -283,9 +284,10 @@ export default async function PublicPropertyDetailPage({
             )}
           </div>
 
-          {/* Right: Contact only */}
+          {/* Right: Contact + sidebar banners */}
           <div className="space-y-4 min-w-0">
             <ContactCard agent={stock.agent ?? null} stockId={stock.id} />
+            <BannerSidebar position="listing_sidebar" />
           </div>
         </div>
       </div>
