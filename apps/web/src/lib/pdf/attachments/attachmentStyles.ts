@@ -187,6 +187,14 @@ export const ATTACHMENT_CSS = `
     gap: 20pt;
   }
   .att-sig-box { flex: 1; text-align: center; }
+  .att-sig-img {
+    height: 36pt;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    margin-bottom: 4pt;
+  }
+  .att-sig-img img { max-width: 100pt; max-height: 32pt; object-fit: contain; }
   .att-sig-line { border-bottom: 1pt solid #1B3B6F; margin-bottom: 5pt; }
   .att-sig-label { font-size: 8.5pt; font-weight: 700; color: #1B3B6F; }
   .att-sig-date { font-size: 7.5pt; color: #888; margin-top: 3pt; }

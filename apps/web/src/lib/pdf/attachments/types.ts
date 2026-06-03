@@ -1,9 +1,10 @@
 export type AttachmentSection = 'id-cards' | 'inventory' | 'photos' | 'facilities' | 'keys'
 
-/** Matches contract_furniture_items table (migration 007). */
+/** Matches contract_furniture_items table. */
 export interface FurnitureItem {
   id: string
   item_name: string
+  item_name_en?: string | null
   quantity: number
   condition: 'good' | 'fair' | 'damaged' | 'missing'
   notes?: string | null
@@ -47,6 +48,11 @@ export interface AttachmentInput {
 
   agentName: string
   sections: AttachmentSection[]
+
+  /** Owner e-signature URL (public documents bucket, full URL). */
+  ownerSignatureUrl?: string | null
+  /** Customer e-signature URL (public documents bucket, full URL). */
+  customerSignatureUrl?: string | null
 
   /** Inventory items from contract_furniture_items table. */
   furnitureItems?: FurnitureItem[]

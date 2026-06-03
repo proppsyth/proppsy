@@ -67,6 +67,13 @@ export default async function OwnerDetailPage({
   const name = ownerDisplayName(o)
   const stockList = (stocks ?? []) as StockRow[]
 
+  // ID card is in secure-documents (private). Generate a signed URL server-side.
+  const idCardSignedUrl = o.id_card_url
+    ? (o.id_card_url.startsWith('https://')
+      ? o.id_card_url
+      : (await supabase.storage.from('secure-documents').createSignedUrl(o.id_card_url, 3600)).data?.signedUrl ?? null)
+    : null
+
   const fullNameTh = [o.prefix, o.first_name_th, o.last_name_th].filter(Boolean).join(' ')
   const showFullName = o.nickname && fullNameTh && name !== fullNameTh
 
@@ -156,22 +163,14 @@ export default async function OwnerDetailPage({
           )}
 
           {/* รูปบัตรประชาชน */}
-          {o.id_card_url && (
+          {idCardSignedUrl && (
             <Section title="รูปบัตรประชาชน">
               <div className="relative w-64 h-40 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                <StorageImage
-                  src={o.id_card_url}
-                  bucket="documents"
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={idCardSignedUrl}
                   alt="บัตรประชาชน"
-                  fill
-                  className="object-cover"
-                  sizes="256px"
-                  fallback={
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-gray-300">
-                      <ImageOff className="w-8 h-8" />
-                      <span className="text-xs">ไม่พบรูปภาพ</span>
-                    </div>
-                  }
+                  className="w-full h-full object-cover"
                 />
               </div>
             </Section>

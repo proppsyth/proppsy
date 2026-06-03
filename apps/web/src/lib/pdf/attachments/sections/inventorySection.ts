@@ -1,14 +1,24 @@
 import type { FurnitureItem } from '../types'
+import type { SignerData } from '../buildAttachments'
 
 function esc(s: string): string {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 }
 
-const CONDITION_TH: Record<FurnitureItem['condition'], string> = {
-  good:    'ดี',
-  fair:    'พอใช้',
-  damaged: 'ชำรุด',
-  missing: 'ไม่มี',
+const CONDITION_BILINGUAL: Record<FurnitureItem['condition'], string> = {
+  good:    'ดี / Good',
+  fair:    'พอใช้ / Fair',
+  damaged: 'ชำรุด / Damaged',
+  missing: 'ไม่มี / Missing',
+}
+
+function sigBox(label: string, labelEn: string, subLabel: string, subLabelEn: string, sigDataUrl: string | null, dateText: string): string {
+  return `<div class="att-sig-box">
+    <div class="att-sig-img">${sigDataUrl ? `<img src="${sigDataUrl}" />` : ''}</div>
+    <div class="att-sig-line"></div>
+    <div class="att-sig-label">${esc(label)} / ${esc(labelEn)}</div>
+    <div class="att-sig-date">${esc(subLabel)} / ${esc(subLabelEn)}<br/>${dateText}</div>
+  </div>`
 }
 
 export function buildInventorySection(params: {
@@ -16,8 +26,12 @@ export function buildInventorySection(params: {
   stockUnitNo: string
   contractDate: string
   items: FurnitureItem[]
+  signerData: SignerData
 }): string {
-  const { items } = params
+  const { items, signerData } = params
+  const dateText = signerData.contractDate
+    ? `วันที่ / Date: ${esc(signerData.contractDate)}`
+    : 'วันที่ / Date: ................................'
 
   if (items.length === 0) {
     return `<div class="att-section-header">
@@ -35,15 +49,20 @@ export function buildInventorySection(params: {
 
   const rows = [...items]
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map((item, i) => `<tr>
+    .map((item, i) => {
+      const nameCell = item.item_name_en
+        ? `${esc(item.item_name)}<br/><span style="font-size:7.5pt;color:#6B7A99">${esc(item.item_name_en)}</span>`
+        : esc(item.item_name)
+      return `<tr>
   <td class="att-td-num">${i + 1}</td>
-  <td>${esc(item.item_name)}${item.serial_no ? `<br/><span style="font-size:7.5pt;color:#6B7A99">S/N: ${esc(item.serial_no)}</span>` : ''}</td>
+  <td>${nameCell}${item.serial_no ? `<br/><span style="font-size:7.5pt;color:#6B7A99">S/N: ${esc(item.serial_no)}</span>` : ''}</td>
   <td class="att-td-qty" style="text-align:center">${item.quantity}</td>
-  <td class="att-td-check" style="text-align:center">${esc(CONDITION_TH[item.condition])}</td>
+  <td class="att-td-check" style="text-align:center;font-size:8pt">${esc(CONDITION_BILINGUAL[item.condition])}</td>
   <td class="att-td-note" style="font-size:8pt;color:#555">${esc(item.notes ?? '')}</td>
   <td class="att-td-check" style="height:20pt"></td>
   <td class="att-td-note" style="height:20pt"></td>
-</tr>`).join('\n')
+</tr>`
+    }).join('\n')
 
   return `<div class="att-section-header">
   <div class="att-section-num">${params.sectionNum}</div>
@@ -70,27 +89,11 @@ export function buildInventorySection(params: {
   </tbody>
 </table>
 <div class="att-sig-row">
-  <div class="att-sig-box">
-    <div class="att-sig-line"></div>
-    <div class="att-sig-label">ผู้ให้เช่า / Landlord</div>
-    <div class="att-sig-date">วันที่รับมอบ / Move-in date: ................................</div>
-  </div>
-  <div class="att-sig-box">
-    <div class="att-sig-line"></div>
-    <div class="att-sig-label">ผู้เช่า / Tenant</div>
-    <div class="att-sig-date">วันที่รับมอบ / Move-in date: ................................</div>
-  </div>
+  ${sigBox('ผู้ให้เช่า', 'Landlord', 'ลงนามรับมอบ', 'Move-in', signerData.ownerSignatureDataUrl, dateText)}
+  ${sigBox('ผู้เช่า', 'Tenant', 'ลงนามรับมอบ', 'Move-in', signerData.customerSignatureDataUrl, dateText)}
 </div>
 <div class="att-sig-row" style="margin-top:12pt">
-  <div class="att-sig-box">
-    <div class="att-sig-line"></div>
-    <div class="att-sig-label">ผู้ให้เช่า / Landlord</div>
-    <div class="att-sig-date">วันที่คืนมอบ / Move-out date: ................................</div>
-  </div>
-  <div class="att-sig-box">
-    <div class="att-sig-line"></div>
-    <div class="att-sig-label">ผู้เช่า / Tenant</div>
-    <div class="att-sig-date">วันที่คืนมอบ / Move-out date: ................................</div>
-  </div>
+  ${sigBox('ผู้ให้เช่า', 'Landlord', 'ลงนามรับคืน', 'Move-out', null, 'วันที่ / Date: ................................')}
+  ${sigBox('ผู้เช่า', 'Tenant', 'ลงนามรับคืน', 'Move-out', null, 'วันที่ / Date: ................................')}
 </div>`
 }

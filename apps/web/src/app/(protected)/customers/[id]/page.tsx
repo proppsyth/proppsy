@@ -97,6 +97,14 @@ export default async function CustomerDetailPage({
   const c = customer as unknown as Customer
   const inquiries = (inquiryRows ?? []) as unknown as InquiryRow[]
   const name = customerDisplayName(c)
+
+  // ID card is stored in secure-documents (private bucket) as a relative path.
+  // Generate a 1-hour signed URL server-side so the <img> can load it.
+  const idCardSignedUrl = c.id_card_url
+    ? (c.id_card_url.startsWith('https://')
+      ? c.id_card_url
+      : (await supabase.storage.from('secure-documents').createSignedUrl(c.id_card_url, 3600)).data?.signedUrl ?? null)
+    : null
   const fullNameTh = [c.prefix, c.first_name_th, c.last_name_th].filter(Boolean).join(' ')
   const showFullName = c.nickname && fullNameTh && name !== fullNameTh
 
@@ -229,22 +237,14 @@ export default async function CustomerDetailPage({
           )}
 
           {/* รูปบัตร */}
-          {c.id_card_url && (
+          {idCardSignedUrl && (
             <Section title="รูปบัตรประชาชน">
               <div className="relative w-64 h-40 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                <StorageImage
-                  src={c.id_card_url}
-                  bucket="documents"
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={idCardSignedUrl}
                   alt="บัตรประชาชน"
-                  fill
-                  className="object-cover"
-                  sizes="256px"
-                  fallback={
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-gray-300">
-                      <ImageOff className="w-8 h-8" />
-                      <span className="text-xs">ไม่พบรูปภาพ</span>
-                    </div>
-                  }
+                  className="w-full h-full object-cover"
                 />
               </div>
             </Section>

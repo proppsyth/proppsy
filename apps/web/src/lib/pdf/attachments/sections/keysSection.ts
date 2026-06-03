@@ -1,4 +1,5 @@
 import type { KeyItem } from '../types'
+import type { SignerData } from '../buildAttachments'
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
@@ -8,11 +9,25 @@ function fmtPenalty(amount: number): string {
   return new Intl.NumberFormat('th-TH').format(amount)
 }
 
+function sigBox(label: string, labelEn: string, subLabel: string, subLabelEn: string, sigDataUrl: string | null, dateText: string): string {
+  return `<div class="att-sig-box">
+    <div class="att-sig-img">${sigDataUrl ? `<img src="${sigDataUrl}" />` : ''}</div>
+    <div class="att-sig-line"></div>
+    <div class="att-sig-label">${esc(label)} / ${esc(labelEn)}</div>
+    <div class="att-sig-date">${esc(subLabel)} / ${esc(subLabelEn)}<br/>${dateText}</div>
+  </div>`
+}
+
 export function buildKeysSection(params: {
   sectionNum: number
   items?: KeyItem[]
+  signerData: SignerData
 }): string {
   const items = params.items ?? []
+  const { signerData } = params
+  const dateText = signerData.contractDate
+    ? `วันที่ / Date: ${esc(signerData.contractDate)}`
+    : 'วันที่ / Date: ................................'
 
   if (items.length === 0) {
     return `<div class="att-section-header">
@@ -65,15 +80,7 @@ export function buildKeysSection(params: {
   </tbody>
 </table>
 <div class="att-sig-row" style="margin-top:16pt">
-  <div class="att-sig-box">
-    <div class="att-sig-line"></div>
-    <div class="att-sig-label">ผู้ให้เช่าส่งมอบ / Landlord handover</div>
-    <div class="att-sig-date">วันที่ / Date: ................................</div>
-  </div>
-  <div class="att-sig-box">
-    <div class="att-sig-line"></div>
-    <div class="att-sig-label">ผู้เช่ารับมอบ / Tenant received</div>
-    <div class="att-sig-date">วันที่ / Date: ................................</div>
-  </div>
+  ${sigBox('ผู้ให้เช่า', 'Landlord', 'ส่งมอบกุญแจ', 'Handover', signerData.ownerSignatureDataUrl, dateText)}
+  ${sigBox('ผู้เช่า', 'Tenant', 'รับมอบกุญแจ', 'Received', signerData.customerSignatureDataUrl, dateText)}
 </div>`
 }

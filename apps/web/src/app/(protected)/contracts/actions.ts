@@ -1313,8 +1313,32 @@ export async function generateLeaseAttachmentsPdf(
       stock?.photo_thumb_urls?.length ? stock.photo_thumb_urls : stock?.photo_urls
     ) ?? []
 
+    // ID cards are stored in the private secure-documents bucket as relative paths.
+    // Generate 1-hour signed URLs so fetchAsDataUrl() can actually download them.
+    async function signedIdCardUrl(rawPath: string | null | undefined): Promise<string | null> {
+      if (!rawPath) return null
+      if (rawPath.startsWith('https://')) return rawPath
+      const { data } = await supabase.storage.from('secure-documents').createSignedUrl(rawPath, 3600)
+      return data?.signedUrl ?? null
+    }
+
+    const ownerIdCardRaw    = (contract.owner    as { id_card_url?: string | null } | null)?.id_card_url
+    const customerIdCardRaw = (contract.customer as { id_card_url?: string | null } | null)?.id_card_url
+    const ownerSigUrl       = (contract.owner    as { signature_url?: string | null } | null)?.signature_url
+    const customerSigUrl    = (contract.customer as { signature_url?: string | null } | null)?.signature_url
+
+    const [ownerIdCardUrl, customerIdCardUrl] = await Promise.all([
+      signedIdCardUrl(ownerIdCardRaw),
+      signedIdCardUrl(customerIdCardRaw),
+    ])
+
     console.log(`[ATT ${new Date().toISOString()}] start`, JSON.stringify({
-      contractId, furnitureItems: furnitureRows?.length ?? 0, keyItems: keyRows?.length ?? 0, photos: photoUrls.length,
+      contractId,
+      furnitureItems: furnitureRows?.length ?? 0,
+      keyItems: keyRows?.length ?? 0,
+      photos: photoUrls.length,
+      ownerIdCard: !!ownerIdCardUrl,
+      customerIdCard: !!customerIdCardUrl,
     }))
 
     const attachmentHtml = await buildAttachmentHtml({
@@ -1322,10 +1346,12 @@ export async function generateLeaseAttachmentsPdf(
       contractDate,
       ownerName,
       ownerNationalId:    contract.owner?.national_id ?? '',
-      ownerIdCardUrl:     (contract.owner    as { id_card_url?: string | null } | null)?.id_card_url ?? null,
+      ownerIdCardUrl,
       customerName,
       customerNationalId: contract.customer?.national_id ?? '',
-      customerIdCardUrl:  (contract.customer as { id_card_url?: string | null } | null)?.id_card_url ?? null,
+      customerIdCardUrl,
+      ownerSignatureUrl:    ownerSigUrl ?? null,
+      customerSignatureUrl: customerSigUrl ?? null,
       stockUnitNo:        stock?.unit_no      ?? '',
       stockProjectName:   stock?.project_name ?? '',
       stockPhotoUrls:     photoUrls,
@@ -1379,6 +1405,7 @@ export async function generateLeaseAttachmentsPdf(
 
 export type FurnitureItemInput = {
   item_name: string
+  item_name_en?: string | null
   quantity: number
   condition: 'good' | 'fair' | 'damaged' | 'missing'
   notes?: string | null
@@ -1405,14 +1432,15 @@ export async function saveFurnitureItems(
   if (items.length === 0) return {}
 
   const rows = items.map((item, i) => ({
-    contract_id: contractId,
-    agent_uid:   user.id,
-    item_name:   item.item_name,
-    quantity:    item.quantity,
-    condition:   item.condition,
-    notes:       item.notes ?? null,
-    serial_no:   item.serial_no ?? null,
-    sort_order:  item.sort_order ?? i,
+    contract_id:  contractId,
+    agent_uid:    user.id,
+    item_name:    item.item_name,
+    item_name_en: item.item_name_en ?? null,
+    quantity:     item.quantity,
+    condition:    item.condition,
+    notes:        item.notes ?? null,
+    serial_no:    item.serial_no ?? null,
+    sort_order:   item.sort_order ?? i,
   }))
 
   const { error } = await supabase.from('contract_furniture_items').insert(rows)

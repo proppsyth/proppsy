@@ -280,6 +280,7 @@ export default async function ContractDetailPage({
                 initialItems={(furnitureItems ?? []).map(item => ({
                   id: item.id,
                   item_name: item.item_name,
+                  item_name_en: (item as { item_name_en?: string | null }).item_name_en ?? '',
                   quantity: item.quantity ?? 1,
                   condition: item.condition ?? 'good',
                   notes: item.notes ?? '',

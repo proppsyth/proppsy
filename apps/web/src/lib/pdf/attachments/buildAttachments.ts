@@ -26,16 +26,15 @@ async function fetchAsDataUrl(url: string | null | undefined): Promise<string | 
   }
 }
 
+export interface SignerData {
+  ownerSignatureDataUrl: string | null
+  customerSignatureDataUrl: string | null
+  contractDate: string
+}
+
 /** Build complete attachment HTML for the requested sections.
  *  All images are fetched concurrently and embedded as data: URLs so Puppeteer
  *  request interception does not block them.
- *
- *  Data sources per section:
- *  - id-cards:  ownerIdCardUrl / customerIdCardUrl (fetched here)
- *  - inventory: input.furnitureItems (from contract_furniture_items table)
- *  - photos:    input.stockPhotoUrls (fetched here, max 16)
- *  - facilities: input.projectFacilities (Phase 3: from project DB)
- *  - keys:      input.keyItems (Phase 4: from contract key records)
  */
 export async function buildAttachmentHtml(input: AttachmentInput): Promise<string> {
   const { sections } = input
@@ -43,23 +42,39 @@ export async function buildAttachmentHtml(input: AttachmentInput): Promise<strin
 
   const needsIdCards = sections.includes('id-cards')
   const needsPhotos  = sections.includes('photos')
+  const needsSigs    = !!(input.ownerSignatureUrl || input.customerSignatureUrl)
 
   const photoUrlsToFetch = input.stockPhotoUrls.slice(0, MAX_PHOTOS)
 
-  const [ownerDataUrl, customerDataUrl, ...photoDataUrlsMixed] = await Promise.all([
-    needsIdCards ? fetchAsDataUrl(input.ownerIdCardUrl) : Promise.resolve(null),
-    needsIdCards ? fetchAsDataUrl(input.customerIdCardUrl) : Promise.resolve(null),
+  // Fetch all images concurrently — ID cards, signatures, property photos
+  const [
+    ownerDataUrl,
+    customerDataUrl,
+    ownerSigDataUrl,
+    customerSigDataUrl,
+    ...photoDataUrlsMixed
+  ] = await Promise.all([
+    needsIdCards ? fetchAsDataUrl(input.ownerIdCardUrl)     : Promise.resolve(null),
+    needsIdCards ? fetchAsDataUrl(input.customerIdCardUrl)  : Promise.resolve(null),
+    needsSigs    ? fetchAsDataUrl(input.ownerSignatureUrl)    : Promise.resolve(null),
+    needsSigs    ? fetchAsDataUrl(input.customerSignatureUrl) : Promise.resolve(null),
     ...(needsPhotos ? photoUrlsToFetch.map(fetchAsDataUrl) : []),
   ])
 
   const photoDataUrls = (photoDataUrlsMixed as Array<string | null>).filter((u): u is string => u !== null)
+
+  const signerData: SignerData = {
+    ownerSignatureDataUrl:    ownerSigDataUrl    ?? null,
+    customerSignatureDataUrl: customerSigDataUrl ?? null,
+    contractDate:             input.contractDate ?? '',
+  }
 
   const parts: string[] = []
   let sectionNum = 1
 
   parts.push(buildCoverSection({
     contractId:       input.contractId,
-    contractDate:     input.contractDate,
+    contractDate:     input.contractDate ?? '',
     stockUnitNo:      input.stockUnitNo,
     stockProjectName: input.stockProjectName,
     sections,
@@ -78,6 +93,7 @@ export async function buildAttachmentHtml(input: AttachmentInput): Promise<strin
           customerName:       input.customerName,
           customerNationalId: input.customerNationalId,
           customerDataUrl:    customerDataUrl ?? null,
+          signerData,
         }))
         break
 
@@ -85,8 +101,9 @@ export async function buildAttachmentHtml(input: AttachmentInput): Promise<strin
         parts.push(buildInventorySection({
           sectionNum:   sectionNum++,
           stockUnitNo:  input.stockUnitNo,
-          contractDate: input.contractDate,
+          contractDate: input.contractDate ?? '',
           items:        input.furnitureItems ?? [],
+          signerData,
         }))
         break
 
@@ -96,7 +113,7 @@ export async function buildAttachmentHtml(input: AttachmentInput): Promise<strin
           stockUnitNo:      input.stockUnitNo,
           stockProjectName: input.stockProjectName,
           photoDataUrls,
-          contractDate:     input.contractDate,
+          contractDate:     input.contractDate ?? '',
         }))
         break
 
@@ -112,6 +129,7 @@ export async function buildAttachmentHtml(input: AttachmentInput): Promise<strin
         parts.push(buildKeysSection({
           sectionNum: sectionNum++,
           items:      input.keyItems,
+          signerData,
         }))
         break
     }
