@@ -1,33 +1,45 @@
 {page-number}
 {signature-mini}
 
-# LEASE AGREEMENT
-| {size:8}สัญญาเช่า{/size} | |
-| 10 | 0 |
+# LEASE AGREEMENT / สัญญาเช่า
 
-| Written at / {size:8}ทำที่{/size} | <<view>> |
+| Written at | <<view>> |
 | 3: | :7: |
+| {size:8}ทำที่{/size}  | {size:8} <<view>>{/size}  |
+| 3: | ~7~ |
 
-| Date / {size:8}วันที่{/size} | <<ทำสัญญาวันที่ภาษาอังกฤษ>>  {size:8}· <<ทำสัญญาวันที่ภาษาไทย>>{/size} |
+| Date | <<ทำสัญญาวันที่ภาษาอังกฤษ>> |
 | 2.5: | :7.5: |
+| {size:8}วันที่{/size} | {size:8}· <<ทำสัญญาวันที่ภาษาไทย>>{/size} |
+| 2.5: | ~7.5~ |
 {space:8}
 
-| This agreement is made between / {size:8}สัญญานี้ทำขึ้นระหว่าง{/size} | <<ชื่อผู้ให้เช่า>> |
+| This agreement is made between | <<ชื่อผู้ให้เช่า>> |
 | 4.5: | :5.5: |
+| {size:8}สัญญานี้ทำขึ้นระหว่าง{/size} | {size:8}<<ชื่อผู้ให้เช่า>>{/size} |
+| 4.5: | ~5.5~ |
 
-| ID card no. / {size:8}บัตรประชาชนเลขที่{/size} | <<ผู้ให้เช่าบัตรประชาชนเลขที่>> |
+| ID card no. | <<ผู้ให้เช่าบัตรประชาชนเลขที่>> |
 | 3.5: | :6.5: |
+| {size:8}บัตรประชาชนเลขที่{/size} | {size:8}<<ผู้ให้เช่าบัตรประชาชนเลขที่>>{/size}  |
+| 3.5: | ~6.5~ |
 
-| Address no. / {size:8}บ้านเลขที่{/size} | <<บ้านเลขที่ เจ้าของ>> | Moo / {size:8}หมู่ที่{/size} | <<หมู่ที่ เจ้าของ>> | Road / {size:8}ถนน{/size} | <<ถนน เจ้าของ>> |
+| Address no. | <<บ้านเลขที่ เจ้าของ>> | Moo | <<หมู่ที่ เจ้าของ>> | Road | <<ถนน เจ้าของ>> |
 | 2 | :1.5: | ~1.5~ | :1: | ~1.5~ | :3: |
+| {size:8}บ้านเลขที่{/size} | <<บ้านเลขที่ เจ้าของ>> | {size:8}หมู่ที่{/size} | <<หมู่ที่ เจ้าของ>> | {size:8}ถนน{/size} | <<ถนน เจ้าของ>> |
+| 2 | ~1.5~ | ~1.5~ | ~1~ | ~1.5~ | ~3~ |
 
-| Sub-district / {size:8}แขวง/ตำบล{/size} | <<แขวงตำบล เจ้าของ>> | District / {size:8}เขต/อำเภอ{/size} | <<เขตอำเภอ เจ้าของ>> |
-| 2 | :3: | ~2~ | :3: |
+| Sub-district| <<แขวงตำบล เจ้าของ>> | District | <<เขตอำเภอ เจ้าของ>> |
+| 2 | ~3~ | ~2~ | ~3~ |
+| {size:8}แขวง/ตำบล{/size} | <<แขวงตำบล เจ้าของ>> | {size:8}เขต/อำเภอ{/size} | <<เขตอำเภอ เจ้าของ>> |
+| 2 | ~3~ | ~2~ | ~3~ |
 
-| Province / {size:8}จังหวัด{/size} | <<จังหวัด เจ้าของ>> | Post code / {size:8}รหัสไปรษณีย์{/size} | <<รหัสไปรษณีย์ เจ้าของ>> |
+| Province | <<จังหวัด เจ้าของ>> | Post code | <<รหัสไปรษณีย์ เจ้าของ>> |
 | 1.5: | :4.5: | ~2.5~ | :1.5: |
+| {size:8}จังหวัด{/size} | <<จังหวัด เจ้าของ>> | {size:8}รหัสไปรษณีย์{/size} | {size:8}<<รหัสไปรษณีย์ เจ้าของ>>{/size} |
+| 1.5: | ~4.5~ | ~2.5~ | ~1.5~ |
 
-| hereinafter called "Lessor"  {size:8}(ซึ่งต่อไปนี้เรียกว่า "ผู้ให้เช่า"){/size} | |
+| hereinafter called "Lessor"  (ซึ่งต่อไปนี้เรียกว่า "ผู้ให้เช่า") | |
 | 10 | 0 |
 {space:8}
 
@@ -73,8 +85,7 @@
 | 10 | 0 |
 {space:8}
 
-## 1. LEASE TERM
-| {size:8}ข้อ 1. ระยะเวลาของสัญญา{/size} | |
+| **1. LEASE TERM** {size:8}/ ข้อ 1. ระยะเวลาของสัญญา{/size} | |
 | 10 | 0 |
 
 | 1.1 | The term of this agreement shall be for a period of <<ระยะเวลาสัญญา>> months commencing from <<ทำสัญญาวันที่ภาษาอังกฤษ>> and expiring on <<ทำสัญญาวันที่สิ้นสุดภาษาอังกฤษ>>. |
@@ -84,8 +95,7 @@
 | 0.5 | 9.5 |
 {space:8}
 
-## 2. RENTAL AND CAM FEE
-| {size:8}ข้อ 2. ค่าเช่าและค่าส่วนกลาง{/size} | |
+| **2. RENTAL AND CAM FEE** {size:8}/ ข้อ 2. ค่าเช่าและค่าส่วนกลาง{/size} | |
 | 10 | 0 |
 
 | 2.1 | The rent shall be <<ค่าเช่าเติมลูกน้ำ>> Baht per month (<<ค่าเช่าภาษาอังกฤษ>> Baht Only) payable in advance on the <<ทำสัญญาวันที่อย่างเดียว>> day of each calendar month. If rent is not paid within <<พ้นกำหนดชำระได้>> days of the due date, a late payment fee of <<ค่าปรับเติมลูกน้ำ>> Baht (<<ค่าปรับตัวอักษรen>> Baht) per day shall be charged. |
@@ -121,8 +131,7 @@
 | 0.5 | 9.5 |
 {space:8}
 
-## 3. SECURITY DEPOSIT
-| {size:8}ข้อ 3. รายละเอียดเงินประกันสัญญา{/size} | |
+| **3. SECURITY DEPOSIT** {size:8}/ ข้อ 3. รายละเอียดเงินประกันสัญญา{/size} | |
 | 10 | 0 |
 
 | 3.1 | Upon the execution of this agreement the Lessee deposits with the Lessor <<จำนวนเงินวันทำสัญญา>> Baht (<<จำนวนเงินวันทำสัญญาภาษาอังกฤษ>> Baht Only), hereinafter referred to as "Security Deposit". |
@@ -153,8 +162,7 @@
 | 0.5 | 9.5 |
 {space:8}
 
-## 4. LESSEE'S COVENANTS
-| {size:8}ข้อ 4. ข้อตกลงและข้อปฏิบัติของผู้เช่า{/size} | |
+| **4. LESSEE'S COVENANTS** {size:8}/ ข้อ 4. ข้อตกลงและข้อปฏิบัติของผู้เช่า{/size} | |
 | 10 | 0 |
 
 | 4.1 | To punctually pay the rents and other sums at the time and in the manner stipulated in this agreement during the lease term. |
@@ -224,8 +232,7 @@
 | 0.5 | 9.5 |
 {space:8}
 
-## 5. LESSOR'S COVENANTS
-| {size:8}ข้อ 5. ข้อตกลงและข้อปฏิบัติของผู้ให้เช่า{/size} | |
+| **5. LESSOR'S COVENANTS** {size:8}/ ข้อ 5. ข้อตกลงและข้อปฏิบัติของผู้ให้เช่า{/size} | |
 | 10 | 0 |
 
 | 5.1 | The Lessor warrants and guarantees that the Lessor has the absolute right to let the Premises. |
@@ -244,8 +251,7 @@
 | 0.5 | 9.5 |
 {space:8}
 
-## 6. TERMINATION OF AGREEMENT
-| {size:8}ข้อ 6. การบอกเลิกสัญญา{/size} | |
+| **6. TERMINATION OF AGREEMENT** {size:8}/ ข้อ 6. การบอกเลิกสัญญา{/size} | |
 | 10 | 0 |
 
 | 6.1 | {size:8}"ผู้ให้เช่า" สามารถบอกเลิกสัญญาฉบับนี้ได้ โดย "ผู้เช่า" ไม่มีสิทธิโต้แย้ง หากเกิดเหตุการณ์ดังต่อไปนี้{/size} |
@@ -294,8 +300,7 @@
 | 0.5 | 9.5 |
 {space:8}
 
-## 7. VACATING FROM THE PREMISES
-| {size:8}ข้อ 7. ข้อตกลงเรื่องการย้ายออกจากทรัพย์สิน{/size} | |
+| **7. VACATING FROM THE PREMISES** {size:8}/ ข้อ 7. ข้อตกลงเรื่องการย้ายออกจากทรัพย์สิน{/size} | |
 | 10 | 0 |
 
 | 7.1 | On the expiry date, the Lessee shall vacate from the Premises and shall deliver the Premises to the Lessor by removing all properties belonging to the Lessee. |
@@ -317,8 +322,7 @@
 | 1 | 9 |
 {space:8}
 
-## 8. APPLICABLE LAW
-| {size:8}ข้อ 8. การบังคับใช้{/size} | |
+| **8. APPLICABLE LAW** {size:8}/ ข้อ 8. การบังคับใช้{/size} | |
 | 10 | 0 |
 
 | This agreement shall be governed by the laws of Thailand. This agreement is made in English and Thai languages. If there is any inconsistency between the two versions, the English version shall prevail. | |
@@ -328,8 +332,7 @@
 | 10 | 0 |
 {space:8}
 
-## 9. MISCELLANEOUS
-| {size:8}ข้อ 9. อื่นๆ{/size} | |
+| **9. MISCELLANEOUS** {size:8}/ ข้อ 9. อื่นๆ{/size} | |
 | 10 | 0 |
 
 | 9.1 | {size:8}การที่ "ผู้ให้เช่า" ได้รับชำระค่าเช่า ไม่ถือเป็นข้อยกเว้นที่จะไม่ให้ "ผู้ให้เช่า" ดำเนินการใดๆ กับ "ผู้เช่า" ในกรณีที่มีการละเมิดข้อตกลงใดๆ ในสัญญาฉบับนี้{/size} |

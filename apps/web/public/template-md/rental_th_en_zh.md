@@ -45,8 +45,7 @@
 | 10 | 0 |
 {space:8}
 
-## 1. RENTAL ADDRESS
-| {size:9}一. 房屋地址{/size}  {size:8}ข้อ 1. ที่ตั้งทรัพย์สิน{/size} | |
+| **1. RENTAL ADDRESS** {size:9}一. 房屋地址{/size}  {size:8}/ ข้อ 1. ที่ตั้งทรัพย์สิน{/size} | |
 | 10 | 0 |
 
 | Project / {size:9}项目{/size} / {size:8}โครงการ{/size} | <<view>> |
@@ -56,8 +55,7 @@
 | 2.5: | :2: | ~2~ | :1: | ~2~ | :2.5: |
 {space:8}
 
-## 2. LEASE TERM
-| {size:9}二. 租赁期限{/size}  {size:8}ข้อ 2. ระยะเวลาสัญญา{/size} | |
+| **2. LEASE TERM** {size:9}二. 租赁期限{/size}  {size:8}/ ข้อ 2. ระยะเวลาสัญญา{/size} | |
 | 10 | 0 |
 
 | The tenancy agreement is for a term of <<ระยะเวลาสัญญา>> months commencing from <<ทำสัญญาวันที่ภาษาอังกฤษ>> to <<ทำสัญญาวันที่สิ้นสุดภาษาอังกฤษ>>. | |
@@ -70,8 +68,7 @@
 | 10 | 0 |
 {space:8}
 
-## 3. RENT, DEPOSIT AND PAYMENT METHOD
-| {size:9}三. 租金、押金及付款方式{/size}  {size:8}ข้อ 3. ค่าเช่า เงินประกัน และวิธีชำระเงิน{/size} | |
+| **3. RENT, DEPOSIT AND PAYMENT METHOD** {size:9}三. 租金、押金及付款方式{/size}  {size:8}/ ข้อ 3. ค่าเช่า เงินประกัน และวิธีชำระเงิน{/size} | |
 | 10 | 0 |
 
 | 3.1 | Monthly rental is THB <<ค่าเช่าเติมลูกน้ำ>> Baht. Security deposit is 2 months = THB <<จำนวนเงินวันทำสัญญา>> Baht. First payment on signing: 1 month rent + 2 months deposit = THB <<ค่าเช่าx3>> Baht. |
@@ -108,10 +105,9 @@
 {bankcard:<<บัญชีธนาคาร>>|<<ชื่อผู้ให้เช่า>>|<<เลขบัญชี>>}
 {space:8}
 
-## 4. TERMINATION CONDITIONS
-| {size:9}四. 乙方有下列情形之一的，甲方可以终止合同，没收押金并收回房屋{/size} | |
+| **4. TERMINATION CONDITIONS** {size:8}/ ข้อ 4. เหตุบอกเลิกสัญญา{/size} | |
 | 10 | 0 |
-| {size:8}ข้อ 4. เหตุบอกเลิกสัญญา{/size} | |
+| {size:9}四. 乙方有下列情形之一的，甲方可以终止合同，没收押金并收回房屋{/size} | |
 | 10 | 0 |
 
 | 4.1 | Party B uses the premises for illegal or criminal activities. |
@@ -169,8 +165,7 @@
 | 0.5 | 9.5 |
 {space:8}
 
-## 5. MAINTENANCE AND DAMAGES
-| {size:9}五. 租赁期间保护工作{/size}  {size:8}ข้อ 5. การบำรุงรักษาและความเสียหาย{/size} | |
+| **5. MAINTENANCE AND DAMAGES** {size:9}五. 租赁期间保护工作{/size}  {size:8}/ ข้อ 5. การบำรุงรักษาและความเสียหาย{/size} | |
 | 10 | 0 |
 
 | 5.1 | Party B shall not make structural alterations without Party A's written consent and shall be responsible for any damage caused. |
@@ -219,8 +214,7 @@
 | 0.5 | 9.5 |
 {space:8}
 
-## 6. PAYMENT OF FEES
-| {size:9}六. 各项费用的缴纳{/size}  {size:8}ข้อ 6. การชำระค่าธรรมเนียม{/size} | |
+| **6. PAYMENT OF FEES** {size:9}六. 各项费用的缴纳{/size}  {size:8}/ ข้อ 6. การชำระค่าธรรมเนียม{/size} | |
 | 10 | 0 |
 
 | 6.1 | Utilities (water and electricity) are paid by Party B at premises rates from the commencement date. |
@@ -251,8 +245,7 @@
 | 0.5 | 9.5 |
 {space:8}
 
-## 7. LIQUIDATED DAMAGES AND LIABILITY FOR BREACH
-| {size:9}七. 违约金和违约责任{/size}  {size:8}ข้อ 7. ค่าปรับและความรับผิดในการผิดสัญญา{/size} | |
+| **7. LIQUIDATED DAMAGES AND LIABILITY FOR BREACH** {size:9}七. 违约金和违约责任{/size}  {size:8}/ ข้อ 7. ค่าปรับและความรับผิดในการผิดสัญญา{/size} | |
 | 10 | 0 |
 
 | 7.1 | If Party B terminates the agreement in advance when Party A has not violated this agreement, Party A has the right not to refund all deposits. |
@@ -265,8 +258,7 @@
 | 0.5 | 9.5 |
 {space:8}
 
-## 8. AGREEMENT EXPIRATION AND LEASE RENEWAL
-| {size:9}八. 合同到期和续租{/size}  {size:8}ข้อ 8. การหมดอายุและต่ออายุสัญญา{/size} | |
+| **8. AGREEMENT EXPIRATION AND LEASE RENEWAL** {size:9}八. 合同到期和续租{/size}  {size:8}/ ข้อ 8. การหมดอายุและต่ออายุสัญญา{/size} | |
 | 10 | 0 |
 
 | 8.1 | Agreement expiry date: <<วันที่สิ้นสุด>> <<เดือนที่สิ้นสุด>> <<ปีที่สิ้นสุดอังกฤษ>>. |
@@ -297,8 +289,7 @@
 | 0.5 | 9.5 |
 {space:8}
 
-## 9. DISCLAIMER
-| {size:9}九. 免责条件{/size}  {size:8}ข้อ 9. ข้อจำกัดความรับผิดชอบ{/size} | |
+| **9. DISCLAIMER** {size:9}九. 免责条件{/size}  {size:8}/ ข้อ 9. ข้อจำกัดความรับผิดชอบ{/size} | |
 | 10 | 0 |
 
 | Due to natural disasters or force majeure, neither party shall be liable to the other. If Party B is unable to use the premises, Party B shall immediately notify Party A in writing. | |
@@ -320,8 +311,7 @@
 | 0.5 | 9.5 |
 {space:8}
 
-## 10. DISPUTE RESOLUTION
-| {size:9}十. 争议的解决方式{/size}  {size:8}ข้อ 10. การระงับข้อพิพาท{/size} | |
+| **10. DISPUTE RESOLUTION** {size:9}十. 争议的解决方式{/size}  {size:8}/ ข้อ 10. การระงับข้อพิพาท{/size} | |
 | 10 | 0 |
 
 | If there is a dispute, parties shall settle through friendly negotiation. If negotiation fails, either party may bring a lawsuit to the local court. | |
@@ -334,10 +324,9 @@
 | 10 | 0 |
 {space:8}
 
-## 11. SUPPLEMENTARY AGREEMENTS
-| {size:9}十一. 本合同如有未尽事宜，甲、乙双方应在法律基础上共同协商，补充规定与本合同具有同等效力{/size} | |
+| **11. SUPPLEMENTARY AGREEMENTS** {size:8}/ ข้อ 11. ข้อตกลงเพิ่มเติม{/size} | |
 | 10 | 0 |
-| {size:8}ข้อ 11. ข้อตกลงเพิ่มเติม{/size} | |
+| {size:9}十一. 本合同如有未尽事宜，甲、乙双方应在法律基础上共同协商，补充规定与本合同具有同等效力{/size} | |
 | 10 | 0 |
 
 | If any matters are not covered in this agreement, both parties shall negotiate and make supplementary agreements with equal effect. | |
