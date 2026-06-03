@@ -9,6 +9,8 @@ import { customerDisplayName } from '@/types'
 import type { Customer, LeadStatus } from '@/types'
 import { LEAD_STATUS_CONFIG } from '../CustomerList'
 import ArchiveCustomerButton from './ArchiveCustomerButton'
+import CustomerContractHistory from './ContractHistory'
+import type { ContractRow } from './ContractHistory'
 
 export const metadata: Metadata = { title: 'รายละเอียดลูกค้า' }
 
@@ -60,7 +62,7 @@ export default async function CustomerDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: customer }, { data: inquiryRows }] = await Promise.all([
+  const [{ data: customer }, { data: inquiryRows }, { data: contractRows }] = await Promise.all([
     supabase
       .from('customers')
       .select('*')
@@ -90,6 +92,19 @@ export default async function CustomerDetailPage({
       .eq('agent_uid', user.id)
       .order('created_at', { ascending: false })
       .limit(20),
+    // Contract history — lease + reservation contracts for this customer
+    supabase
+      .from('contracts')
+      .select(`
+        id, doc_type, status, created_at, move_in_date, end_date,
+        rent_price, contract_category, is_finalized,
+        stock:stock_id (id, project_name, unit_no, floor, building, room_type)
+      `)
+      .eq('customer_id', id)
+      .eq('agent_uid', user.id)
+      .is('deleted_at', null)
+      .in('contract_category', ['lease', 'reservation'])
+      .order('created_at', { ascending: false }),
   ])
 
   if (!customer) notFound()
@@ -162,6 +177,13 @@ export default async function CustomerDetailPage({
           </Link>
         </div>
       </div>
+
+      {/* ─── Contract History (full-width) ─────────────────────── */}
+      {(contractRows?.length ?? 0) > 0 && (
+        <div className="mb-4">
+          <CustomerContractHistory contracts={(contractRows ?? []) as unknown as ContractRow[]} />
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-4">
         {/* Left */}
