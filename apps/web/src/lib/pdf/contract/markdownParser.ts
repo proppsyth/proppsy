@@ -17,10 +17,13 @@ export type MdBlock =
   | { type: 'blank' }
   | { type: 'space'; height: number }
   | { type: 'break' }
-  | { type: 'line' }
+  | { type: 'line';    variant?: string }
   | { type: 'divider' }
   | { type: 'bankcard'; bankName: string; accountName: string; accountNo: string; compact: boolean }
   | { type: 'table'; rows: string[][]; cols: ColSpec[]; wide: boolean }
+  | { type: 'styled-p';    tag: string; text: string }
+  | { type: 'multi-block'; tag: string; lines: string[] }
+  | { type: 'param-block'; tag: string; params: string[] }
 
 /** Document-level features enabled by directives in the .md template */
 export interface DocumentFeatures {
@@ -42,7 +45,13 @@ export function deEscape(md: string): string {
 }
 
 export function substituteVars(md: string, vars: Record<string, string>): string {
-  return md.replace(/<<([^>]+)>>/g, (_, key: string) => vars[key] ?? '')
+  // Supports <<key>> and <<key|fallback>> — fallback renders when key is absent or empty
+  const VAR_RE = new RegExp('<<([^>|]+)(?:\\|([^>]*))?>>',  'g')
+  return md.replace(VAR_RE, (_, key: string, fallback?: string) => {
+    const val = vars[key]
+    if (val !== undefined && val !== '') return val
+    return fallback ?? ''
+  })
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────
@@ -50,6 +59,18 @@ export function substituteVars(md: string, vars: Record<string, string>): string
 function stripMarkdown(text: string): string {
   return text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').trim()
 }
+
+// Single-line block-level tag: {tag}text{/tag}
+// Supported tags produce a styled paragraph — backward compatible, never breaks existing templates.
+const STYLED_BLOCK_RE = new RegExp(
+  '^\\{(en-title|th-subtitle|en|th|zh|muted|small|italic|bold|section|box|center|right)\\}(.*?)\\{/\\1\\}$'
+)
+
+// Single-line param block: {tag:param1|param2}  e.g. {section:ENGLISH|ไทย}
+const PARAM_BLOCK_RE = /^\{(section|label):([^}]+)\}$/
+
+// Multi-line block: {tag} on its own line, then content lines, then {/tag}
+const MULTI_BLOCK_OPEN_RE = /^\{(heading|section-title|label|box(?::[a-z-]+)?|info-box|note)\}$/
 
 // Table parsing now lives in ./tableParser.ts — robust, validated, isolated.
 
@@ -107,8 +128,11 @@ function parseBlocks(md: string): MdBlock[] {
     if (line.trim() === '{break}') {
       blocks.push({ type: 'break' }); i++; continue
     }
-    if (line.trim() === '{line}') {
-      blocks.push({ type: 'line' }); i++; continue
+    const lineM = /^\{line(?::([a-z-]+))?\}$/.exec(line.trim())
+    if (lineM) {
+      const variant = lineM[1]
+      blocks.push(variant ? { type: 'line', variant } : { type: 'line' })
+      i++; continue
     }
     if (line.trim() === '{divider}') {
       blocks.push({ type: 'divider' }); i++; continue
@@ -130,6 +154,33 @@ function parseBlocks(md: string): MdBlock[] {
         compact,
       })
       i++; continue
+    }
+
+    // Single-line param block: {section:EN|TH} or {label:EN|TH}
+    const paramM = PARAM_BLOCK_RE.exec(line.trim())
+    if (paramM) {
+      const tag    = paramM[1]!
+      const params = paramM[2]!.split('|').map(s => s.trim()).filter(Boolean)
+      if (params.length > 0) blocks.push({ type: 'param-block', tag, params })
+      i++; continue
+    }
+
+    // Multi-line block: {tag} on its own line, content lines, {/tag}
+    const multiM = MULTI_BLOCK_OPEN_RE.exec(line.trim())
+    if (multiM) {
+      const tag = multiM[1]!
+      const closeTag = `{/${tag}}`
+      const contentLines: string[] = []
+      i++
+      while (i < lines.length && (lines[i] ?? '').trim() !== closeTag) {
+        contentLines.push(lines[i] ?? ''); i++
+      }
+      if (i < lines.length) i++ // consume the closing tag line
+      // Strip leading/trailing blank lines from content
+      while (contentLines.length > 0 && !contentLines[0]!.trim()) contentLines.shift()
+      while (contentLines.length > 0 && !contentLines[contentLines.length - 1]!.trim()) contentLines.pop()
+      if (contentLines.length > 0) blocks.push({ type: 'multi-block', tag, lines: contentLines })
+      continue
     }
 
     if (line.trimStart().startsWith('|')) {
@@ -167,6 +218,14 @@ function parseBlocks(md: string): MdBlock[] {
       const isBold = /^\*\*/.test(raw.trim())
       const text = stripMarkdown(raw)
       if (text) blocks.push({ type: 'p', text, bold: isBold, indent })
+      i++; continue
+    }
+
+    const styledM = STYLED_BLOCK_RE.exec(line.trim())
+    if (styledM) {
+      const tag  = styledM[1]!
+      const text = styledM[2]!.trim()
+      if (text) blocks.push({ type: 'styled-p', tag, text })
       i++; continue
     }
 

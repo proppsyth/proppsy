@@ -105,8 +105,11 @@ export function sanitizeBlock(block: unknown): MdBlock[] {
       return [{ type: 'blank' }]
     case 'break':
       return [{ type: 'break' }]
-    case 'line':
-      return [{ type: 'line' }]
+    case 'line': {
+      const variant = typeof b.variant === 'string' && /^[a-z-]+$/.test(b.variant.trim())
+        ? b.variant.trim() : undefined
+      return variant ? [{ type: 'line', variant }] : [{ type: 'line' }]
+    }
     case 'divider':
       return [{ type: 'divider' }]
     case 'bankcard': {
@@ -155,6 +158,26 @@ export function sanitizeBlock(block: unknown): MdBlock[] {
       }
       const wide = b.wide === true || maxCols > 8
       return [{ type: 'table', rows: normRows, cols, wide }]
+    }
+    case 'styled-p': {
+      const tag  = safeStr(b.tag).trim()
+      const text = safeStr(b.text).trim()
+      if (!tag || !text) return []
+      return [{ type: 'styled-p', tag, text }]
+    }
+    case 'multi-block': {
+      const tag   = safeStr(b.tag).trim()
+      const lines = Array.isArray(b.lines) ? (b.lines as unknown[]).map(safeStr) : []
+      if (!tag || lines.length === 0) return []
+      return [{ type: 'multi-block', tag, lines }]
+    }
+    case 'param-block': {
+      const tag    = safeStr(b.tag).trim()
+      const params = Array.isArray(b.params)
+        ? (b.params as unknown[]).map(safeStr).filter(s => s.trim().length > 0)
+        : []
+      if (!tag || params.length === 0) return []
+      return [{ type: 'param-block', tag, params }]
     }
     default:
       warn('unknown block type dropped', t, block)

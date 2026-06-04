@@ -21,7 +21,8 @@ function renderBlock(block: MdBlock, blankCountRef: { n: number }): string {
     return `<div class="page-break"></div>`
   }
   if (block.type === 'line') {
-    return `<div class="hr-line"></div>`
+    const v = block.variant
+    return `<div class="${v ? `hr-line hr-${escapeHtml(v)}` : 'hr-line'}"></div>`
   }
   if (block.type === 'divider') {
     return `<div class="divider"></div>`
@@ -47,6 +48,53 @@ function renderBlock(block: MdBlock, blankCountRef: { n: number }): string {
   // any non-blank resets the consecutive-blank counter
   blankCountRef.n = 0
 
+  if (block.type === 'styled-p') return `<p class="sp-${escapeHtml(block.tag)}">${inlineMd(block.text)}</p>`
+  if (block.type === 'param-block') {
+    const en = escapeHtml(block.params[0] ?? '')
+    const th = escapeHtml(block.params[1] ?? '')
+    if (block.tag === 'section') {
+      return `<div class="pb-section">${en ? `<div class="pb-section-en">${en}</div>` : ''}${th ? `<div class="pb-section-th">${th}</div>` : ''}</div>`
+    }
+    if (block.tag === 'label') {
+      return `<p class="pb-label">${en ? `<span class="pb-label-en">${en}</span>` : ''}${th ? `<span class="pb-label-th">${th}</span>` : ''}</p>`
+    }
+    return ''
+  }
+  if (block.type === 'multi-block') {
+    const tag = block.tag
+    if (tag === 'heading') {
+      const main = inlineMd(block.lines[0] ?? '')
+      const subs = block.lines.slice(1).filter(l => l.trim()).map(l => `<p class="mb-heading-sub">${inlineMd(l)}</p>`).join('')
+      return `<div class="mb-heading-wrap"><h1 class="mb-heading">${main}</h1>${subs}</div>`
+    }
+    if (tag === 'section-title') {
+      const text = block.lines.map(l => inlineMd(l)).join(' ')
+      return `<div class="mb-section-title">${text}</div>`
+    }
+    if (tag === 'label') {
+      const linesHtml = block.lines.map(l => `<p class="mb-label-line">${inlineMd(l)}</p>`).join('')
+      return `<div class="mb-label">${linesHtml}</div>`
+    }
+    if (tag === 'info-box') {
+      const linesHtml = block.lines.map(l => {
+        const parts = l.split('|')
+        if (parts.length >= 2) {
+          return `<div class="mb-info-row">${parts.map(p => `<span>${inlineMd(p.trim())}</span>`).join('')}</div>`
+        }
+        return `<p class="mb-info-line">${inlineMd(l)}</p>`
+      }).join('')
+      return `<div class="mb-info-box">${linesHtml}</div>`
+    }
+    if (tag === 'note') {
+      const linesHtml = block.lines.map(l => `<p class="mb-note-line">${inlineMd(l)}</p>`).join('')
+      return `<div class="mb-note">${linesHtml}</div>`
+    }
+    // box or box:variant
+    const boxVariant = tag.startsWith('box:') ? escapeHtml(tag.slice(4)) : ''
+    const boxCls = boxVariant ? `mb-box mb-box-${boxVariant}` : 'mb-box'
+    const boxContent = block.lines.map(l => `<p class="mb-box-line">${inlineMd(l)}</p>`).join('')
+    return `<div class="${boxCls}">${boxContent}</div>`
+  }
   if (block.type === 'h1') return `<h1>${inlineMd(block.text)}</h1>`
   if (block.type === 'h2') return `<h2>${inlineMd(block.text)}</h2>`
   if (block.type === 'p') {
@@ -121,9 +169,18 @@ function processBoldAndEscape(s: string): string {
 }
 
 // Inline tag patterns (processed before HTML escaping so they can emit raw HTML):
-//   {size:N}text{/size}   — override font size, N clamped to 5–30 pt
-//   {banklogo:NAME}        — emit bank logo <img> from public/banks/; empty if not found
-const INLINE_RE = /\{size:(\d+(?:\.\d+)?)\}([\s\S]*?)\{\/size\}|\{banklogo:([^}]*)\}/g
+//   {size:N}text{/size}      — override font size, N clamped to 5–30 pt
+//   {banklogo:NAME}           — emit bank logo <img>; empty if not found
+//   {TAG}text{/TAG}           — bilingual/semantic inline span (see SEMANTIC_TAGS)
+//   {color:VALUE}text{/color} — custom text color (hex or named)
+const SEMANTIC_TAGS = 'en|th|zh|muted|small|italic|bold|underline|uppercase|lowercase|b|i|u'
+const INLINE_RE = new RegExp(
+  `\\{size:(\\d+(?:\\.\\d+)?)\\}([\\s\\S]*?)\\{\\/size\\}` +
+  `|\\{banklogo:([^}]*)\\}` +
+  `|\\{(${SEMANTIC_TAGS})\\}([\\s\\S]*?)\\{\\/\\4\\}` +
+  `|\\{color:([^}]*)\\}([\\s\\S]*?)\\{\\/color\\}`,
+  'g'
+)
 
 /** Convert inline markdown to HTML: bold, font-size overrides, bank logos. */
 function inlineMd(text: unknown): string {
@@ -147,6 +204,18 @@ function inlineMd(text: unknown): string {
       const logoUrl = getBankLogoDataUrl(m[3])
       if (logoUrl) {
         result += `<img src="${logoUrl}" style="height:16pt;vertical-align:middle;display:inline-block" />`
+      }
+    } else if (m[4] !== undefined) {
+      // {TAG}text{/TAG} — bilingual/semantic inline span
+      result += `<span class="bi-${m[4]}">${processBoldAndEscape(m[5] ?? '')}</span>`
+    } else if (m[6] !== undefined) {
+      // {color:VALUE}text{/color} — custom color; value sanitized to hex or named colors only
+      const rawColor = (m[6] ?? '').trim()
+      const safeColor = /^(?:#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,25})$/.test(rawColor) ? rawColor : ''
+      if (safeColor) {
+        result += `<span style="color:${safeColor}">${processBoldAndEscape(m[7] ?? '')}</span>`
+      } else {
+        result += processBoldAndEscape(m[7] ?? '')
       }
     }
 
@@ -177,8 +246,10 @@ function classifyRow(row: string[], cols: ColSpec[]): string {
   // Column-header row: every non-empty cell is bold (labels, not amounts)
   else if (nonEmpty.length > 1 && nonEmpty.every(isBold)) cls = 'row row-header'
 
-  // Amount-in-words row: single meaningful cell wrapping {size:N}
-  else if (nonEmpty.length === 1 && nonEmpty[0]?.includes('{size:')) cls = 'row row-amtwords'
+  // Amount-in-words row: single cell with {size:N} that contains Thai baht text.
+  // Requires 'บาทถ้วน' to avoid misclassifying bilingual clause text that incidentally
+  // contains {size:} but is NOT a financial amount row.
+  else if (nonEmpty.length === 1 && nonEmpty[0]?.includes('{size:') && nonEmpty[0].includes('บาทถ้วน')) cls = 'row row-amtwords'
 
   // Compact info row: 4-col layout with right-aligned label in col 0 (non-bold)
   else if (row.length >= 4 && cols[0]?.align === 'right' && !isBold(row[0] ?? '')) cls = 'row row-info'

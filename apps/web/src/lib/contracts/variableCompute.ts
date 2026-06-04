@@ -3,7 +3,7 @@
 
 import type { Contract, Stock, Owner, Customer, Profile } from '@/types'
 import {
-  THAI_MONTHS, toThaiDate, toThaiDateFull, toEnDate,
+  THAI_MONTHS, toThaiDate, toThaiDateFull, toEnDate, toEnDateLong,
   thaiYear, enYear, thaiMonthName, dayOfMonth,
   withCommas, formatNationalId, bahtText, bahtTextEn,
 } from './formatters'
@@ -43,7 +43,8 @@ export function computeVariables(
   v['เมื่อวันที่ภาษาอังกฤษ']     = toEnDate(contractDate)
   v['ทำสัญญาวันที่ตัวอักษร']     = toThaiDateFull(contractDate)
   v['ทำสัญญาวันที่ภาษาไทย']      = toThaiDate(contractDate)
-  v['ทำสัญญาวันที่ภาษาอังกฤษ']   = toEnDate(contractDate)
+  v['ทำสัญญาวันที่ภาษาอังกฤษ']    = toEnDate(contractDate)
+  v['ทำสัญญาวันที่ภาษาอังกฤษLong'] = toEnDateLong(contractDate)
   v['ปีที่ทำสัญญา']              = thaiYear(contractDate)
   v['ทำสัญญาเดือนอย่างเดียว']    = String(contractDate.getMonth() + 1)
 

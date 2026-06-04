@@ -26,10 +26,24 @@ export function toThaiDateFull(d: Date | string): string {
   return `${dt.getDate()} ${THAI_MONTHS[dt.getMonth()]} ${dt.getFullYear() + 543}`
 }
 
+function ordinal(n: number): string {
+  const j = n % 10, k = n % 100
+  if (j === 1 && k !== 11) return `${n}st`
+  if (j === 2 && k !== 12) return `${n}nd`
+  if (j === 3 && k !== 13) return `${n}rd`
+  return `${n}th`
+}
+
 /** "15 May 2026" */
 export function toEnDate(d: Date | string): string {
   const dt = parseDate(d)
   return `${dt.getDate()} ${EN_MONTHS[dt.getMonth()]} ${dt.getFullYear()}`
+}
+
+/** "May 15th, 2026" — ordinal English format for bilingual contracts */
+export function toEnDateLong(d: Date | string): string {
+  const dt = parseDate(d)
+  return `${EN_MONTHS[dt.getMonth()]} ${ordinal(dt.getDate())}, ${dt.getFullYear()}`
 }
 
 /** Buddhist year as string e.g. "2569" */

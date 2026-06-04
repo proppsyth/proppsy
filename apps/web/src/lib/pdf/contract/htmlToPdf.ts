@@ -421,6 +421,86 @@ function buildFullHtml(opts: RenderOptions): string {
   .final-sig-role { font-size: 9pt; font-weight: 700; color: #1B3B6F; margin-bottom: 3pt; }
   .final-sig-name { font-size: 8.5pt; color: #4A4A4A; margin-bottom: 10pt; }
   .final-sig-date { font-size: 7.5pt; color: #888; margin-top: 4pt; }
+
+  /* ── Line variants ───────────────────────────────────────────────── */
+  .hr-blue   { border-bottom-color: #3B6CD4 !important; }
+  .hr-thick  { border-bottom-width: 2pt !important; }
+  .hr-dashed { border-bottom-style: dashed !important; }
+
+  /* ── Bilingual inline spans ──────────────────────────────────────── */
+  /* {en} inherits base — English is primary, no size override needed  */
+  .bi-th        { font-size: 8pt;   color: #555; }
+  .bi-zh        { font-size: 9pt;   color: #3A3A3A; }
+  .bi-muted     { font-size: 8.5pt; color: #6B7A99; }
+  .bi-small     { font-size: 7.5pt; }
+  .bi-italic    { font-style: italic; }
+  .bi-bold      { font-weight: 700; }
+  .bi-underline { text-decoration: underline; }
+  .bi-uppercase { text-transform: uppercase; }
+  .bi-lowercase { text-transform: lowercase; }
+
+  /* ── Block-level styled paragraphs ──────────────────────────────── */
+  .sp-en-title {
+    font-size: 13pt; font-weight: 700; color: #1B3B6F; text-align: center;
+    letter-spacing: 0.5pt; margin: 4pt 0 2pt 0;
+  }
+  .sp-th-subtitle {
+    font-size: 9.5pt; color: #555; text-align: center; margin: 0 0 10pt 0;
+  }
+  .sp-section {
+    font-size: 10pt; font-weight: 700; color: #1B3B6F;
+    border-bottom: 1pt solid #3B6CD4; padding-bottom: 2pt; margin: 8pt 0 4pt 0;
+  }
+  .sp-box {
+    border: 0.5pt solid #D0DBF0; border-radius: 4pt; padding: 6pt 10pt;
+    background: #F7F9FF; margin: 4pt 0;
+  }
+  .sp-center { text-align: center; margin: 0 0 2pt 0; }
+  .sp-right  { text-align: right;  margin: 0 0 2pt 0; }
+  .sp-en    { font-size: 10pt; color: #1A1A1A; margin: 0 0 1pt 0; }
+  .sp-th    { font-size: 8pt;  color: #555;    margin: 0 0 2pt 0; }
+  .sp-zh    { font-size: 9pt;  color: #3A3A3A; margin: 0 0 2pt 0; }
+  .sp-muted { font-size: 8.5pt; color: #6B7A99; margin: 0 0 2pt 0; }
+  .sp-small { font-size: 7.5pt; color: #666;   margin: 0 0 1pt 0; }
+  .sp-italic { font-style: italic;  margin: 0 0 2pt 0; }
+  .sp-bold   { font-weight: 700;    margin: 0 0 2pt 0; }
+
+  /* ── Multi-line blocks ───────────────────────────────────────────── */
+  .mb-heading-wrap { text-align: center; margin: 4pt 0 8pt 0; }
+  .mb-heading      { font-size: 13pt; font-weight: 700; color: #1B3B6F; letter-spacing: 0.5pt; margin: 0; }
+  .mb-heading-sub  { font-size: 9.5pt; color: #555; margin: 2pt 0 0 0; }
+  .mb-section-title {
+    font-size: 10pt; font-weight: 700; color: #1B3B6F;
+    border-bottom: 1.5pt solid #3B6CD4; padding-bottom: 3pt; margin: 10pt 0 6pt 0;
+  }
+  .mb-label      { margin: 2pt 0 4pt 0; }
+  .mb-label-line { margin: 0; line-height: 1.6; }
+  .mb-box        { border: 0.5pt solid #D0DBF0; border-radius: 4pt; padding: 6pt 10pt; background: #F7F9FF; margin: 4pt 0; page-break-inside: avoid; }
+  .mb-box-blue   { border-color: #3B6CD4; background: #EDF1FB; }
+  .mb-box-gray   { border-color: #C8D6E8; background: #F5F7FA; }
+  .mb-box-line   { margin: 0; line-height: 1.75; }
+
+  /* ── Multi-block: info-box & note ───────────────────────────────── */
+  .mb-info-box  { border: 0.75pt solid #BFDBFE; background: #EFF6FF; border-radius: 3pt; padding: 5pt 8pt; margin: 4pt 0; page-break-inside: avoid; }
+  .mb-info-row  { display: flex; gap: 8pt; line-height: 1.6; font-size: 9pt; }
+  .mb-info-row span { flex: 1; }
+  .mb-info-line { font-size: 9pt; margin: 1pt 0; }
+  .mb-note      { background: #F9FAFB; border-left: 2.5pt solid #9CA3AF; padding: 5pt 8pt; margin: 4pt 0; page-break-inside: avoid; }
+  .mb-note-line { font-size: 9pt; margin: 1.5pt 0; color: #374151; }
+
+  /* ── Bilingual param-blocks: {section:EN|TH} and {label:EN|TH} ─── */
+  .pb-section    { margin: 8pt 0 4pt; border-bottom: 1.5pt solid #1E40AF; padding-bottom: 3pt; }
+  .pb-section-en { font-size: 10.5pt; font-weight: 700; color: #1E40AF; line-height: 1.3; }
+  .pb-section-th { font-size: 8.5pt; color: #374151; line-height: 1.3; margin-top: 1pt; }
+  .pb-label      { margin: 3pt 0 2pt; }
+  .pb-label-en   { font-size: 10pt; font-weight: 600; color: #111827; margin-right: 5pt; }
+  .pb-label-th   { font-size: 8pt; color: #6B7A99; }
+
+  /* ── Inline shorthand aliases: {b}, {i}, {u} ────────────────────── */
+  .bi-b { font-weight: 700; }
+  .bi-i { font-style: italic; }
+  .bi-u { text-decoration: underline; }
+
   ${ATTACHMENT_CSS}
 </style>
 </head>
