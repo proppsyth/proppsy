@@ -63,6 +63,9 @@ export function computeVariables(
     v['ขยายเวลาสิ้นสุดเป็นวันที่']       = toThaiDate(endDate)
     v['enขยายเวลาสิ้นสุดเป็นวันที่']     = toEnDate(endDate)
     v['enสิ้นสุดสัญญาวันที่']            = toEnDate(endDate)
+    v['ทำสัญญาวันที่สิ้นสุดภาษาไทย']    = toThaiDate(endDate)
+    v['ทำสัญญาวันที่สิ้นสุดภาษาอังกฤษ'] = toEnDate(endDate)
+    v['ทำสัญญาวันที่สิ้นสุดภาษาอังกฤษLong'] = toEnDateLong(endDate)
     v['ปีสิ้นสุด']                       = thaiYear(endDate)
     v['ปีที่สิ้นสุดไทย']                 = thaiYear(endDate)
     v['ปีที่สิ้นสุดอังกฤษ']              = enYear(endDate)
@@ -131,6 +134,8 @@ export function computeVariables(
     v['enเขตอำเภอ เจ้าของ']  = ownerEn.district_en   ?? owner.district   ?? '-'
     v['enจังหวัด เจ้าของ']   = ownerEn.province_en   ?? owner.province   ?? '-'
     v['แขวงตำบลเจ้าของภาษาอังกฤษ'] = v['enแขวงตำบล เจ้าของ']!
+    const _ownerEnName = [owner.first_name_en, owner.last_name_en].filter(Boolean).join(' ')
+    v['ชื่อผู้ให้เช่าภาษาอังกฤษ'] = _ownerEnName || extra['ชื่อผู้ให้เช่าภาษาอังกฤษ'] || ownerName
     v['เขตอำเภอเจ้าของภาษาอังกฤษ'] = v['enเขตอำเภอ เจ้าของ']!
     v['จังหวัดเจ้าของภาษาอังกฤษ']  = v['enจังหวัด เจ้าของ']!
 
@@ -169,6 +174,8 @@ export function computeVariables(
     v['enเขตอำเภอ ลูกค้า']  = custEn.district_en   ?? customer.district   ?? '-'
     v['enจังหวัด ลูกค้า']   = custEn.province_en   ?? customer.province   ?? '-'
     v['แขวงตำบลลูกค้าภาษาอังกฤษ'] = v['enแขวงตำบล ลูกค้า']!
+    const _custEnName = [customer.first_name_en, customer.last_name_en].filter(Boolean).join(' ')
+    v['ชื่อผู้เช่าภาษาอังกฤษ'] = _custEnName || extra['ชื่อผู้เช่าภาษาอังกฤษ'] || custName
     v['เขตอำเภอลูกค้าภาษาอังกฤษ'] = v['enเขตอำเภอ ลูกค้า']!
     v['จังหวัดลูกค้าภาษาอังกฤษ']  = v['enจังหวัด ลูกค้า']!
   }
