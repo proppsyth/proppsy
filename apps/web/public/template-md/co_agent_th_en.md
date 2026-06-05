@@ -1,148 +1,145 @@
 {page-number}
 {signature-mini}
+
+# CO-AGENT AGREEMENT
+{th-subtitle}ข้อตกลง Co-Agent{/th-subtitle}
+
+| Written at / {muted}ทำที่{/muted} | <<view>> |
+| 4: | :6: |
+
+| Date | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |
+| 7: | :3: |
+
+| {muted}วันที่{/muted} | {muted}<<ทำสัญญาวันที่ภาษาไทย>>{/muted} |
+| 7: | ~3~ |
+{space:8}
+
+| This agreement is made between the following parties: | |
+| 10 | 0 |
+
+| {muted}ข้อตกลงนี้จัดทำขึ้นระหว่างคู่สัญญาดังต่อไปนี้{/muted} | |
+| 10 | 0 |
+{space:8}
+
+{section:AGENT INFORMATION|ข้อมูลตัวแทนอสังหาริมทรัพย์}
+
+| Agent / {muted}ตัวแทนอสังหาริมทรัพย์{/muted} | <<agent>> |
+| 3 | :7: |
+
+| hereinafter referred to as "Agent" / {muted}ซึ่งต่อไปนี้เรียกว่า "Agent"{/muted} | |
+| 10 | 0 |
+{space:8}
+
+{section:CO-AGENT INFORMATION|ข้อมูล Co-Agent}
+
+| Full name / {muted}ชื่อ - สกุล{/muted} | <<ชื่อ>> |
+| 3 | :7: |
+
+| ID / Tax no. / {muted}เลขเสียภาษี / บัตรประชาชน{/muted} | <<เลขเสียภาษี>> |
+| 3 | :7: |
+
+| Address / {muted}ที่อยู่{/muted} | <<บ้านเลขที่>> <<หมู่ที่>> <<ถนน>> <<แขวงตำบล>> <<เขตอำเภอ>> <<จังหวัด>> |
+| 3 | :7: |
+
+| Company (if any) / {muted}บริษัท (ถ้ามี){/muted} | <<บริษัท (ถ้ามี)>> |
+| 3 | :7: |
+
+| hereinafter referred to as "Co-Agent" / {muted}ซึ่งต่อไปนี้เรียกว่า "Co-Agent"{/muted} | |
+| 10 | 0 |
+{space:8}
+
+| This agreement is to match a tenant and an owner to facilitate a real estate transaction. Both parties have agreed as follows: | |
+| 10 | 0 |
+
+| {muted}ข้อตกลงจัดหาผู้เช่าและเจ้าของทรัพย์ เพื่ออำนวยความสะดวกในการทำธุรกรรมอสังหาริมทรัพย์ โดยมีรายละเอียดดังนี้{/muted} | |
+| 10 | 0 |
+{space:8}
+
+{section:PROPERTY DETAILS|ข้อมูลทรัพย์สิน}
+
+| Project / {muted}โครงการ{/muted} | <<view>> (<<เลขที่ห้อง>>) |
+| 3 | :7: |
+
+| Tenant / {muted}ผู้เช่า{/muted} | <<ชื่อผู้เช่า>> |
+| 3 | :7: |
+
+| Rental period / {muted}ระยะเวลาเช่า{/muted} | <<ระยะเวลาสัญญา>> months / {muted}เดือน{/muted} |
+| 3 | :7: |
+
+| Monthly rent / {muted}ค่าเช่าต่อเดือน{/muted} | <<ค่าเช่า>> Baht / {muted}บาท{/muted} |
+| 3 | :7: |
+{space:8}
+
+{section:CO-AGENT FEE|ค่าธรรมเนียม Co-Agent}
+
+| Fee / {muted}ค่าธรรมเนียม{/muted} | <<ค่าธรรมเนียม Co-Agent>> | Baht | Commission split / {muted}สัดส่วน{/muted} | <<คอมมิชชั่น%>> |
+| 2.5 | :2.5: | 0.5 | ~2.5~ | :2: |
+{space:8}
+
+{section:PAYMENT TERMS|เงื่อนไขการชำระเงิน}
+
+| 1. | The Co-Agent fee will be paid within 1 business day after the lease agreement is signed and the service fee has been received from the owner. |
+| 0.5: | 9.5 |
+
+| | {muted}ค่าธรรมเนียม Co-Agent จะถูกชำระให้ภายใน 1 วัน หลังจากลงนามสัญญาเช่าและได้รับค่าธรรมเนียมจากเจ้าของทรัพย์เรียบร้อยแล้ว{/muted} |
+| 0.5 | 9.5 |
+
+| 2. | On renewal, the owner will pay 0.5 months rent per 12-month extension as a service fee. This amount will be split between Agent and Co-Agent per agreement. |
+| 0.5: | 9.5 |
+
+| | {muted}ในกรณีต่อสัญญา เจ้าของทรัพย์จะชำระค่าบริการ 0.5 เดือน ต่อสัญญา 12 เดือน จำนวนนี้จะถูกแบ่งระหว่าง Agent และ Co-Agent ตามสัดส่วนที่ตกลงกัน{/muted} |
+| 0.5 | 9.5 |
+
+| 3. | On cancellation by the owner or tenant, both Agent and Co-Agent will each receive 25% of the total booking deposit as a service fee. |
+| 0.5: | 9.5 |
+
+| | {muted}ในกรณียกเลิก Agent และ Co-Agent จะได้รับค่าธรรมเนียม 25% ของเงินมัดจำการจองทั้งหมดต่อฝ่าย{/muted} |
+| 0.5 | 9.5 |
+{space:8}
+
+{section:SCOPE OF WORK|ขอบเขตการทำงาน}
+
+| **Representing the Owner** {muted}/ ฝ่ายผู้แทนเจ้าของทรัพย์{/muted} | **Representing the Tenant** {muted}/ ฝ่ายผู้แทนผู้เช่า{/muted} |
+| 5 | 5 |
+
+| Assist and guide the owner throughout the rental process until the lease is signed and deposit received. {muted}ให้ความช่วยเหลือและคำแนะนำเจ้าของทรัพย์ จนถึงวันที่เซ็นสัญญาและได้รับเงินมัดจำครบถ้วน{/muted} | Assist and guide the tenant throughout the rental process until the lease is signed and payment made. {muted}ให้ความช่วยเหลือและคำแนะนำผู้เช่า จนถึงวันที่เซ็นสัญญาและชำระเงินครบถ้วน{/muted} |
+| 5 | 5 |
+
+| Represent in negotiation with the owner per Agent's instructions. {muted}เป็นตัวแทนเจรจาต่อรองกับเจ้าของทรัพย์ตามคำแนะนำของ Agent{/muted} | Represent in negotiation with the tenant per Agent's instructions. {muted}เป็นตัวแทนเจรจาต่อรองกับผู้เช่าตามคำแนะนำของ Agent{/muted} |
+| 5 | 5 |
+
+| Coordinate with the owner throughout the lease period and attend the check-out inspection. {muted}สื่อสารและประสานงานกับเจ้าของทรัพย์ตลอดสัญญาเช่า และเป็นพยานในการตรวจสภาพทรัพย์{/muted} | Coordinate with the tenant throughout the lease period and attend the check-out inspection. {muted}สื่อสารและประสานงานกับผู้เช่าตลอดสัญญาเช่า และเป็นพยานในการตรวจสภาพทรัพย์{/muted} |
+| 5 | 5 |
+{space:8}
+
+{section:BREACH OF AGREEMENT|การผิดสัญญา}
+
+| If either party fails to comply with this agreement, the breaching party must reimburse the other party the remaining Co-Agent fee (pro rata from the breach date to lease end date) within 1 business day. | |
+| 10 | 0 |
+
+| {muted}หากฝ่ายใดไม่สามารถปฏิบัติตามข้อตกลงนี้ได้ ฝ่ายที่ผิดสัญญาต้องคืนค่าธรรมเนียมที่เหลือตามสัดส่วน ภายใน 1 วัน นับจากวันที่ผิดสัญญาจนถึงวันสิ้นสุดสัญญาเช่า{/muted} | |
+| 10 | 0 |
+
+| Failure to comply with any terms of this agreement will result in further legal action. | |
+| 10 | 0 |
+
+| {muted}การไม่ปฏิบัติตามข้อตกลงของสัญญานี้จะมีผลบังคับใช้ในการดำเนินการทางกฎหมาย{/muted} | |
+| 10 | 0 |
+{space:8}
+
+{section:PAYMENT INFORMATION|ข้อมูลบัญชีธนาคาร Co-Agent}
+
+{bankcard:<<ธนาคาร Co-Agent>>|<<ชื่อบัญชี Co-Agent>>|<<เลขบัญชี Co-Agent>>}
+{space:8}
+
+| Confirmed and accepted by both parties. / {muted}ยืนยัน และยอมรับข้อตกลง{/muted} | |
+| 10 | 0 |
+{space:8}
+
 {signature-final}
-
-# ข้อตกลง Co Agent / Co Agent Agreement
-
-| ทำที่ / Written at | <<view>> |
-| 5: | :5: |
-
-| วันที่ / Date | <<thเมื่อวันที่>> / <<enเมื่อวันที่>> |
-| 3: | :7: |
-{space:8}
-
-| ข้อตกลงนี้จัดทำขึ้นเพื่อเป็นข้อตกลงร่วมกันระหว่าง | |
-| 10 | 0 |
-
-| {size:8}This agreement is made as an agreement between{/size} | |
-| 10 | 0 |
-{space:8}
-
-| **ตัวแทนอสังหาริมทรัพย์ / Agent** | <<agent>> |
-| 3 | :7: |
-
-| เลขประจำตัวผู้เสียภาษี / Tax ID | |
-| 3 | :7: |
-
-| ซึ่งต่อไปนี้เรียกว่า "Agent" / (hereinafter referred to as "Agent" or "Company") | |
-| 10 | 0 |
-{space:8}
-
-| **และ / And** | |
-| 10 | 0 |
-{space:4}
-
-| ชื่อ - สกุล / Full Name | <<ชื่อ>> |
-| 3 | :7: |
-
-| เลขประจำตัวผู้เสียภาษี / ID Number | <<เลขเสียภาษี>> |
-| 3 | :7: |
-
-| ที่อยู่ / Address | <<บ้านเลขที่>> <<หมู่ที่>> <<ถนน>> <<แขวงตำบล>> <<เขตอำเภอ>> <<จังหวัด>> |
-| 3 | :7: |
-
-| ซึ่งต่อไปนี้เรียกว่า "Co Agent" / (hereinafter referred to as "Partner") | |
-| 10 | 0 |
 {space:12}
 
-| ข้อตกลงจัดหาผู้เช่าและเจ้าของทรัพย์ เพื่ออำนวยความสะดวกในการทำธุรกรรมอสังหาริมทรัพย์ โดยมีรายละเอียดดังนี้ | |
-| 10 | 0 |
-
-| {size:8}This agreement is to match a tenant and an owner to facilitate a real estate transaction, with details as follows:{/size} | |
-| 10 | 0 |
-{space:8}
-
-| **ข้อมูลทรัพย์ / Property Details** | |
-| 10 | 0 |
-
-| โครงการ / Project | <<view>> (<<เลขที่ห้อง>>) |
-| 3 | :7: |
-
-| ประเภททรัพย์ / Property Type | Condominium |
-| 3 | :7: |
-
-| ชื่อผู้เช่า / Tenant Full Name | <<ชื่อผู้เช่า>> |
-| 3 | :7: |
-
-| ระยะเวลาเช่า / Rental Period | <<ระยะเวลาสัญญา>> เดือน / Month(s) |
-| 3 | :7: |
-
-| ค่าเช่าต่อเดือน / Monthly Rental Fee | <<ค่าเช่า>> บาท / Baht per Month |
-| 3 | :7: |
-{space:8}
-
-| **ค่าธรรมเนียม Co Agent / Co Agent Fee** | |
-| 10 | 0 |
-
-| ค่าธรรมเนียม | <</2>> | บาท / Baht |
-| 3 | :5: | 2 |
-{space:8}
-
-| *ค่าธรรมเนียม Co Agent จะถูกชำระให้ภายใน 1 วัน หลังจากลงนามสัญญาเช่าและได้รับค่าธรรมเนียมการให้บริการจากทางเจ้าของทรัพย์เรียบร้อยแล้ว | |
-| 10 | 0 |
-
-| {size:8}*The partner fee will be settled within 1 day after the lease agreement is signed and the service fee has been received from the owner.{/size} | |
-| 10 | 0 |
-{space:8}
-
-| ในกรณีต่อสัญญา เจ้าของทรัพย์จะชำระค่าเช่า 0.5 เดือน ต่อสัญญา 12 เดือน เป็นค่าธรรมเนียมการให้บริการ เงินจำนวนนี้จะถูกแบ่งระหว่าง Agent และ Co Agent ตามสัดส่วนที่ได้ตกลงกัน | |
-| 10 | 0 |
-
-| {size:8}In case of extension, the owner will pay 0.5 month of the rental fee per 12 months contract as a service fee (this amount will be divided between Agent and Partner).{/size} | |
-| 10 | 0 |
-{space:8}
-
-| ในกรณีที่มีการยกเลิกการทำสัญญาจากทางเจ้าของทรัพย์และ/หรือผู้เช่า Agent และ Co Agent จะได้รับค่าธรรมเนียมการให้บริการจำนวน 25% ของจำนวนเงินมัดจำการจองทั้งหมดต่อฝ่าย | |
-| 10 | 0 |
-
-| {size:8}In case of any cancellation from the owner and/or the tenant, both Agent and Partner will receive the service fee at 25% of the total booking deposit amount per party.{/size} | |
-| 10 | 0 |
-{space:8}
-
-| กรณี Co Agent เป็นฝ่ายผู้แทนเจ้าของทรัพย์ Co Agent จะต้องรับผิดชอบต่อการกระทำใดที่เกิดจากการกระทำของเจ้าของทรัพย์ | |
-| 10 | 0 |
-
-| {size:8}In case the partner is representing the owner, the Partner will be responsible for any action arising from the owner's acts.{/size} | |
-| 10 | 0 |
-{space:12}
-
-| **ขอบเขตการทำงานของ Co Agent / Partner's Scope of Work** | |
-| 10 | 0 |
-{space:4}
-
-| **ฝ่ายผู้แทน "เจ้าของทรัพย์" / Representing the Owner** | **ฝ่ายผู้แทน "ผู้เช่า" / Representing the Tenant** |
-| 5 | 5 |
-
-| ให้ความช่วยเหลือและให้คำแนะนำเจ้าของทรัพย์เกี่ยวกับขั้นตอนต่างๆ ของการเช่า จนถึงวันที่เซ็นสัญญาและได้รับเงินมัดจำและเงินประกันเป็นที่เรียบร้อย {size:8}To assist and provide guidance to the owner on the rental process until the lease agreement is signed and the payment of the advance rental and the security deposit is received.{/size} | ให้ความช่วยเหลือและให้คำแนะนำผู้เช่าเกี่ยวกับขั้นตอนต่างๆ ของการเช่า จนถึงวันที่เซ็นสัญญาและจ่ายเงินมัดจำและเงินประกันเป็นที่เรียบร้อย {size:8}To assist and provide guidance to the tenant on the rental process until the lease agreement is signed and the payment of advance rental and the security deposit is made.{/size} |
-| 5 | 5 |
-
-| เป็นตัวแทนในการเจรจาต่อรองกับเจ้าของทรัพย์ตามคำแนะนำของ Agent {size:8}To represent in negotiation with the owner in accordance with the instructions of Agent.{/size} | เป็นตัวแทนในการเจรจาต่อรองกับผู้เช่าตามคำแนะนำของ Agent {size:8}To represent in negotiation with the tenant in accordance with the instructions of Agent.{/size} |
-| 5 | 5 |
-
-| สื่อสารและประสานงานกับทางเจ้าของทรัพย์ตลอดสัญญาเช่า และเป็นพยานในการตรวจสภาพทรัพย์ ณ วันที่หมดสัญญาหรือวันที่ผู้เช่าย้ายออก {size:8}To communicate and coordinate with the owner throughout the lease period and to attend the check-out inspection.{/size} | สื่อสารและประสานงานกับทางผู้เช่าตลอดสัญญาเช่า และเป็นพยานในการตรวจสภาพทรัพย์ ณ วันที่หมดสัญญาหรือวันที่ผู้เช่าย้ายออก {size:8}To communicate and coordinate with the tenant throughout the lease period and to attend the check-out inspection.{/size} |
-| 5 | 5 |
-{space:12}
-
-| หากฝ่ายใดไม่สามารถปฏิบัติตามข้อตกลงในเอกสารฉบับนี้ได้ ฝ่ายที่ผิดสัญญาจะต้องคืนเงินค่าธรรมเนียมการให้บริการให้กับอีกฝ่ายหนึ่ง เป็นจำนวนเงินเท่ากับค่าธรรมเนียม Co Agent ในส่วนที่เหลือ ณ วันที่ผิดสัญญาจนถึงวันที่สิ้นสุดสัญญาเช่า ภายใน 1 วัน นับจากวันที่มีการผิดสัญญาฉบับนี้ | |
-| 10 | 0 |
-
-| {size:8}If any party fails to comply with the terms of this agreement, the breaching party must reimburse the other party the partner fee equivalent to the remaining amount of the partner fee as of the date of breaching up to the ending date of the lease agreement (Pro Rata rate), within 1 day after the breach.{/size} | |
-| 10 | 0 |
-{space:8}
-
-| การไม่ปฏิบัติตามข้อตกลงของสัญญานี้จะมีผลบังคับใช้ในการดำเนินการทางกฎหมาย | |
-| 10 | 0 |
-
-| {size:8}Failure to comply with any terms and conditions in this Agreement will result in further legal actions.{/size} | |
-| 10 | 0 |
-{space:8}
-
-| ยืนยัน และยอมรับข้อตกลง / Confirmed and Accepted | |
-| 10 | 0 |
-{space:8}
-
-| สำเนาบัตรประชาชน Co Agent | |
-| 10 | 0 |
+{section:ATTACHMENT — CO-AGENT ID CARD|เอกสารแนบ — สำเนาบัตรประชาชน Co-Agent}
 
 | <<iสำเนาบัตรประชาชน>> | |
 | 10 | 0 |

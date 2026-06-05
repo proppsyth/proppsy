@@ -354,6 +354,11 @@ export function computeVariables(
   v['จังหวัด']         = extra['จังหวัด'] ?? '-'
   v['บริษัท (ถ้ามี)'] = extra['บริษัท (ถ้ามี)'] ?? ''
   v['/2']              = withCommas(rent / 2)
+  v['ธนาคาร Co-Agent']      = extra['ธนาคาร Co-Agent'] ?? '-'
+  v['ชื่อบัญชี Co-Agent']   = extra['ชื่อบัญชี Co-Agent'] ?? '-'
+  v['เลขบัญชี Co-Agent']    = extra['เลขบัญชี Co-Agent'] ?? '-'
+  v['คอมมิชชั่น%']          = extra['คอมมิชชั่น%'] ?? '-'
+  v['ค่าธรรมเนียม Co-Agent'] = extra['ค่าธรรมเนียม Co-Agent'] || withCommas(rent / 2)
 
   // ─── Image placeholders (left empty — no binary embedding) ───
   for (const imgVar of template.imageVars) {

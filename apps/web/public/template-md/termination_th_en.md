@@ -1,32 +1,40 @@
 {page-number}
 {signature-mini}
-{signature-final}
 
-# หนังสือบอกเลิกสัญญาเช่า / LEASE TERMINATION NOTICE
+# LEASE TERMINATION NOTICE
+{th-subtitle}หนังสือบอกเลิกสัญญาเช่า{/th-subtitle}
 
-| วันที่ / Date | <<ทำสัญญาวันที่ภาษาไทย>> / <<ทำสัญญาวันที่ภาษาอังกฤษ>> |
-| 3: | :7: |
+| Date | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |
+| 7: | :3: |
+
+| {muted}วันที่{/muted} | {muted}<<ทำสัญญาวันที่ภาษาไทย>>{/muted} |
+| 7: | ~3~ |
 {space:8}
 
-| เรียน / To | <<ชื่อผู้เช่า>> |
-| 3 | :7: |
+| To / {muted}เรียน{/muted} | <<ชื่อผู้เช่า>> |
+| 2.5 | :7.5: |
+
+| Subject / {muted}เรื่อง{/muted} | Lease Termination / {muted}บอกเลิกสัญญาเช่า{/muted} |
+| 2.5 | :7.5: |
 {space:4}
 
-| เรื่อง / Subject | บอกเลิกสัญญาเช่า / Lease Termination |
-| 3 | :7: |
-{space:8}
+| Reference / {muted}อ้างถึง{/muted} | Lease Agreement No. <<เลขที่สัญญา>> dated <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |
+| 2.5 | :7.5: |
 
-| อ้างถึง / Reference | สัญญาเช่าเลขที่ <<เลขที่สัญญา>> ลงวันที่ <<ทำสัญญาวันที่ภาษาไทย>> |
-| 3 | :7: |
+| {muted}อ้างถึง{/muted} | {muted}สัญญาเช่าเลขที่ <<เลขที่สัญญา>> ลงวันที่ <<ทำสัญญาวันที่ภาษาไทย>>{/muted} |
+| 2.5 | ~7.5~ |
 
-| ทรัพย์สิน / Property | <<โครงการ>> (<<เลขที่ห้อง>>) |
-| 3 | :7: |
+| Property / {muted}ทรัพย์สิน{/muted} | <<โครงการ>> (<<เลขที่ห้อง>>) |
+| 2.5 | :7.5: |
 
-| วันสิ้นสุดสัญญา / Termination Date | <<สิ้นสุดสัญญาวันที่>> |
-| 3 | :7: |
+| Termination date / {muted}วันสิ้นสุดสัญญา{/muted} | <<สิ้นสุดสัญญาวันที่>> |
+| 2.5 | :7.5: |
 {space:12}
 
-| ด้วยเหตุผลดังต่อไปนี้ / For the following reason(s): | |
+| For the following reason(s): | |
+| 10 | 0 |
+
+| {muted}ด้วยเหตุผลดังต่อไปนี้{/muted} | |
 | 10 | 0 |
 {space:4}
 
@@ -34,22 +42,25 @@
 | 10 | 0 |
 {space:12}
 
-| ขอให้ท่านดำเนินการส่งมอบทรัพย์สินคืนในสภาพที่ดี พร้อมชำระหนี้สินค้างชำระทั้งหมด ภายในวันที่ระบุข้างต้น | |
+| Please return the property in good condition and settle all outstanding payments by the termination date specified above. | |
 | 10 | 0 |
 
-| {size:8}Please return the property in good condition and settle all outstanding payments by the termination date specified above.{/size} | |
+| {muted}ขอให้ท่านดำเนินการส่งมอบทรัพย์สินคืนในสภาพที่ดี พร้อมชำระหนี้สินค้างชำระทั้งหมด ภายในวันที่ระบุข้างต้น{/muted} | |
 | 10 | 0 |
+{space:4}
+
+| Failure to comply within the specified period entitles the Lessor to pursue further legal action. | |
+| 10 | 0 |
+
+| {muted}หากท่านไม่ดำเนินการภายในกำหนด ผู้ให้เช่าขอสงวนสิทธิ์ดำเนินการตามกฎหมายต่อไป{/muted} | |
+| 10 | 0 |
+{space:12}
+
+| Issued by / {muted}ผู้แจ้ง{/muted} | <<ชื่อผู้ให้เช่า>> |
+| 2.5 | :7.5: |
+
+| Date / {muted}วันที่{/muted} | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |
+| 2.5 | :7.5: |
 {space:8}
 
-| หากท่านไม่ดำเนินการภายในกำหนด ผู้ให้เช่าขอสงวนสิทธิ์ดำเนินการตามกฎหมายต่อไป | |
-| 10 | 0 |
-
-| {size:8}Failure to comply within the specified period entitles the Lessor to pursue further legal action.{/size} | |
-| 10 | 0 |
-{space:16}
-
-| ผู้แจ้ง / Issued by | <<ชื่อผู้ให้เช่า>> |
-| 3 | :7: |
-
-| วันที่ / Date | <<ทำสัญญาวันที่ภาษาไทย>> / <<ทำสัญญาวันที่ภาษาอังกฤษ>> |
-| 2 | :8: |
+{signature-final}
