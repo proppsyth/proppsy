@@ -98,8 +98,10 @@ export function computeVariables(
   v['พ้นกำหนดชำระได้ไม่เกิน'] = String(graceDays)
   v['พ้นกำหนดชำระได้']         = String(graceDays)
 
-  // ─── 12-month payment schedule ────────────────────────────────
-  // <<1>> = Thai month name, <<1+5>> = grace-period end label
+  // ─── Payment schedule ────────────────────────────────────────
+  // <<1>>…<<12>> = Thai month names (for rental templates, fixed 12)
+  // <<1+5>>…<<12+5>> = grace-period end labels
+  // <<ตารางชำระ>> = full-term schedule rows (auto-expands to contract_months rows)
 
   if (template.hasPaymentSchedule && moveInDate) {
     for (let n = 1; n <= 12; n++) {
@@ -244,6 +246,20 @@ export function computeVariables(
   v['ค่าเช่าภาษาอังกฤษ']          = bahtTextEn(rent)
   v['ค่าเช่าx3']                  = withCommas(rent * 3)
   v['ค่าเช่าx12เติมลูกน้ำ']       = withCommas(rent * 12)
+
+  // Dynamic full-term schedule block — expands to N rows matching contract_months.
+  // substituteVars runs before parseBlocks so multi-line expansion into table rows works.
+  if (template.hasPaymentSchedule && moveInDate && rent > 0) {
+    const scheduleRows: string[] = []
+    for (let n = 1; n <= months; n++) {
+      const d = new Date(moveInDate)
+      d.setMonth(d.getMonth() + (n - 1))
+      const monthName = THAI_MONTHS[d.getMonth()] ?? ''
+      scheduleRows.push(`| ${n} | ${monthName} | ${paymentDay} ${monthName} | ${withCommas(rent)} | | | |`)
+    }
+    v['ตารางชำระ']        = scheduleRows.join('\n')
+    v['รวมค่าเช่าทั้งหมด'] = withCommas(rent * months)
+  }
 
   v['จำนวนเงินวันทำสัญญา']              = withCommas(deposit)
   v['จำนวนเงินวันทำสัญญาตัวอักษร']      = bahtText(deposit)
