@@ -236,8 +236,8 @@ export default async function ContractDetailPage({
                     value={`฿${fmt(contract.deposit_amount)}`}
                   />
                 )}
-                {isRental && contract.security_deposit != null && contract.security_deposit > 0 && (
-                  <FinRow label="เงินประกัน (2 เดือน)" value={`฿${fmt(contract.security_deposit)}`} />
+                {isRental && contract.rent_price != null && contract.rent_price > 0 && (
+                  <FinRow label="เงินประกัน (2 เดือน)" value={`฿${fmt(contract.rent_price * 2)}`} />
                 )}
                 {contract.contract_months != null && (
                   <FinRow label="ระยะสัญญา" value={`${contract.contract_months} เดือน`} />
