@@ -195,6 +195,22 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     imageVars: ['iสำเนาบัตรประชาชน'],
   },
 
+  // ─── Payment Schedule ────────────────────────────────────────
+  {
+    slug: 'installment_schedule_th_en',
+    docType: 'installment_schedule' as ContractDocType,
+    language: 'th_en',
+    filename: 'สัญญาเช่าอังกฤษไทย.docx',
+    mdFilename: 'installment_schedule_th_en.md',
+    label: 'ตารางผ่อนชำระ',
+    languageLabel: 'ไทย + อังกฤษ',
+    hasFurniture: false,
+    hasPaymentSchedule: true,
+    hasBuiltInSignatures: false,
+    requiredVars: ['ชื่อผู้ให้เช่า', 'ชื่อผู้เช่า', 'view', 'เลขที่ห้องชุด', 'ค่าเช่าเติมลูกน้ำ'],
+    imageVars: [],
+  },
+
   // ─── Invoice ─────────────────────────────────────────────────
   {
     slug: 'invoice_reservation_th_en',
@@ -351,6 +367,7 @@ export const LANGUAGE_LABELS: Record<LanguageVersion, string> = {
 // Doc types that have canonical markdown template support
 export const TEMPLATE_SUPPORTED_TYPES = new Set<string>([
   'rental', 'reservation', 'renewal', 'co_agent',
+  'installment_schedule',
   'invoice_reservation', 'invoice_deposit',
   'receipt_reservation', 'receipt_deposit',
   'notice', 'warning',

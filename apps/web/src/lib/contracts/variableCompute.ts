@@ -243,6 +243,7 @@ export function computeVariables(
   v['ค่าเช่าบาท']                 = bahtText(rent)
   v['ค่าเช่าภาษาอังกฤษ']          = bahtTextEn(rent)
   v['ค่าเช่าx3']                  = withCommas(rent * 3)
+  v['ค่าเช่าx12เติมลูกน้ำ']       = withCommas(rent * 12)
 
   v['จำนวนเงินวันทำสัญญา']              = withCommas(deposit)
   v['จำนวนเงินวันทำสัญญาตัวอักษร']      = bahtText(deposit)
