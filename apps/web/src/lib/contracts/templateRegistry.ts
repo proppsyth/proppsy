@@ -176,6 +176,25 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     ],
     imageVars: [],
   },
+  {
+    slug: 'renewal_th_en_zh',
+    docType: 'renewal',
+    language: 'th_en_zh',
+    filename: 'ต่อสัญญาไทยอังกฤษ.docx',
+    mdFilename: 'renewal_th_en_zh.md',
+    label: 'ต่อสัญญาเช่า',
+    languageLabel: 'ไทย + อังกฤษ + จีน',
+    hasFurniture: false,
+    hasPaymentSchedule: false,
+    hasBuiltInSignatures: true,
+    requiredVars: [
+      'ชื่อ - สกุล เจ้าของ', 'ชื่อ - สกุล ลูกค้า',
+      'project', 'เลขที่ห้อง',
+      'ค่าเช่า', 'ค่าเช่าบาท',
+      'เริ่มต่อสัญญา', 'ขยายเวลาสิ้นสุดเป็นวันที่',
+    ],
+    imageVars: [],
+  },
 
   // ─── Co-Agent ────────────────────────────────────────────────
   {
@@ -366,8 +385,7 @@ export const LANGUAGE_LABELS: Record<LanguageVersion, string> = {
 
 // Doc types that have canonical markdown template support
 export const TEMPLATE_SUPPORTED_TYPES = new Set<string>([
-  'rental', 'reservation', 'renewal', 'co_agent',
-  'installment_schedule',
+  'rental', 'reservation', 'renewal', 'co_agent', 'installment_schedule',
   'invoice_reservation', 'invoice_deposit',
   'receipt_reservation', 'receipt_deposit',
   'notice', 'warning',

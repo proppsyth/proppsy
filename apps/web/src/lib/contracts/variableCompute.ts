@@ -61,8 +61,9 @@ export function computeVariables(
     v['ทำสัญญาวันที่สิ้นสุดตัวอักษร']   = toThaiDateFull(endDate)
     v['สิ้นสุดสัญญาวันที่']              = toThaiDate(endDate)
     v['ขยายเวลาสิ้นสุดเป็นวันที่']       = toThaiDate(endDate)
-    v['enขยายเวลาสิ้นสุดเป็นวันที่']     = toEnDate(endDate)
-    v['enสิ้นสุดสัญญาวันที่']            = toEnDate(endDate)
+    v['enขยายเวลาสิ้นสุดเป็นวันที่']       = toEnDate(endDate)
+    v['enขยายเวลาสิ้นสุดเป็นวันที่Long']  = toEnDateLong(endDate)
+    v['enสิ้นสุดสัญญาวันที่']              = toEnDate(endDate)
     v['ทำสัญญาวันที่สิ้นสุดภาษาไทย']    = toThaiDate(endDate)
     v['ทำสัญญาวันที่สิ้นสุดภาษาอังกฤษ'] = toEnDate(endDate)
     v['ทำสัญญาวันที่สิ้นสุดภาษาอังกฤษLong'] = toEnDateLong(endDate)
@@ -75,8 +76,9 @@ export function computeVariables(
   }
 
   if (moveInDate) {
-    v['เริ่มต่อสัญญา']   = toThaiDate(moveInDate)
-    v['enเริ่มต่อสัญญา'] = toEnDate(moveInDate)
+    v['เริ่มต่อสัญญา']       = toThaiDate(moveInDate)
+    v['enเริ่มต่อสัญญา']     = toEnDate(moveInDate)
+    v['enเริ่มต่อสัญญาLong'] = toEnDateLong(moveInDate)
   }
 
   // Original lease date for renewal (stored in extra_vars)
