@@ -1,235 +1,196 @@
 {page-number}
 {signature-mini}
 
-# สัญญาจอง / RESERVATION AGREEMENT
+# RESERVATION AGREEMENT
+{th-subtitle}สัญญาจอง{/th-subtitle}
 
-| ทำที่ / Written at | <<view>> |
+| Written at | <<view>> |
 | 5: | :5: |
 
-| วันที่ | <<เมื่อวันที่ภาษาไทย>> |
-| 1.5: | :3.5: |
+| {muted}ทำที่{/muted} | {muted}<<view>>{/muted} |
+| 5: | ~5~ |
 
-| Date | <<เมื่อวันที่ภาษาอังกฤษ>> |
-| 1.5: | :3.5: |
+| Date | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |
+| 7: | :3: |
+
+| {muted}วันที่{/muted} | {muted}<<ทำสัญญาวันที่ภาษาไทย>>{/muted} |
+| 7: | ~3~ |
 {space:8}
 
-| สัญญานี้ทำขึ้นระหว่าง / This agreement is made between | <<ชื่อผู้ให้เช่า>> |
-| 4 | :6: |
+| | This agreement is made between | <<ชื่อผู้ให้เช่าภาษาอังกฤษ>> |
+| 0.5 | 3.5 | :6: |
 
-| บัตรประชาชนเลขที่ / ID card no. | <<ผู้ให้เช่าบัตรประชาชนเลขที่>> |
+| | {muted}สัญญานี้ทำขึ้นระหว่าง{/muted} | {muted}<<ชื่อผู้ให้เช่า>>{/muted} |
+| 0.5 | 3.5 | ~6~ |
+
+| ID card no. / {muted}บัตรประชาชนเลขที่{/muted} | <<ผู้ให้เช่าบัตรประชาชนเลขที่>> |
 | 3 | :7: |
 
-| อยู่บ้านเลขที่ | <<บ้านเลขที่ เจ้าของ>> | หมู่ที่ | <<หมู่ที่ เจ้าของ>> | ถนน / ซอย | <<ถนน เจ้าของ>> |
-| 1.5 | :1.5: | ~1~ | :1: | ~1.5~ | :3.5: |
+| Address no. / {muted}บ้านเลขที่{/muted} | <<บ้านเลขที่ เจ้าของ>> | Moo / {muted}หมู่ที่{/muted} | <<หมู่ที่ เจ้าของ>> | Road / {muted}ถนน{/muted} | <<ถนน เจ้าของ>> |
+| 2.5 | :1.5: | ~1~ | :1: | ~1.5~ | :3: |
 
-| แขวง / ตำบล | <<แขวงตำบล เจ้าของ>> | เขต / อำเภอ | <<เขตอำเภอ เจ้าของ>> |
-| 1.5 | :3.5: | ~1.5~ | :3.5: |
+| Sub-district | <<แขวงตำบลเจ้าของภาษาอังกฤษ>> | District | <<เขตอำเภอเจ้าของภาษาอังกฤษ>> |
+| 2 | :3: | ~2~ | :3: |
 
-| จังหวัด | <<จังหวัด เจ้าของ>> | รหัสไปรษณีย์ | <<รหัสไปรษณีย์ เจ้าของ>> |
-| 1 | :5: | ~2~ | :2: |
+| {muted}แขวง/ตำบล{/muted} | {muted}<<แขวงตำบล เจ้าของ>>{/muted} | {muted}เขต/อำเภอ{/muted} | {muted}<<เขตอำเภอ เจ้าของ>>{/muted} |
+| 2 | ~3~ | ~2~ | ~3~ |
 
-| ซึ่งต่อไปนี้ในสัญญาเรียกว่า "ผู้ให้เช่า" / hereinafter called "Lessor" ฝ่ายหนึ่ง | |
+| Province | <<จังหวัดเจ้าของภาษาอังกฤษ>> | Post code | <<รหัสไปรษณีย์ เจ้าของ>> |
+| 1.5 | :4.5: | ~2.5~ | :1.5: |
+
+| {muted}จังหวัด{/muted} | {muted}<<จังหวัด เจ้าของ>>{/muted} | {muted}รหัสไปรษณีย์{/muted} | {muted}<<รหัสไปรษณีย์ เจ้าของ>>{/muted} |
+| 1.5 | ~4.5~ | ~2.5~ | ~1.5~ |
+
+| hereinafter called "Lessor" / {muted}ซึ่งต่อไปนี้เรียกว่า "ผู้ให้เช่า"{/muted} | |
 | 10 | 0 |
 {space:8}
 
-| กับ / And | <<ชื่อผู้เช่า>> |
-| 1.5 | :8.5: |
+| | And / {muted}กับ{/muted} | <<ชื่อผู้เช่าภาษาอังกฤษ>> |
+| 0.5 | 1 | :8.5: |
 
-| บัตรประชาชนเลขที่ / ID card no. | <<ผู้เช่าบัตรประชาชนเลขที่>> |
+| | {muted}กับ{/muted} | {muted}<<ชื่อผู้เช่า>>{/muted} |
+| 0.5 | 1 | ~8.5~ |
+
+| ID card no. / {muted}บัตรประชาชนเลขที่{/muted} | <<ผู้เช่าบัตรประชาชนเลขที่>> |
 | 3 | :7: |
 
-| อยู่บ้านเลขที่ | <<บ้านเลขที่ ลูกค้า>> | หมู่ที่ | <<หมู่ที่ ลูกค้า>> | ถนน / ซอย | <<ถนน ลูกค้า>> |
-| 1.5 | :1.5: | ~1~ | :1: | ~1.5~ | :3.5: |
+| Address no. / {muted}บ้านเลขที่{/muted} | <<บ้านเลขที่ ลูกค้า>> | Moo / {muted}หมู่ที่{/muted} | <<หมู่ที่ ลูกค้า>> | Road / {muted}ถนน{/muted} | <<ถนน ลูกค้า>> |
+| 2.5 | :1.5: | ~1~ | :1: | ~1.5~ | :3: |
 
-| แขวง / ตำบล | <<แขวงตำบล ลูกค้า>> | เขต / อำเภอ | <<เขตอำเภอ ลูกค้า>> |
-| 1.5 | :3.5: | ~1.5~ | :3.5: |
+| Sub-district | <<แขวงตำบลลูกค้าภาษาอังกฤษ>> | District | <<เขตอำเภอลูกค้าภาษาอังกฤษ>> |
+| 2 | :3: | ~2~ | :3: |
 
-| จังหวัด | <<จังหวัด ลูกค้า>> | รหัสไปรษณีย์ | <<รหัสไปรษณีย์ ลูกค้า>> |
-| 1 | :5: | ~2~ | :2: |
+| {muted}แขวง/ตำบล{/muted} | {muted}<<แขวงตำบล ลูกค้า>>{/muted} | {muted}เขต/อำเภอ{/muted} | {muted}<<เขตอำเภอ ลูกค้า>>{/muted} |
+| 2 | ~3~ | ~2~ | ~3~ |
 
-| ซึ่งต่อไปนี้ในสัญญาเรียกว่า "ผู้เช่า" / hereinafter called "Lessee" อีกฝ่ายหนึ่ง | |
+| Province | <<จังหวัดลูกค้าภาษาอังกฤษ>> | Post code | <<รหัสไปรษณีย์ ลูกค้า>> |
+| 1.5 | :4.5: | ~2.5~ | :1.5: |
+
+| {muted}จังหวัด{/muted} | {muted}<<จังหวัด ลูกค้า>>{/muted} | {muted}รหัสไปรษณีย์{/muted} | {muted}<<รหัสไปรษณีย์ ลูกค้า>>{/muted} |
+| 1.5 | ~4.5~ | ~2.5~ | ~1.5~ |
+
+| hereinafter called "Lessee" / {muted}ซึ่งต่อไปนี้เรียกว่า "ผู้เช่า"{/muted} | |
 | 10 | 0 |
+{space:8}
+
+| Whereas both parties have voluntarily agreed to the following terms and conditions: | |
+| 10 | 0 |
+
+| {muted}ทั้งสองฝ่ายต่างตกลงทำสัญญาฉบับนี้ขึ้นด้วยความสมัครใจ ดังมีข้อความดังต่อไปนี้{/muted} | |
+| 10 | 0 |
+{space:8}
+
+{section:1. RENTAL PROPERTY|ข้อ 1. ทรัพย์สินที่เช่า}
+
+| 1.1 | The Lessor agrees to let the unit at project | <<view>> |
+| 0.5: | 4.5 | :5: |
+
+| | {muted}ผู้ให้เช่าตกลงให้เช่าห้องชุดโครงการ{/muted} | {muted}<<view>>{/muted} |
+| 0.5 | 4.5 | ~5~ |
+
+| Unit no. / {muted}ห้องเลขที่{/muted} | <<เลขที่ห้องชุด>> | Building / {muted}อาคาร{/muted} | <<ตึก>> | Floor / {muted}ชั้น{/muted} | <<ชั้น>> | Type / {muted}ประเภท{/muted} | <<ประเภทห้องภาษาอังกฤษ>> |
+| 1.7 | :1.5: | ~1.5~ | :0.5: | ~1~ | :0.5: | ~1.5~ | :2.8: |
+
+| Size / {muted}ขนาด{/muted} | <<ขนาด>> | Road / {muted}ถนน/ซอย{/muted} | <<ถนนโครงการ>> <<ซอย>> |
+| 1.5 | :2: | ~2~ | :4.5: |
+
+| Sub-district | <<แขวงตำบลโครงการภาษาอังกฤษ>> | District | <<เขตอำเภอโครงการภาษาอังกฤษ>> |
+| 2 | :3: | ~2~ | :3: |
+
+| {muted}แขวง/ตำบล{/muted} | {muted}<<แขวงตำบลห้องชุด>>{/muted} | {muted}เขต/อำเภอ{/muted} | {muted}<<เขตอำเภอห้องชุด>>{/muted} |
+| 2 | ~3~ | ~2~ | ~3~ |
+
+| Province | <<จังหวัดโครงการภาษาอังกฤษ>> | Post code | <<รหัสไปรษณีย์ห้องชุด>> |
+| 1.5 | :4.5: | ~2.5~ | :1.5: |
+
+| {muted}จังหวัด{/muted} | {muted}<<จังหวัดห้องชุด>>{/muted} | {muted}รหัสไปรษณีย์{/muted} | {muted}<<รหัสไปรษณีย์ห้องชุด>>{/muted} |
+| 1.5 | ~4.5~ | ~2.5~ | ~1.5~ |
+
+| including all fixtures and fittings, hereinafter called "Premises". | |
+| 10 | 0 |
+
+| {muted}ซึ่งรวมถึงอุปกรณ์ตกแต่งและเฟอร์นิเจอร์ที่อยู่ภายในบริเวณขอบเขตที่มีกรรมสิทธิ์โดยถูกต้อง{/muted} | |
+| 10 | 0 |
+{space:8}
+
+{section:2. RENTAL TERMS|ข้อ 2. ค่าเช่าและระยะเวลา}
+
+| 2.1 | The Lessor agrees to let and the Lessee agrees to rent the Premises at | <<ค่าเช่าเติมลูกน้ำ>> | Baht per month | (<<ค่าเช่าภาษาอังกฤษ>>) |
+| 0.5: | 4 | :2: | 1.3 | :2.2: |
+
+| | for a period of | <<ระยะเวลาสัญญา>> | month(s). |
+| 0.5 | 2 | :1: | 6.5 |
+
+| | {muted}ผู้ให้เช่าตกลงให้เช่าและผู้เช่าตกลงเช่า ค่าเช่าเดือนละ{/muted} | {muted}<<ค่าเช่าเติมลูกน้ำ>>{/muted} | {muted}บาท{/muted} | {muted}(<<ค่าเช่าตัวอักษร>>){/muted} | {muted}ระยะเวลา{/muted} | {muted}<<ระยะเวลาสัญญา>>{/muted} | {muted}เดือน{/muted} |
+| 0.5 | 2.8 | :2: | 0.5 | :2.2: | 0.5 | :1: | 0.5 |
+{space:8}
+
+{section:3. BOOKING DEPOSIT|ข้อ 3. เงินมัดจำ}
+
+| 3.1 | On the date of this agreement, the Lessee has paid a booking deposit of | <<ค่าเช่าเติมลูกน้ำ>> | Baht |
+| 0.5: | 6.5 | :2: | 1 |
+
+| | (<<ค่าเช่าภาษาอังกฤษ>>) to the Lessor. The Lessor has received this amount in full. Both parties agree that this deposit constitutes part of the security deposit. |
+| 0.5 | 9.5 |
+
+| | {muted}ผู้เช่าตกลงวางเงินมัดจำ{/muted} | {muted}<<ค่าเช่าเติมลูกน้ำ>>{/muted} | {muted}บาท{/muted} | {muted}(<<ค่าเช่าตัวอักษร>>){/muted} |
+| 0.5 | 3 | :2: | 0.5 | :4: |
+
+| | {muted}ผู้ให้เช่าได้รับไว้ครบถ้วนแล้ว และถือเป็นเงินค้ำประกันส่วนหนึ่ง{/muted} |
+| 0.5 | 9.5 |
+{space:8}
+
+{section:4. REMAINING PAYMENT|ข้อ 4. การชำระเงินส่วนที่เหลือ}
+
+| 4.1 | The Lessee agrees to pay the remaining advance rental and security deposit of | <<จำนวนเงินวันทำสัญญา>> | Baht |
+| 0.5: | 7 | :2: | 0.5 |
+
+| | (<<จำนวนเงินวันทำสัญญาภาษาอังกฤษ>>) on the lease agreement signing date, scheduled no later than | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |
+| 0.5 | 7 | 2.5 | :3: |  
+
+| | {muted}ผู้เช่าตกลงชำระเงินค่าเช่าล่วงหน้าและเงินค้ำประกันส่วนที่เหลือ{/muted} | {muted}<<จำนวนเงินวันทำสัญญา>>{/muted} | {muted}บาท{/muted} |
+| 0.5 | 5 | :2: | 2.5 |
+
+| | {muted}(<<จำนวนเงินวันทำสัญญาตัวอักษร>>) ในวันทำสัญญาเช่า กำหนดภายในวันที่{/muted} | {muted}<<ทำสัญญาวันที่ภาษาไทย>>{/muted} |
+| 0.5 | 6.5 | :3: |
+{space:8}
+
+{section:5. DEFAULT|ข้อ 5. การผิดสัญญา}
+
+| 5.1 | If the Lessee fails to execute the lease agreement within the period specified in Clause 4, the Lessee waives the right to lease the Premises and all booking fees paid under Clause 3 shall be non-refundable. |
+| 0.5: | 9.5 |
+
+| | {muted}หากผู้เช่าไม่สามารถทำสัญญาเช่าได้ภายในกำหนด ถือว่าสละสิทธิ์และยินยอมให้ผู้ให้เช่าริบเงินมัดจำตามข้อ 3{/muted} |
+| 0.5 | 9.5 |
+
+| 5.2 | If the Lessor fails to execute the lease agreement within the period specified in Clause 4, the Lessor shall return all amounts received from the Lessee in full. |
+| 0.5: | 9.5 |
+
+| | {muted}หากผู้ให้เช่าเป็นฝ่ายผิดสัญญา ผู้ให้เช่าต้องคืนเงินที่ได้รับชำระไว้จากผู้เช่าทั้งหมด{/muted} |
+| 0.5 | 9.5 |
+{space:8}
+
+{section:6. CONCLUSION OF AGREEMENT|ข้อ 6. การสิ้นสุดข้อตกลง}
+
+| 6.1 | This reservation agreement shall be concluded when both parties have executed the lease agreement within the specified date. The terms of the lease agreement shall prevail thereafter. |
+| 0.5: | 9.5 |
+
+| | {muted}สัญญาจองฉบับนี้สิ้นสุดเมื่อทั้งสองฝ่ายได้ทำสัญญาเช่าภายในวันที่กำหนด และให้ยึดถือเนื้อหาของสัญญาเช่าเป็นหลักสำคัญต่อไป{/muted} |
+| 0.5 | 9.5 |
+{space:8}
+
+| {muted}หมายเหตุ :{/muted} | {muted}ในกรณีที่ผู้ให้เช่าได้รับเงินมัดจำหรือเงินจ่ายล่วงหน้าจากผู้เช่าแล้ว หากท่านและ/หรือผู้จะเช่าไม่สามารถทำตามสัญญาได้ ตัวแทนฯ จะคิดค่าดำเนินการจำนวน 50% ของเงินที่ท่านได้รับชำระไว้แล้วดังกล่าว แต่ไม่เกินค่านายหน้าที่ระบุไว้ในหนังสือฉบับนี้{/muted} |
+| 1 | 9 |
+
+| {muted}Remark:{/muted} | {muted}In the event that the deposit or advance payment has been received and either party is unable to proceed, the Company shall be entitled to charge an administrative fee of 50% of the amount received, not exceeding the agency fee specified herein.{/muted} |
+| 1 | 9 |
 {space:12}
 
-| ซึ่ง "ผู้ให้เช่า" ต้องการให้เช่า และ "ผู้เช่า" ตกลงจะเช่า ทรัพย์สิน โดยทั้ง 2 ฝ่ายตกลงกันตามเงื่อนไขดังต่อไปนี้ | |
+| This agreement is made in two copies with identical content. Both parties have read and understood all the contents and therefore sign in the presence of witnesses, each retaining one copy. | |
 | 10 | 0 |
 
-| {size:8}Whereas the Lessor desires to let and the Lessee desires to rent the Premises under the terms and conditions set forth in this agreement as follows:{/size} | |
-| 10 | 0 |
-{space:8}
-
-| **ข้อ 1.** โดยผู้ให้เช่าเป็นเจ้าของห้องชุดโครงการ | <<view>> |
-| 5 | :5: |
-
-| ตั้งอยู่ เลขที่ | <<เลขที่ห้องชุด>> | อาคาร | <<ตึก>> | ชั้น | <<ชั้น>> | ประเภท | <<ประเภทห้อง>> |
-| 1.5 | :2: | ~1~ | :1: | ~0.5~ | :1: | ~1~ | :2.5: |
-
-| ขนาด | <<ขนาด>> | ตารางเมตร | ถนน / ซอย | <<ถนนโครงการ>> <<ซอย>> |
-| 1 | :2: | 1 | 1 | :5: |
-
-| แขวง / ตำบล | <<แขวงตำบลห้องชุด>> | เขต / อำเภอ | <<เขตอำเภอห้องชุด>> |
-| 1.5 | :3.5: | ~1.5~ | :3.5: |
-
-| จังหวัด | <<จังหวัดห้องชุด>> | รหัสไปรษณีย์ | <<รหัสไปรษณีย์ห้องชุด>> |
-| 1 | :5: | ~2~ | :2: |
-
-| {size:8}1. Whereas the Lessor is the owner of unit no. <<เลขที่ห้องชุด>>, floor <<ชั้น>>, building <<ตึก>>, project <<view>>, including all fixtures and fittings, hereinafter called "Premises"{/size} | |
-| 10 | 0 |
-{space:8}
-
-| **ข้อ 2.** ผู้ให้เช่าตกลงให้เช่าและผู้เช่าตกลงเช่าทรัพย์ดังกล่าวใน ข้อ 1. โดยตกลงค่าเช่าในราคาเดือนละ | |
-| 10 | 0 |
-
-| <<ค่าเช่าเติมลูกน้ำ>> | บาท | (<<ค่าเช่าตัวอักษร>>) | ระยะเวลา | <<ระยะเวลาสัญญา>> | เดือน |
-| :3: | ~1~ | :4: | 1 | :0.5: | 0.5 |
-
-| {size:8}2. The rent shall be <<ค่าเช่าเติมลูกน้ำ>> Baht per month (<<ค่าเช่าภาษาอังกฤษ>> Baht Only) for a period of <<ระยะเวลาสัญญา>> month(s).{/size} | |
-| 10 | 0 |
-{space:8}
-
-| **ข้อ 3.** ในวันทำสัญญาฉบับนี้ ผู้จะเช่าตกลงวางมัดจำบางส่วน ให้แก่ผู้ให้เช่าเป็นจำนวนเงิน | |
-| 10 | 0 |
-
-| <<ค่าเช่าเติมลูกน้ำ>> | บาท | (<<ค่าเช่าตัวอักษร>>) |
-| :3: | ~1~ | :6: |
-
-| ซึ่งผู้ให้เช่าได้รับไว้ครบถ้วน และคู่สัญญาได้ถือว่าเงินมัดจำดังกล่าวนี้เป็นเงินวางค้ำประกันส่วนหนึ่ง | |
-| 10 | 0 |
-
-| {size:8}3. The Lessee has paid a booking fee of <<ค่าเช่าเติมลูกน้ำ>> Baht (<<ค่าเช่าภาษาอังกฤษ>> Baht Only). The Lessor has received this amount in full and both parties agree that this deposit constitutes part of the security.{/size} | |
-| 10 | 0 |
-{space:8}
-
-| **ข้อ 4.** ผู้จะเช่าตกลงจะชำระเงินค่าเช่าล่วงหน้าและเงินค้ำประกัน ส่วนที่เหลืออีก | |
-| 10 | 0 |
-
-| <<จำนวนเงินวันทำสัญญา>> | บาท | (<<จำนวนเงินวันทำสัญญาตัวอักษร>>) |
-| :3: | ~1~ | :6: |
-
-| ในวันทำสัญญาเช่ากำหนดภายในวันที่ | <<ทำสัญญาวันที่ภาษาไทย>> |
-| 3 | :7: |
-
-| {size:8}4. The Lessee agrees to pay the remaining amount of <<จำนวนเงินวันทำสัญญา>> Baht (<<จำนวนเงินวันทำสัญญาภาษาอังกฤษ>> Baht Only) for the advance rental and security deposit on the lease agreement signing date, scheduled no later than <<ทำสัญญาวันที่ภาษาอังกฤษ>>.{/size} | |
-| 10 | 0 |
-{space:8}
-
-| **ข้อ 5.** หากผู้จะเช่าผิดสัญญาผู้จะเช่ายอมให้ผู้ให้เช่าทำสัญญาเช่ากับบุคคลอื่นได้และยินยอมให้ริบเงินมัดจำที่ได้ชำระไว้แล้ว ในข้อ 3. หรือถ้าหากผู้ให้เช่าผิดสัญญา ผู้ให้เช่าต้องคืนเงินที่ได้ชำระไว้จากผู้จะเช่าทั้งหมด | |
-| 10 | 0 |
-
-| {size:8}5. In case the Lessee cannot execute a lease agreement within the period specified in Article 4, the Lessee waives the right to lease such property and all booking fees shall be non-refundable. If the Lessor fails to perform, the Lessor shall return all amounts received from the Lessee within 7 days.{/size} | |
-| 10 | 0 |
-{space:8}
-
-| **ข้อ 6.** สัญญาวางมัดจำฉบับนี้สิ้นสุดก็ต่อเมื่อ ผู้จะเช่าและผู้ให้เช่า ได้ตกลงทำสัญญาเช่าภายในวันที่กำหนดเรียบร้อยแล้ว และให้ยึดถือเอาเนื้อหาข้อความของหนังสือสัญญาเช่าเป็นหลักสำคัญต่อไป | |
-| 10 | 0 |
-
-| {size:8}6. This reservation agreement shall be concluded when both parties have executed the lease agreement within the specified date, and the terms of the lease agreement shall prevail thereafter.{/size} | |
-| 10 | 0 |
-{space:8}
-
-| สัญญานี้ทำขึ้นเป็นสองฉบับ แต่ละฉบับมีข้อความถูกต้องตรงกันทุกประการ ทั้งสองฝ่ายได้อ่านและเข้าใจดี เห็นว่าตรงตามความประสงค์ของตนแล้ว จึงได้ลงลายมือชื่อไว้เป็นสำคัญต่อหน้าพยาน | |
-| 10 | 0 |
-
-| {size:8}This contract is made in two copies with identical content. Both parties have read and understood all content and therefore sign in the presence of witnesses, each retaining one copy.{/size} | |
-| 10 | 0 |
-{space:8}
-
-| หมายเหตุ : ในกรณีที่ผู้ให้เช่าได้รับเงินมัดจำ หรือเงินจ่ายล่วงหน้าจากผู้เช่าแล้ว หากท่านและ/หรือผู้จะเช่าไม่สามารถทำตามสัญญาได้ ตัวแทนฯ จะคิดค่าดำเนินการจำนวน 50% ของเงินที่ท่านได้รับชำระไว้แล้วดังกล่าว แต่ไม่เกินค่านายหน้าที่ระบุไว้ในหนังสือฉบับนี้ | |
-| 9.9 | 0.1 |
-
-| {size:8}Remark: In the event that the deposit or any advance payment has already been received from the Lessee, and either party is unable to proceed with the lease agreement, the Company shall be entitled to charge an administrative fee equivalent to 50% of the amount received, but not exceeding the agency fee specified in this document.{/size} | |
+| {muted}สัญญานี้ทำขึ้นเป็นสองฉบับ แต่ละฉบับมีข้อความถูกต้องตรงกัน ทั้งสองฝ่ายได้อ่านและเข้าใจดีแล้ว จึงได้ลงลายมือชื่อไว้เป็นสำคัญต่อหน้าพยาน{/muted} | |
 | 10 | 0 |
 {space:8}
 
 {signature-final}
-{page-number}
-
-{break}
-
-# ใบแจ้งหนี้ / INVOICE
-
-| ชื่อลูกค้า / Customer Name | <<ชื่อผู้เช่า>> | วันที่ / Date | <<เมื่อวันที่ภาษาไทย>> / <<เมื่อวันที่ภาษาอังกฤษ>> |
-| 2.5 | :3.5: | ~2~ | :2: |
-
-| ผู้ออก / Issuer | <<ชื่อผู้ให้เช่า>> | เลขเสียภาษี / Tax ID | <<ผู้ให้เช่าบัตรประชาชนเลขที่>> |
-| 2 | :4: | ~2~ | :2: |
-{space:4}
-
-| ลำดับ | รายละเอียด / Description | จำนวนเงิน / Amount |
-| ~0.5~ | 8 | :1.5: |
-
-| 1 | เงินจองห้อง / Advance Payment for <<view>> Room No. <<เลขที่ห้องชุด>> สัญญา <<ระยะเวลาสัญญา>> เดือน ราคาเช่า <<ค่าเช่าเติมลูกน้ำ>> บาท/เดือน | <<ค่าเช่าเติมลูกน้ำ>> |
-| ~0.5~ | 8 | :1.5: |
-
-| | รวม / TOTAL | <<ก่อนvat7>> |
-| 0.5 | 7.5: | :2: |
-
-| | VAT ภาษี 7% | <<vat7>> |
-| 0.5 | 7.5: | :2: |
-
-| | หักภาษี ณ ที่จ่าย 3% / Withholding tax 3% | <<หัก3>> |
-| 0.5 | 7.5: | :2: |
-
-| ยอดรวมสุทธิ / TOTAL | <<ยอดรวมสุทธิ>> บาท (<<ยอดรวมสุทธิตัวอักษร>> / <<ยอดรวมสุทธิตัวอักษรen>>) | |
-| 3 | 5: | 2 |
-{space:8}
-
-| ช่องทางการชำระเงิน / Payment Info | <<bankimg>> |
-| 7 | :3: |
-
-{bankcard:<<บัญชีธนาคาร>>|<<ชื่อผู้ให้เช่า>>|<<เลขที่บัญชี>>}
-{space:8}
-
-| ผู้ออกใบแจ้งหนี้ / Biller | |
-| 10 | 0 |
-
-| <<ชื่อผู้ให้เช่า>> | |
-| 10 | 0 |
-
-| วันที่ / Date | <<เมื่อวันที่ภาษาไทย>> / <<เมื่อวันที่ภาษาอังกฤษ>> |
-| 2 | :8: |
-{page-number}
-
-{break}
-
-# ใบเสร็จรับเงิน / RECEIPT
-
-| ชื่อลูกค้า / Customer Name | <<ชื่อผู้เช่า>> | วันที่ / Date | <<เมื่อวันที่ภาษาไทย>> / <<เมื่อวันที่ภาษาอังกฤษ>> |
-| 2.5 | :3.5: | ~2~ | :2: |
-
-| ผู้ออก / Issuer | <<ชื่อผู้ให้เช่า>> | เลขเสียภาษี / Tax ID | <<ผู้ให้เช่าบัตรประชาชนเลขที่>> |
-| 2 | :4: | ~2~ | :2: |
-{space:4}
-
-| ลำดับ | รายละเอียด / Description | จำนวนเงิน / Amount |
-| ~0.5~ | 8 | :1.5: |
-
-| 1 | เงินจองห้อง / Advance Payment for <<view>> Room No. <<เลขที่ห้องชุด>> สัญญา <<ระยะเวลาสัญญา>> เดือน ราคาเช่า <<ค่าเช่าเติมลูกน้ำ>> บาท/เดือน | <<ค่าเช่าเติมลูกน้ำ>> |
-| ~0.5~ | 8 | :1.5: |
-
-| | รวม / TOTAL | <<ก่อนvat7>> |
-| 0.5 | 7.5: | :2: |
-
-| | VAT ภาษี 7% | <<vat7>> |
-| 0.5 | 7.5: | :2: |
-
-| | หักภาษี ณ ที่จ่าย 3% / Withholding tax 3% | <<หัก3>> |
-| 0.5 | 7.5: | :2: |
-
-| ยอดรวมสุทธิ / TOTAL | <<ยอดรวมสุทธิ>> บาท (<<ยอดรวมสุทธิตัวอักษร>> / <<ยอดรวมสุทธิตัวอักษรen>>) | |
-| 3 | 5: | 2 |
-{space:8}
-
-| ชำระเงินโดย / Payment by | เงินสด / Cash   โอนเงิน / Bank Transfer |
-| 3 | :7: |
-{space:8}
-
-| ผู้ออกใบเสร็จ / Receiver | |
-| 10 | 0 |
-
-| <<ชื่อผู้ให้เช่า>> | |
-| 10 | 0 |
-
-| วันที่ / Date | <<เมื่อวันที่ภาษาไทย>> / <<เมื่อวันที่ภาษาอังกฤษ>> |
-| 2 | :8: |
-{page-number}
