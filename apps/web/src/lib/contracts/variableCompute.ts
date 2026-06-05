@@ -10,6 +10,15 @@ import {
 import type { TemplateDefinition } from './templateRegistry'
 import { getEnglishAddress } from '@/lib/address'
 
+const ROOM_TYPE_BILINGUAL: Record<string, { th: string; en: string }> = {
+  'Studio':    { th: 'สตูดิโอ',    en: 'Studio' },
+  '1BR':       { th: '1 ห้องนอน', en: '1 Bedroom' },
+  '2BR':       { th: '2 ห้องนอน', en: '2 Bedrooms' },
+  '3BR':       { th: '3 ห้องนอน', en: '3 Bedrooms' },
+  'Penthouse': { th: 'เพนท์เฮาส์', en: 'Penthouse' },
+  'อื่นๆ':    { th: 'อื่นๆ',      en: 'Other' },
+}
+
 export interface VariableContext {
   contract: Contract & {
     language_version?: string | null
@@ -121,6 +130,9 @@ export function computeVariables(
     v['enแขวงตำบล เจ้าของ']  = ownerEn.subdistrict_en ?? owner.subdistrict ?? '-'
     v['enเขตอำเภอ เจ้าของ']  = ownerEn.district_en   ?? owner.district   ?? '-'
     v['enจังหวัด เจ้าของ']   = ownerEn.province_en   ?? owner.province   ?? '-'
+    v['แขวงตำบลเจ้าของภาษาอังกฤษ'] = v['enแขวงตำบล เจ้าของ']!
+    v['เขตอำเภอเจ้าของภาษาอังกฤษ'] = v['enเขตอำเภอ เจ้าของ']!
+    v['จังหวัดเจ้าของภาษาอังกฤษ']  = v['enจังหวัด เจ้าของ']!
 
     // Bank info — prefer owner's then fall back to agent's
     v['บัญชีธนาคาร']             = owner.bank_name ?? agent?.bank_name ?? '-'
@@ -156,6 +168,9 @@ export function computeVariables(
     v['enแขวงตำบล ลูกค้า']  = custEn.subdistrict_en ?? customer.subdistrict ?? '-'
     v['enเขตอำเภอ ลูกค้า']  = custEn.district_en   ?? customer.district   ?? '-'
     v['enจังหวัด ลูกค้า']   = custEn.province_en   ?? customer.province   ?? '-'
+    v['แขวงตำบลลูกค้าภาษาอังกฤษ'] = v['enแขวงตำบล ลูกค้า']!
+    v['เขตอำเภอลูกค้าภาษาอังกฤษ'] = v['enเขตอำเภอ ลูกค้า']!
+    v['จังหวัดลูกค้าภาษาอังกฤษ']  = v['enจังหวัด ลูกค้า']!
   }
 
   // ─── Stock / Unit ────────────────────────────────────────────
@@ -171,6 +186,10 @@ export function computeVariables(
     v['ชั้น']                  = stock.floor != null ? String(stock.floor) : '-'
     v['ตึก']                   = stock.building ?? extra['ตึก'] ?? '-'
     v['ประเภทห้อง']            = stock.room_type ?? '-'
+    const _roomBilingual = ROOM_TYPE_BILINGUAL[stock.room_type ?? '']
+    v['ประเภทห้องภาษาไทย']    = _roomBilingual?.th ?? stock.room_type ?? '-'
+    v['ประเภทห้องภาษาอังกฤษ'] = _roomBilingual?.en ?? stock.room_type ?? '-'
+    v['ชื่อโครงการภาษาอังกฤษ'] = extra['ชื่อโครงการภาษาอังกฤษ'] ?? stock.project_name ?? '-'
     // Address from linked project (joined as project?)
     const proj = (stock as Stock & { project?: { address_road?: string; subdistrict?: string; district?: string; province?: string; zip?: string } }).project
     v['ซอย']                   = extra['ซอย'] ?? '-'
@@ -189,6 +208,9 @@ export function computeVariables(
     v['enแขวงตำบล']  = projEn.subdistrict_en ?? proj?.subdistrict ?? '-'
     v['enเขตอำเภอ']  = projEn.district_en   ?? proj?.district   ?? '-'
     v['enจังหวัด']   = projEn.province_en   ?? proj?.province   ?? '-'
+    v['แขวงตำบลโครงการภาษาอังกฤษ'] = v['enแขวงตำบล']!
+    v['เขตอำเภอโครงการภาษาอังกฤษ'] = v['enเขตอำเภอ']!
+    v['จังหวัดโครงการภาษาอังกฤษ']  = v['enจังหวัด']!
   }
 
   // ─── Agent ───────────────────────────────────────────────────

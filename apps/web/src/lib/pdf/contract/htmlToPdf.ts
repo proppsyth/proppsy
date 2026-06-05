@@ -332,7 +332,7 @@ function buildFullHtml(opts: RenderOptions): string {
   .a-c { text-align: center; }
   .a-r { text-align: right; }
   .cell.value {
-    border-bottom: 0.8pt solid #1A1A1A;
+    border-bottom: 0.8pt solid #6B7A99;
   }
   strong { font-weight: 700; }
 
@@ -431,7 +431,7 @@ function buildFullHtml(opts: RenderOptions): string {
   /* {en} inherits base — English is primary, no size override needed  */
   .bi-th        { font-size: 8pt;   color: #555; }
   .bi-zh        { font-size: 9pt;   color: #3A3A3A; }
-  .bi-muted     { font-size: 8.5pt; color: #6B7A99; }
+  .bi-muted     { font-size: 8pt; color: #6B7A99; }
   .bi-small     { font-size: 7.5pt; }
   .bi-italic    { font-style: italic; }
   .bi-bold      { font-weight: 700; }
@@ -460,7 +460,7 @@ function buildFullHtml(opts: RenderOptions): string {
   .sp-en    { font-size: 10pt; color: #1A1A1A; margin: 0 0 1pt 0; }
   .sp-th    { font-size: 8pt;  color: #555;    margin: 0 0 2pt 0; }
   .sp-zh    { font-size: 9pt;  color: #3A3A3A; margin: 0 0 2pt 0; }
-  .sp-muted { font-size: 8.5pt; color: #6B7A99; margin: 0 0 2pt 0; }
+  .sp-muted { font-size: 8pt; color: #6B7A99; line-height: 1.3; margin: 0 0 1pt 0; }
   .sp-small { font-size: 7.5pt; color: #666;   margin: 0 0 1pt 0; }
   .sp-italic { font-style: italic;  margin: 0 0 2pt 0; }
   .sp-bold   { font-weight: 700;    margin: 0 0 2pt 0; }

@@ -156,7 +156,7 @@ export function sanitizeBlock(block: unknown): MdBlock[] {
       } else if (cols.length > maxCols) {
         cols = cols.slice(0, maxCols)
       }
-      const wide = b.wide === true || maxCols > 8
+      const wide = b.wide === true || maxCols > 14
       return [{ type: 'table', rows: normRows, cols, wide }]
     }
     case 'styled-p': {

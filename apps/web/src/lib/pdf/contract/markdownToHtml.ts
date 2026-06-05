@@ -251,9 +251,6 @@ function classifyRow(row: string[], cols: ColSpec[]): string {
   // contains {size:} but is NOT a financial amount row.
   else if (nonEmpty.length === 1 && nonEmpty[0]?.includes('{size:') && nonEmpty[0].includes('บาทถ้วน')) cls = 'row row-amtwords'
 
-  // Compact info row: 4-col layout with right-aligned label in col 0 (non-bold)
-  else if (row.length >= 4 && cols[0]?.align === 'right' && !isBold(row[0] ?? '')) cls = 'row row-info'
-
   if (cls !== 'row' && process.env.NODE_ENV !== 'production') {
     // eslint-disable-next-line no-console
     console.log(`[pdf:classify] ${cls}`, JSON.stringify(nonEmpty.map(c => c.slice(0, 50))))
