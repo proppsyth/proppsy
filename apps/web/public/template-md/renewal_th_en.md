@@ -1,8 +1,7 @@
 {page-number}
 {signature-mini}
 
-# LEASE RENEWAL AGREEMENT
-{th-subtitle}บันทึกข้อตกลงต่อสัญญาเช่า{/th-subtitle}
+# LEASE RENEWAL AGREEMENT / บันทึกข้อตกลงต่อสัญญาเช่า
 
 | Written at | <<project>> |
 | 5: | :5: |
@@ -107,10 +106,10 @@
 
 {section:1. EXTENSION OF LEASE TERM|ข้อ 1. การขยายระยะเวลาสัญญา}
 
-| 1.1 | The expiry date of the Lease Agreement dated | <<enสัญญาเช่าฉบับเก่าลงวันที่>> |
+| 1.1 | The expiry date of the Lease Agreement dated | <<enสัญญาเช่าฉบับเก่าลงวันที่Long>> |
 | 0.5: | 5.5 | :4: |
 
-| | shall be extended from | <<enสิ้นสุดสัญญาวันที่>> | to | <<enขยายเวลาสิ้นสุดเป็นวันที่Long>> |
+| | shall be extended from | <<enสิ้นสุดสัญญาวันที่Long>> | to | <<enขยายเวลาสิ้นสุดเป็นวันที่Long>> |
 | 0.5 | 2 | :3: | 0.5 | :4: |
 
 | | {muted}ขยายวันสิ้นสุดของสัญญาเช่าฉบับลงวันที่{/muted} | {muted}<<สัญญาเช่าฉบับเก่าลงวันที่>>{/muted} |
@@ -122,7 +121,7 @@
 
 {section:2. EXISTING TERMS|ข้อ 2. ข้อกำหนดเดิม}
 
-| 2.1 | All terms and conditions specified in the Lease Agreement dated <<enสัญญาเช่าฉบับเก่าลงวันที่>> shall remain in full force and effect in the same manner as the original Lease Agreement, and shall be interpreted and enforced under Thai law. |
+| 2.1 | All terms and conditions specified in the Lease Agreement dated <<enสัญญาเช่าฉบับเก่าลงวันที่Long>> shall remain in full force and effect in the same manner as the original Lease Agreement, and shall be interpreted and enforced under Thai law. |
 | 0.5: | 9.5 |
 
 | | {muted}ข้อกำหนดและเงื่อนไขอื่นๆ ที่ระบุไว้ในสัญญาฉบับลงวันที่ <<สัญญาเช่าฉบับเก่าลงวันที่>> ยังคงมีผลบังคับใช้เหมือนสัญญาเช่าฉบับเดิมทุกประการ และให้ตีความและบังคับใช้ตามกฎหมายไทย{/muted} |
@@ -155,3 +154,4 @@
 {space:8}
 
 {signature-final}
+{page-number}

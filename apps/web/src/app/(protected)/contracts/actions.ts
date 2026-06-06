@@ -422,6 +422,7 @@ export async function createChildDocument(
     : ((lease as { master_contract_id?: string | null }).master_contract_id ?? leaseId)
 
   // Build row with full lease inheritance
+  const langVer = REFERENCE_DOC_TYPES.has(docType) ? 'th_en' : (lease.language_version ?? 'th')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const row: Record<string, any> = {
     id,
@@ -435,8 +436,9 @@ export async function createChildDocument(
     owner_id:            lease.owner_id,
     customer_id:         lease.customer_id,
     // Reference docs always use th_en bilingual layout regardless of parent language
-    language_version:    REFERENCE_DOC_TYPES.has(docType) ? 'th_en' : (lease.language_version ?? 'th'),
-    template_slug:       AUTO_TEMPLATE_SLUGS[docType] ?? null,
+    language_version:    langVer,
+    // Renewal has 3 language variants — resolve slug from language; others use static map
+    template_slug:       AUTO_TEMPLATE_SLUGS[docType] ?? (docType === 'renewal' ? `renewal_${langVer}` : null),
     rent_price:          lease.rent_price,
     deposit_months:      lease.deposit_months,
     deposit_amount:      lease.deposit_amount,
@@ -1021,12 +1023,17 @@ export async function generateContractPdf(
     let _slug = (contract as { template_slug?: string | null }).template_slug ?? null
 
     // Auto-resolve: contracts created before AUTO_TEMPLATE_SLUGS was added have template_slug=null.
-    // For any reference doc type with a known MD template, resolve it now so Route B-md is used.
+    // For any doc type with a known MD template, resolve it now so Route B-md is used.
     if (!_slug) {
       const resolved = AUTO_TEMPLATE_SLUGS[contract.doc_type as ContractDocType]
       if (resolved) {
         _slug = resolved
         console.log(`[PDF:ROUTE ${new Date().toISOString()}] auto-slug doc_type=${contract.doc_type} → ${_slug}`)
+      } else if (contract.doc_type === 'renewal') {
+        // Renewal has 3 language variants — resolve from the contract's language_version
+        const renewalLang = (contract as { language_version?: string | null }).language_version ?? 'th'
+        _slug = `renewal_${renewalLang}`
+        console.log(`[PDF:ROUTE ${new Date().toISOString()}] auto-slug doc_type=renewal lang=${renewalLang} → ${_slug}`)
       }
     }
 

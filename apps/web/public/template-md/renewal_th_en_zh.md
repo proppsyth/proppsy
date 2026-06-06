@@ -110,13 +110,13 @@
 {section:1. EXTENSION OF LEASE TERM|1. 续约条款}
 {muted}ข้อ 1. การขยายระยะเวลาสัญญา{/muted}
 
-| 1.1 | The expiry date of the Lease Agreement dated | <<enสัญญาเช่าฉบับเก่าลงวันที่>> |
+| 1.1 | The expiry date of the Lease Agreement dated | <<enสัญญาเช่าฉบับเก่าลงวันที่Long>> |
 | 0.5: | 5.5 | :4: |
 
-| | shall be extended from | <<enสิ้นสุดสัญญาวันที่>> | to | <<enขยายเวลาสิ้นสุดเป็นวันที่Long>> |
+| | shall be extended from | <<enสิ้นสุดสัญญาวันที่Long>> | to | <<enขยายเวลาสิ้นสุดเป็นวันที่Long>> |
 | 0.5 | 2 | :3: | 0.5 | :4: |
 
-| | {zh}将签订日期为 <<enสัญญาเช่าฉบับเก่าลงวันที่>> 的租赁合同终止日，由 <<enสิ้นสุดสัญญาวันที่>> 延长至 <<enขยายเวลาสิ้นสุดเป็นวันที่Long>>。{/zh} |
+| | {zh}将签订日期为 <<enสัญญาเช่าฉบับเก่าลงวันที่Long>> 的租赁合同终止日，由 <<enสิ้นสุดสัญญาวันที่Long>> 延长至 <<enขยายเวลาสิ้นสุดเป็นวันที่Long>>。{/zh} |
 | 0.5 | 9.5 |
 
 | | {muted}ขยายวันสิ้นสุดของสัญญาเช่าฉบับลงวันที่ <<สัญญาเช่าฉบับเก่าลงวันที่>> จากเดิมสิ้นสุดวันที่ <<สิ้นสุดสัญญาวันที่>> เป็น <<ขยายเวลาสิ้นสุดเป็นวันที่>>{/muted} |
@@ -126,10 +126,10 @@
 {section:2. EXISTING TERMS|2. 原合同条款}
 {muted}ข้อ 2. ข้อกำหนดเดิม{/muted}
 
-| 2.1 | All terms and conditions specified in the Lease Agreement dated <<enสัญญาเช่าฉบับเก่าลงวันที่>> shall remain in full force and effect in the same manner as the original Lease Agreement, and shall be interpreted and enforced under Thai law. |
+| 2.1 | All terms and conditions specified in the Lease Agreement dated <<enสัญญาเช่าฉบับเก่าลงวันที่Long>> shall remain in full force and effect in the same manner as the original Lease Agreement, and shall be interpreted and enforced under Thai law. |
 | 0.5: | 9.5 |
 
-| | {zh}签订日期为 <<enสัญญาเช่าฉบับเก่าลงวันที่>> 的原租赁合同所有条款和条件继续完全有效，并依据泰国法律解释和执行。{/zh} |
+| | {zh}签订日期为 <<enสัญญาเช่าฉบับเก่าลงวันที่Long>> 的原租赁合同所有条款和条件继续完全有效，并依据泰国法律解释和执行。{/zh} |
 | 0.5 | 9.5 |
 
 | | {muted}ข้อกำหนดและเงื่อนไขอื่นๆ ที่ระบุไว้ในสัญญาฉบับลงวันที่ <<สัญญาเช่าฉบับเก่าลงวันที่>> ยังคงมีผลบังคับใช้เหมือนสัญญาเช่าฉบับเดิมทุกประการ และให้ตีความและบังคับใช้ตามกฎหมายไทย{/muted} |
@@ -169,3 +169,4 @@
 {space:8}
 
 {signature-final}
+{page-number}
