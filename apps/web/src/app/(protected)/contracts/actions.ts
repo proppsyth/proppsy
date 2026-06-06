@@ -329,6 +329,8 @@ const AUTO_TEMPLATE_SLUGS: Partial<Record<ContractDocType, string>> = {
   termination:         'termination_th_en',
   cancellation:        'cancellation_th_en',
   end_contract:        'end_contract_th_en',
+  co_agent:            'co_agent_th_en',
+  installment_schedule:'installment_schedule_th_en',
 }
 
 // Reference/financial doc types always use the universal bilingual TH-EN MD templates
