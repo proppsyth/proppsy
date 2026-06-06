@@ -3,7 +3,7 @@
 
 # RESERVATION AGREEMENT / 预订协议 / สัญญาจอง
 
-| Written at | <<view>> |
+| Written at | <<ชื่อโครงการภาษาอังกฤษ>> |
 | 5: | :5: |
 
 | {zh}签订地点{/zh} {muted}/ ทำที่{/muted} | {muted}<<view>>{/muted} |
@@ -85,10 +85,10 @@
 {section:1. RENTAL PROPERTY|1. 租赁物业}
 {muted}ข้อ 1. ทรัพย์สินที่เช่า{/muted}
 
-| 1.1 | The Lessor agrees to let the unit at project | <<view>> |
+| 1.1 | The Lessor agrees to let the unit at project | <<ชื่อโครงการภาษาอังกฤษ>> |
 | 0.5: | 4.5 | :5: |
 
-| | {zh}出租方同意出租位于项目{/zh} | {muted}<<view>>{/muted} |
+| | {zh}出租方同意出租位于项目{/zh} | {muted}<<ชื่อโครงการภาษาอังกฤษ>>{/muted} |
 | 0.5 | 4.5 | ~5~ |
 
 | | {muted}ผู้ให้เช่าตกลงให้เช่าห้องชุดโครงการ{/muted} | {muted}<<view>>{/muted} |

@@ -1,10 +1,12 @@
 {page-number}
 {signature-mini}
 
-# CO-AGENT AGREEMENT
-{th-subtitle}ข้อตกลง Co-Agent{/th-subtitle}
+# CO-AGENT AGREEMENT / ข้อตกลง Co-Agent
 
-| Written at / {muted}ทำที่{/muted} | <<view>> |
+| Written at | <<ชื่อโครงการภาษาอังกฤษ>> |
+| 4: | :6: |
+
+| {muted}ทำที่{/muted} | {muted}<<view>>{/muted} |
 | 4: | :6: |
 
 | Date | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |
@@ -14,11 +16,9 @@
 | 7: | ~3~ |
 {space:8}
 
-| This agreement is made between the following parties: | |
+| This agreement is made between the following parties: {muted}ข้อตกลงนี้จัดทำขึ้นระหว่างคู่สัญญาดังต่อไปนี้{/muted}  | |
 | 10 | 0 |
 
-| {muted}ข้อตกลงนี้จัดทำขึ้นระหว่างคู่สัญญาดังต่อไปนี้{/muted} | |
-| 10 | 0 |
 {space:8}
 
 {section:AGENT INFORMATION|ข้อมูลตัวแทนอสังหาริมทรัพย์}
@@ -55,9 +55,11 @@
 | 10 | 0 |
 {space:8}
 
+{break}
+
 {section:PROPERTY DETAILS|ข้อมูลทรัพย์สิน}
 
-| Project / {muted}โครงการ{/muted} | <<view>> (<<เลขที่ห้อง>>) |
+| Project / {muted}โครงการ{/muted} | <<ชื่อโครงการภาษาอังกฤษ>> (<<เลขที่ห้อง>>) |
 | 3 | :7: |
 
 | Tenant / {muted}ผู้เช่า{/muted} | <<ชื่อผู้เช่า>> |

@@ -1,10 +1,9 @@
 {page-number}
 {signature-mini}
 
-# RESERVATION AGREEMENT
-{th-subtitle}สัญญาจอง{/th-subtitle}
+# RESERVATION AGREEMENT / สัญญาจอง
 
-| Written at | <<view>> |
+| Written at | <<ชื่อโครงการภาษาอังกฤษ>> |
 | 5: | :5: |
 
 | {muted}ทำที่{/muted} | {muted}<<view>>{/muted} |
@@ -45,7 +44,7 @@
 | 10 | 0 |
 {space:8}
 
-| | And / {muted}กับ{/muted} | <<ชื่อผู้เช่าภาษาอังกฤษ>> |
+| | And | <<ชื่อผู้เช่าภาษาอังกฤษ>> |
 | 0.5 | 1 | :8.5: |
 
 | | {muted}กับ{/muted} | {muted}<<ชื่อผู้เช่า>>{/muted} |
@@ -82,7 +81,7 @@
 
 {section:1. RENTAL PROPERTY|ข้อ 1. ทรัพย์สินที่เช่า}
 
-| 1.1 | The Lessor agrees to let the unit at project | <<view>> |
+| 1.1 | The Lessor agrees to let the unit at project | <<ชื่อโครงการภาษาอังกฤษ>> |
 | 0.5: | 4.5 | :5: |
 
 | | {muted}ผู้ให้เช่าตกลงให้เช่าห้องชุดโครงการ{/muted} | {muted}<<view>>{/muted} |
@@ -115,22 +114,25 @@
 
 {section:2. RENTAL TERMS|ข้อ 2. ค่าเช่าและระยะเวลา}
 
-| 2.1 | The Lessor agrees to let and the Lessee agrees to rent the Premises at | <<ค่าเช่าเติมลูกน้ำ>> | Baht per month | (<<ค่าเช่าภาษาอังกฤษ>>) |
-| 0.5: | 4 | :2: | 1.3 | :2.2: |
+| 2.1 | The Lessor agrees to let and the Lessee agrees to rent the Premises at | <<ค่าเช่าเติมลูกน้ำ>> | Baht per month |
+| 0.5: | 6.7 | :1.3: | 1.5 |
 
-| | for a period of | <<ระยะเวลาสัญญา>> | month(s). |
-| 0.5 | 2 | :1: | 6.5 |
+| | (<<ค่าเช่าภาษาอังกฤษ>>) | for a period of | <<ระยะเวลาสัญญา>> | month(s). |
+| 0.5 | :6.5: | 1.5 | :0.5: | 1 |
 
 | | {muted}ผู้ให้เช่าตกลงให้เช่าและผู้เช่าตกลงเช่า ค่าเช่าเดือนละ{/muted} | {muted}<<ค่าเช่าเติมลูกน้ำ>>{/muted} | {muted}บาท{/muted} | {muted}(<<ค่าเช่าตัวอักษร>>){/muted} | {muted}ระยะเวลา{/muted} | {muted}<<ระยะเวลาสัญญา>>{/muted} | {muted}เดือน{/muted} |
-| 0.5 | 2.8 | :2: | 0.5 | :2.2: | 0.5 | :1: | 0.5 |
+| 0.5 | 4 | :1: | 0.5 | :2: | 1 | :0.5: | 0.5 |
 {space:8}
 
 {section:3. BOOKING DEPOSIT|ข้อ 3. เงินมัดจำ}
 
 | 3.1 | On the date of this agreement, the Lessee has paid a booking deposit of | <<ค่าเช่าเติมลูกน้ำ>> | Baht |
-| 0.5: | 6.5 | :2: | 1 |
+| 0.5: | 7 | :1.5: | 1 |
 
-| | (<<ค่าเช่าภาษาอังกฤษ>>) to the Lessor. The Lessor has received this amount in full. Both parties agree that this deposit constitutes part of the security deposit. |
+| | (<<ค่าเช่าภาษาอังกฤษ>>) | to the Lessor. The Lessor has received this amount in full. |
+| 0.5 | :3.5: | 6 |
+
+| | Both parties agree that this deposit constitutes part of the security deposit. |
 | 0.5 | 9.5 |
 
 | | {muted}ผู้เช่าตกลงวางเงินมัดจำ{/muted} | {muted}<<ค่าเช่าเติมลูกน้ำ>>{/muted} | {muted}บาท{/muted} | {muted}(<<ค่าเช่าตัวอักษร>>){/muted} |
@@ -143,15 +145,18 @@
 {section:4. REMAINING PAYMENT|ข้อ 4. การชำระเงินส่วนที่เหลือ}
 
 | 4.1 | The Lessee agrees to pay the remaining advance rental and security deposit of | <<จำนวนเงินวันทำสัญญา>> | Baht |
-| 0.5: | 7 | :2: | 0.5 |
+| 0.5: | 8 | :1: | 0.5 |
 
-| | (<<จำนวนเงินวันทำสัญญาภาษาอังกฤษ>>) on the lease agreement signing date, scheduled no later than | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |
-| 0.5 | 7 | 2.5 | :3: |  
+| | (<<จำนวนเงินวันทำสัญญาภาษาอังกฤษ>>) | on the lease agreement signing date, |
+| 0.5 | :3.5: | 6.5 | 
 
-| | {muted}ผู้เช่าตกลงชำระเงินค่าเช่าล่วงหน้าและเงินค้ำประกันส่วนที่เหลือ{/muted} | {muted}<<จำนวนเงินวันทำสัญญา>>{/muted} | {muted}บาท{/muted} |
-| 0.5 | 5 | :2: | 2.5 |
+| | scheduled no later than | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> | |
+| 0.5 | 3.5 | :2: | 4 |  
 
-| | {muted}(<<จำนวนเงินวันทำสัญญาตัวอักษร>>) ในวันทำสัญญาเช่า กำหนดภายในวันที่{/muted} | {muted}<<ทำสัญญาวันที่ภาษาไทย>>{/muted} |
+| | {muted}ผู้เช่าตกลงชำระเงินค่าเช่าล่วงหน้าและเงินค้ำประกันส่วนที่เหลือ{/muted} | {muted}<<จำนวนเงินวันทำสัญญา>>{/muted} | {muted}บาท{/muted} |{muted}(<<จำนวนเงินวันทำสัญญาตัวอักษร>>){/muted} |
+| 0.5 | 4 | :2: | :3: | 1 |
+
+| | {muted}ในวันทำสัญญาเช่า กำหนดภายในวันที่{/muted} | {muted}<<ทำสัญญาวันที่ภาษาไทย>>{/muted} |
 | 0.5 | 6.5 | :3: |
 {space:8}
 

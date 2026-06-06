@@ -200,9 +200,9 @@ export function computeVariables(
     const _roomBilingual = ROOM_TYPE_BILINGUAL[stock.room_type ?? '']
     v['ประเภทห้องภาษาไทย']    = _roomBilingual?.th ?? stock.room_type ?? '-'
     v['ประเภทห้องภาษาอังกฤษ'] = _roomBilingual?.en ?? stock.room_type ?? '-'
-    v['ชื่อโครงการภาษาอังกฤษ'] = extra['ชื่อโครงการภาษาอังกฤษ'] ?? stock.project_name ?? '-'
     // Address from linked project (joined as project?)
-    const proj = (stock as Stock & { project?: { address_road?: string; subdistrict?: string; district?: string; province?: string; zip?: string } }).project
+    const proj = (stock as Stock & { project?: { name_en?: string; address_road?: string; subdistrict?: string; district?: string; province?: string; zip?: string } }).project
+    v['ชื่อโครงการภาษาอังกฤษ'] = proj?.name_en ?? stock.project_name ?? '-'
     v['ซอย']                   = extra['ซอย'] ?? '-'
     v['ถนนโครงการ']            = proj?.address_road ?? extra['ถนนโครงการ'] ?? '-'
     v['thถนน']                 = proj?.address_road ?? extra['thถนน'] ?? '-'

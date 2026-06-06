@@ -3,10 +3,10 @@
 
 # LEASE RENEWAL AGREEMENT / บันทึกข้อตกลงต่อสัญญาเช่า
 
-| Written at | <<project>> |
+| Written at | <<ชื่อโครงการภาษาอังกฤษ>> |
 | 5: | :5: |
 
-| {muted}เขียนที่{/muted} | {muted}<<project>>{/muted} |
+| {muted}เขียนที่{/muted} | {muted}<<view>>{/muted} |
 | 5: | ~5~ |
 
 | Date | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |
@@ -44,7 +44,7 @@
 | 10 | 0 |
 {space:8}
 
-| | And / {muted}กับ{/muted} | <<ชื่อผู้เช่าภาษาอังกฤษ>> |
+| | And | <<ชื่อผู้เช่าภาษาอังกฤษ>> |
 | 0.5 | 1 | :8.5: |
 
 | | {muted}กับ{/muted} | {muted}<<ชื่อ - สกุล ลูกค้า>>{/muted} |
@@ -72,10 +72,10 @@
 | 10 | 0 |
 {space:8}
 
-| | Project | <<project>> |
+| | Project | <<ชื่อโครงการภาษาอังกฤษ>> |
 | 0.5 | 1 | :8.5: |
 
-| | {muted}โครงการ{/muted} | {muted}<<project>>{/muted} |
+| | {muted}โครงการ{/muted} | {muted}<<view>>{/muted} |
 | 0.5 | 1 | ~8.5~ |
 
 | Unit no. / {muted}ห้องเลขที่{/muted} | <<เลขที่ห้อง>> | Building / {muted}อาคาร{/muted} | <<ตึก>> | Floor / {muted}ชั้น{/muted} | <<ชั้น>> | Size / {muted}ขนาด{/muted} | <<ขนาด>> |
@@ -110,7 +110,7 @@
 | 0.5: | 5.5 | :4: |
 
 | | shall be extended from | <<enสิ้นสุดสัญญาวันที่Long>> | to | <<enขยายเวลาสิ้นสุดเป็นวันที่Long>> |
-| 0.5 | 2 | :3: | 0.5 | :4: |
+| 0.5 | 4 | :2.5: | 0.5 | :2.5: |
 
 | | {muted}ขยายวันสิ้นสุดของสัญญาเช่าฉบับลงวันที่{/muted} | {muted}<<สัญญาเช่าฉบับเก่าลงวันที่>>{/muted} |
 | 0.5 | 4.5 | :5: |
@@ -128,10 +128,12 @@
 | 0.5 | 9.5 |
 {space:8}
 
+{break}
+
 {section:3. RENTAL FEE|ข้อ 3. ค่าเช่า}
 
 | 3.1 | The rental fee shall be | <<ค่าเช่า>> | Baht per month | (<<ค่าเช่าภาษาอังกฤษ>>) |
-| 0.5: | 2.5 | :2: | 1.5 | :3.5: |
+| 0.5: | 2 | :1.5: | 1.5 | :4.5: |
 
 | | for a renewal period of | <<ระยะเวลาต่อสัญญา>> | month(s), commencing on | <<enเริ่มต่อสัญญาLong>> |
 | 0.5 | 2.5 | :1: | 2.5 | :3.5: |

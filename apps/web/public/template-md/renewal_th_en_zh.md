@@ -3,10 +3,10 @@
 
 # LEASE RENEWAL AGREEMENT / 租赁续约协议 / บันทึกข้อตกลงต่อสัญญาเช่า
 
-| Written at | <<project>> |
+| Written at | <<ชื่อโครงการภาษาอังกฤษ>> |
 | 5: | :5: |
 
-| {zh}签订地点{/zh} {muted}/ เขียนที่{/muted} | {muted}<<project>>{/muted} |
+| {zh}签订地点{/zh} {muted}/ เขียนที่{/muted} | {muted}<<view>>{/muted} |
 | 5: | ~5~ |
 
 | Date | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |
@@ -72,10 +72,10 @@
 | 10 | 0 |
 {space:8}
 
-| | Project / {zh}项目{/zh} | <<project>> |
+| | Project / {zh}项目{/zh} | <<ชื่อโครงการภาษาอังกฤษ>> |
 | 0.5 | 2 | :8: |
 
-| | {muted}โครงการ{/muted} | {muted}<<project>>{/muted} |
+| | {muted}โครงการ{/muted} | {muted}<<view>>{/muted} |
 | 0.5 | 2 | ~8~ |
 
 | Unit no. / {zh}房号{/zh} / {muted}ห้องเลขที่{/muted} | <<เลขที่ห้อง>> | Building / {zh}楼栋{/zh} / {muted}อาคาร{/muted} | <<ตึก>> | Floor / {zh}楼层{/zh} / {muted}ชั้น{/muted} | <<ชั้น>> | Size / {zh}面积{/zh} / {muted}ขนาด{/muted} | <<ขนาด>> |
