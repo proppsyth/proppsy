@@ -109,7 +109,7 @@ export default function EditDraftPanel({ data }: Props) {
         ...f,
         rentPrice: v,
         depositAmount: rent > 0 ? String(rent * depositMonths) : f.depositAmount,
-        securityDeposit: isLease && rent > 0 ? String(rent * 2) : f.securityDeposit,
+        securityDeposit: isLease && rent > 0 && !f.securityDeposit ? String(rent * 2) : f.securityDeposit,
       }
       if (rent > 0 && contractMonths > 0 && !f.commissionNet) {
         next.commissionNet = String(calculateCommission(contractMonths, rent).commission_amount)

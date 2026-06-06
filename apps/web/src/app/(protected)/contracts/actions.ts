@@ -482,11 +482,15 @@ export async function createChildDocument(
     if (input.amount != null) {
       row.deposit_amount = input.amount
     } else if (docType === 'invoice_reservation' || docType === 'receipt_reservation') {
-      // Booking fee = 1 month rent (business rule)
-      row.deposit_amount = lease.rent_price ?? 0
+      // Booking fee: prefer stored deposit_amount, fall back to 1 month rent
+      row.deposit_amount = lease.deposit_amount ?? (lease.rent_price ?? 0)
     } else {
-      // Security deposit = deposit_months × rent (business rule, typically 2 months)
-      row.deposit_amount = (lease.deposit_months ?? 2) * (lease.rent_price ?? 0)
+      // Security deposit: prefer stored security_deposit field, then deposit_amount,
+      // then compute from deposit_months (never hardcode 2 months)
+      const storedSecurity = (lease as { security_deposit?: number | null }).security_deposit
+      row.deposit_amount = storedSecurity
+        ?? lease.deposit_amount
+        ?? ((lease.deposit_months ?? 2) * (lease.rent_price ?? 0))
     }
     if (input.paymentDate)   row.payment_date = input.paymentDate
     if (input.paymentMethod) row.payment_method = input.paymentMethod

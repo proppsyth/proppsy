@@ -236,9 +236,19 @@ export default async function ContractDetailPage({
                     value={`฿${fmt(contract.deposit_amount)}`}
                   />
                 )}
-                {isRental && contract.rent_price != null && contract.rent_price > 0 && (
-                  <FinRow label="เงินประกัน (2 เดือน)" value={`฿${fmt(contract.rent_price * 2)}`} />
-                )}
+                {isRental && (() => {
+                  const sd = (contract as { security_deposit?: number | null }).security_deposit
+                  if (!sd) return null
+                  const sdMonths = contract.rent_price && contract.rent_price > 0
+                    ? Math.round((sd / contract.rent_price) * 10) / 10
+                    : null
+                  return (
+                    <FinRow
+                      label={`เงินประกัน${sdMonths != null ? ` (${sdMonths} เดือน)` : ''}`}
+                      value={`฿${fmt(sd)}`}
+                    />
+                  )
+                })()}
                 {contract.contract_months != null && (
                   <FinRow label="ระยะสัญญา" value={`${contract.contract_months} เดือน`} />
                 )}

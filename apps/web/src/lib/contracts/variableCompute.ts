@@ -267,6 +267,22 @@ export function computeVariables(
   v['จำนวนเงินวันทำสัญญาตัวอักษร']      = bahtText(deposit)
   v['จำนวนเงินวันทำสัญญาภาษาอังกฤษ']   = bahtTextEn(deposit)
 
+  // ─── Standard monetary variables ─────────────────────────────
+  // <<booking_amount>> / <<security_deposit>> — canonical names usable in all templates.
+  // <<booking_months>> / <<security_deposit_months>> — dynamically computed; never hardcoded.
+  const securityDepositAmt = (contract as { security_deposit?: number | null }).security_deposit ?? null
+  const bookingMonths = rent > 0 && deposit > 0
+    ? Math.round((deposit / rent) * 10) / 10
+    : (contract.deposit_months ?? 1)
+  const securityDepositMonths = rent > 0 && securityDepositAmt != null && securityDepositAmt > 0
+    ? Math.round((securityDepositAmt / rent) * 10) / 10
+    : (contract.deposit_months ?? 2)
+
+  v['booking_amount']          = withCommas(deposit)
+  v['security_deposit']        = securityDepositAmt != null ? withCommas(securityDepositAmt) : '-'
+  v['booking_months']          = String(bookingMonths)
+  v['security_deposit_months'] = String(securityDepositMonths)
+
   v['ค่าปรับเติมลูกน้ำ']   = withCommas(penalty)
   v['ค่าปรับตัวอักษร']     = bahtText(penalty)
   v['ค่าปรับตัวอักษรen']  = bahtTextEn(penalty)
@@ -321,10 +337,14 @@ export function computeVariables(
   const docType = contract.doc_type ?? ''
   const unitRef = [stock?.project_name, stock?.unit_no ? `(${stock.unit_no})` : ''].filter(Boolean).join(' ')
   if (docType.includes('reservation')) {
-    v['รายละเอียดใบแจ้งหนี้'] = `ค่ามัดจำการจอง 1 เดือน / Booking Deposit (1 month) — ${unitRef}`
+    const bm = bookingMonths
+    const bmLabel = bm === 1 ? '1 month' : `${bm} months`
+    v['รายละเอียดใบแจ้งหนี้'] = `ค่ามัดจำการจอง ${bm} เดือน / Booking Deposit (${bmLabel}) — ${unitRef}`
   } else if (docType.includes('deposit')) {
-    const depositMonths = contract.deposit_months ?? 2
-    v['รายละเอียดใบแจ้งหนี้'] = `เงินประกันสัญญา ${depositMonths} เดือน / Security Deposit (${depositMonths} months) — ${unitRef}`
+    const sdAmt = securityDepositAmt ?? deposit
+    const sdm = rent > 0 && sdAmt > 0 ? Math.round((sdAmt / rent) * 10) / 10 : securityDepositMonths
+    const sdmLabel = sdm === 1 ? '1 month' : `${sdm} months`
+    v['รายละเอียดใบแจ้งหนี้'] = `เงินประกันสัญญา ${sdm} เดือน / Security Deposit (${sdmLabel}) — ${unitRef}`
   } else {
     v['รายละเอียดใบแจ้งหนี้'] = extra['รายละเอียดใบแจ้งหนี้'] ?? `ค่าเช่า / Rental Fee — ${unitRef}`
   }
