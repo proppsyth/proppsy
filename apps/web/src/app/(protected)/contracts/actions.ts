@@ -331,6 +331,8 @@ const AUTO_TEMPLATE_SLUGS: Partial<Record<ContractDocType, string>> = {
   end_contract:        'end_contract_th_en',
   co_agent:            'co_agent_th_en',
   installment_schedule:'installment_schedule_th_en',
+  commission_confirm:  'commission_confirm_th_en',
+  commission:          'commission_th_en',
 }
 
 // Reference/financial doc types always use the universal bilingual TH-EN MD templates
@@ -340,6 +342,7 @@ const REFERENCE_DOC_TYPES = new Set<ContractDocType>([
   'invoice_deposit', 'receipt_deposit',
   'notice', 'warning',
   'termination', 'cancellation', 'end_contract',
+  'commission_confirm', 'commission',
 ])
 
 export type ChildDocInput = {

@@ -214,6 +214,36 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     imageVars: ['iสำเนาบัตรประชาชน'],
   },
 
+  // ─── Commission ──────────────────────────────────────────────
+  {
+    slug: 'commission_confirm_th_en',
+    docType: 'commission_confirm' as ContractDocType,
+    language: 'th_en',
+    filename: 'สัญญาเช่าอังกฤษไทย.docx',
+    mdFilename: 'commission_confirm_th_en.md',
+    label: 'ยืนยันค่านายหน้า',
+    languageLabel: 'ไทย + อังกฤษ',
+    hasFurniture: false,
+    hasPaymentSchedule: false,
+    hasBuiltInSignatures: false,
+    requiredVars: ['ชื่อผู้ให้เช่า', 'view', 'เลขที่ห้องชุด', 'ชื่อผู้เช่า', 'commission_from_owner'],
+    imageVars: [],
+  },
+  {
+    slug: 'commission_th_en',
+    docType: 'commission' as ContractDocType,
+    language: 'th_en',
+    filename: 'สัญญาเช่าอังกฤษไทย.docx',
+    mdFilename: 'commission_th_en.md',
+    label: 'ใบคอมมิชชัน',
+    languageLabel: 'ไทย + อังกฤษ',
+    hasFurniture: false,
+    hasPaymentSchedule: false,
+    hasBuiltInSignatures: false,
+    requiredVars: ['ชื่อผู้ให้เช่า', 'ชื่อผู้เช่า', 'view', 'เลขที่ห้องชุด', 'commission_from_owner'],
+    imageVars: [],
+  },
+
   // ─── Payment Schedule ────────────────────────────────────────
   {
     slug: 'installment_schedule_th_en',
@@ -386,6 +416,7 @@ export const LANGUAGE_LABELS: Record<LanguageVersion, string> = {
 // Doc types that have canonical markdown template support
 export const TEMPLATE_SUPPORTED_TYPES = new Set<string>([
   'rental', 'reservation', 'renewal', 'co_agent', 'installment_schedule',
+  'commission_confirm', 'commission',
   'invoice_reservation', 'invoice_deposit',
   'receipt_reservation', 'receipt_deposit',
   'notice', 'warning',

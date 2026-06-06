@@ -254,10 +254,17 @@ export function computeVariables(
   if (template.hasPaymentSchedule && moveInDate && rent > 0) {
     const scheduleRows: string[] = []
     for (let n = 1; n <= months; n++) {
-      const d = new Date(moveInDate)
-      d.setMonth(d.getMonth() + (n - 1))
-      const monthName = THAI_MONTHS[d.getMonth()] ?? ''
-      scheduleRows.push(`| ${n} | ${monthName} | ${paymentDay} ${monthName} | ${withCommas(rent)} | | | |`)
+      const baseMonth = moveInDate.getMonth() + (n - 1)
+      const year = moveInDate.getFullYear() + Math.floor(baseMonth / 12)
+      const month = baseMonth % 12
+      const lastDayOfMonth = new Date(year, month + 1, 0).getDate()
+      const day = Math.min(paymentDay, lastDayOfMonth)
+      const dueDate = new Date(year, month, day)
+      const payableUntil = new Date(dueDate.getTime())
+      payableUntil.setDate(payableUntil.getDate() + graceDays)
+      const dueCell = `${toEnDateLong(dueDate)} {th}(${toThaiDate(dueDate)}){/th}`
+      const payCell = `${toEnDateLong(payableUntil)} {th}(${toThaiDate(payableUntil)}){/th}`
+      scheduleRows.push(`| ${n} | ${dueCell} | ${payCell} | ${withCommas(rent)} |`)
     }
     v['ตารางชำระ']        = scheduleRows.join('\n')
     v['รวมค่าเช่าทั้งหมด'] = withCommas(rent * months)
@@ -377,8 +384,42 @@ export function computeVariables(
   v['ธนาคาร Co-Agent']      = extra['ธนาคาร Co-Agent'] ?? '-'
   v['ชื่อบัญชี Co-Agent']   = extra['ชื่อบัญชี Co-Agent'] ?? '-'
   v['เลขบัญชี Co-Agent']    = extra['เลขบัญชี Co-Agent'] ?? '-'
-  v['คอมมิชชั่น%']          = extra['คอมมิชชั่น%'] ?? '-'
+  v['คอมมิชชั่น%']          = (() => {
+    const rp = (contract as { commission_rate_pct?: number | null }).commission_rate_pct
+    return rp != null ? `${rp}%` : (extra['คอมมิชชั่น%'] ?? '-')
+  })()
   v['ค่าธรรมเนียม Co-Agent'] = extra['ค่าธรรมเนียม Co-Agent'] || withCommas(rent / 2)
+
+  // ─── Commission-specific ──────────────────────────────────────
+  {
+    const commFromOwner   = (contract as { commission_from_owner?: number | null }).commission_from_owner ?? null
+    const commFromCust    = (contract as { commission_from_customer?: number | null }).commission_from_customer ?? null
+    const commNetAmt      = (contract as { commission_net?: number | null }).commission_net ?? null
+    const commOwnerBase   = commFromOwner ?? commNetAmt ?? 0
+
+    v['commission_from_owner']         = commOwnerBase > 0 ? withCommas(commOwnerBase) : '-'
+    v['commission_from_owner_text']    = commOwnerBase > 0 ? bahtText(commOwnerBase) : '-'
+    v['commission_from_owner_en']      = commOwnerBase > 0 ? bahtTextEn(commOwnerBase) : '-'
+    v['commission_from_customer']      = commFromCust != null && commFromCust > 0 ? withCommas(commFromCust) : '-'
+    v['commission_from_customer_text'] = commFromCust != null && commFromCust > 0 ? bahtText(commFromCust) : '-'
+    v['commission_net']                = commNetAmt != null ? withCommas(commNetAmt) : '-'
+
+    const commVat7 = contract.vat_7 ? Math.round(commOwnerBase * 0.07 * 100) / 100 : 0
+    const commWht3 = contract.wht_3 ? Math.round(commOwnerBase * 0.03 * 100) / 100 : 0
+    const commTotal = commOwnerBase + commVat7 - commWht3
+
+    v['commission_vat7']       = contract.vat_7 && commVat7 > 0 ? withCommas(commVat7) : '-'
+    v['commission_wht3']       = contract.wht_3 && commWht3 > 0 ? withCommas(commWht3) : '-'
+    v['commission_total']      = commTotal > 0 ? withCommas(commTotal) : '-'
+    v['commission_total_text'] = commTotal > 0 ? bahtText(commTotal) : '-'
+    v['commission_total_en']   = commTotal > 0 ? bahtTextEn(commTotal) : '-'
+  }
+
+  // ─── Agent bank — dedicated (never falls back to owner) ───────
+  v['agent_bank']         = agent?.bank_name ?? '-'
+  v['agent_account_name'] = agent?.bank_account_name ?? '-'
+  v['agent_account_no']   = agent?.bank_account_no ?? '-'
+  v['agent_name']         = agent?.name ?? agent?.company_name ?? '-'
 
   // ─── Image placeholders (left empty — no binary embedding) ───
   for (const imgVar of template.imageVars) {
