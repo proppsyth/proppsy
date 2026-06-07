@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowLeft, Check, Building2, Users, FileText, TrendingUp, Calendar, Zap, Brain, Camera, PenLine, BarChart3 } from 'lucide-react'
 import type { Metadata } from 'next'
 import PublicNav from '@/components/shared/PublicNav'
+import PublicFooter from '@/components/shared/PublicFooter'
 import { getAllPlanLimits } from '@/lib/planLimits'
 
 export const metadata: Metadata = { title: 'บริการของเรา — Proppsy' }
@@ -266,9 +267,7 @@ export default async function ServicesPage() {
         </div>
       </div>
 
-      <footer className="border-t border-gray-100 mt-8 py-6 text-center text-xs text-gray-400">
-        © {new Date().getFullYear()} Proppsy · Real Estate Management Platform
-      </footer>
+      <PublicFooter />
     </div>
   )
 }

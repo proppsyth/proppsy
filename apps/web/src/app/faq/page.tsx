@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { HelpCircle, MessageCircle, BookOpen, ArrowLeft } from 'lucide-react'
 import PublicNav from '@/components/shared/PublicNav'
+import PublicFooter from '@/components/shared/PublicFooter'
 import { createServiceClient } from '@/lib/supabase/server'
 import FaqSearch from './FaqSearch'
 import type { FaqItem } from './FaqSearch'
@@ -109,9 +110,7 @@ export default async function FaqPage() {
         )}
       </div>
 
-      <footer className="border-t border-gray-100 py-6 text-center text-xs text-gray-400">
-        © {new Date().getFullYear()} Proppsy · Real Estate Management Platform
-      </footer>
+      <PublicFooter />
     </div>
   )
 }

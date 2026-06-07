@@ -3,8 +3,9 @@ import { notFound } from 'next/navigation'
 import StorageImage from '@/components/shared/StorageImage'
 import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import PublicNav from '@/components/shared/PublicNav'
+import PublicFooter from '@/components/shared/PublicFooter'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
@@ -42,7 +43,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function NewsDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   const { data: news } = await supabase
     .from('news')
@@ -81,9 +82,7 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ id:
         )}
       </article>
 
-      <footer className="border-t border-gray-100 mt-8 py-6 text-center text-xs text-gray-400">
-        © {new Date().getFullYear()} Proppsy
-      </footer>
+      <PublicFooter />
 
       <script
         type="application/ld+json"

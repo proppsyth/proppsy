@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { BookOpen, ArrowLeft } from 'lucide-react'
 import PublicNav from '@/components/shared/PublicNav'
+import PublicFooter from '@/components/shared/PublicFooter'
 import { createServiceClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
@@ -166,9 +167,7 @@ export default async function ArticlesPage({
         )}
       </div>
 
-      <footer className="border-t border-gray-100 py-6 text-center text-xs text-gray-400">
-        © {new Date().getFullYear()} Proppsy · Real Estate Management Platform
-      </footer>
+      <PublicFooter />
     </div>
   )
 }

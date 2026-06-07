@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { ArrowLeft, Building2, Users, FileText, TrendingUp, Calendar, Zap, Shield } from 'lucide-react'
 import type { Metadata } from 'next'
 import PublicNav from '@/components/shared/PublicNav'
+import PublicFooter from '@/components/shared/PublicFooter'
 
 export const metadata: Metadata = { title: 'เกี่ยวกับเรา — Proppsy' }
 
@@ -88,9 +89,7 @@ export default function AboutPage() {
         </div>
       </div>
 
-      <footer className="border-t border-gray-100 mt-8 py-6 text-center text-xs text-gray-400">
-        © {new Date().getFullYear()} Proppsy · Real Estate Management Platform
-      </footer>
+      <PublicFooter />
     </div>
   )
 }

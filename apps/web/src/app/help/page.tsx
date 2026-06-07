@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ChevronDown, ArrowLeft } from 'lucide-react'
 import PublicNav from '@/components/shared/PublicNav'
+import PublicFooter from '@/components/shared/PublicFooter'
 
 export const metadata: Metadata = { title: 'คู่มือ & FAQ — Proppsy' }
 
@@ -338,6 +339,7 @@ export default function HelpPage() {
         </div>
 
       </div>
+      <PublicFooter />
     </div>
   )
 }

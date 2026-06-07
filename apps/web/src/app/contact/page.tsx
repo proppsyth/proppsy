@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowLeft, Mail, Phone, MessageCircle, MapPin, Clock } from 'lucide-react'
 import type { Metadata } from 'next'
 import PublicNav from '@/components/shared/PublicNav'
+import PublicFooter from '@/components/shared/PublicFooter'
 
 export const metadata: Metadata = { title: 'ติดต่อเรา — Proppsy' }
 
@@ -89,9 +90,7 @@ export default function ContactPage() {
         </div>
       </div>
 
-      <footer className="border-t border-gray-100 mt-8 py-6 text-center text-xs text-gray-400">
-        © {new Date().getFullYear()} Proppsy · Real Estate Management Platform
-      </footer>
+      <PublicFooter />
     </div>
   )
 }

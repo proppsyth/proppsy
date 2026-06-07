@@ -2,13 +2,14 @@ import Link from 'next/link'
 import { Newspaper, ArrowLeft } from 'lucide-react'
 import StorageImage from '@/components/shared/StorageImage'
 import type { Metadata } from 'next'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import PublicNav from '@/components/shared/PublicNav'
+import PublicFooter from '@/components/shared/PublicFooter'
 
 export const metadata: Metadata = { title: 'ข่าวสาร — Proppsy' }
 
 export default async function NewsPage() {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   const { data: news } = await supabase
     .from('news')
@@ -64,9 +65,7 @@ export default async function NewsPage() {
         )}
       </div>
 
-      <footer className="border-t border-gray-100 mt-8 py-6 text-center text-xs text-gray-400">
-        © {new Date().getFullYear()} Proppsy
-      </footer>
+      <PublicFooter />
     </div>
   )
 }

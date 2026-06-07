@@ -7,6 +7,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { Stock } from '@/types'
 import { formatRoomType } from '@/types'
 import PublicNav from '@/components/shared/PublicNav'
+import PublicFooter from '@/components/shared/PublicFooter'
 import PhotoGallery from '@/app/(protected)/stock/[id]/PhotoGallery'
 import ContactCard from './ContactCard'
 import ShareButtons from './ShareButtons'
@@ -292,10 +293,7 @@ export default async function PublicPropertyDetailPage({
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100 mt-12 py-8 text-center text-xs text-gray-400">
-        © {new Date().getFullYear()} Proppsy · Real Estate Management Platform
-      </footer>
+      <PublicFooter />
 
       {/* JSON-LD structured data */}
       <script

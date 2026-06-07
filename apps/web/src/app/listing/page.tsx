@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/server'
 import PublicNav from '@/components/shared/PublicNav'
+import PublicFooter from '@/components/shared/PublicFooter'
 import ListingPageClient, { type FilterState } from './ListingPageClient'
 import type { StockWithProject } from './PropertyCard'
 
@@ -168,6 +169,7 @@ export default async function ListingPage({
         filterOptions={{ provinces, btsMrtOptions, roomTypes }}
         currentFilters={currentFilters}
       />
+      <PublicFooter />
     </div>
   )
 }

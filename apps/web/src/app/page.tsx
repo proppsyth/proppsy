@@ -1,11 +1,11 @@
 ﻿import Link from 'next/link'
-import Image from 'next/image'
 import StorageImage from '@/components/shared/StorageImage'
 import { Building2, ArrowRight, Newspaper, Play } from 'lucide-react'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/server'
 import PublicNav from '@/components/shared/PublicNav'
+import PublicFooter from '@/components/shared/PublicFooter'
 import FilterBar from './listing/FilterBar'
 import HeroBanner from './listing/HeroBanner'
 import StatsCounter from './listing/StatsCounter'
@@ -295,24 +295,7 @@ export default async function HomePage({
         </div>
       )}
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-gray-100 py-8">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
-          <div className="flex items-center gap-2">
-            <Image src="/logo/logo-icon.jpg" alt="Proppsy" width={20} height={20} className="object-contain rounded" />
-            <span>© {new Date().getFullYear()} Proppsy · Real Estate Management Platform</span>
-          </div>
-          <div className="flex items-center gap-4 flex-wrap justify-center sm:justify-end">
-            <Link href="/listing" className="hover:text-gray-600 transition">ทรัพย์สิน</Link>
-            <Link href="/help" className="hover:text-gray-600 transition">คู่มือ</Link>
-            <Link href="/faq" className="hover:text-gray-600 transition">FAQ</Link>
-            <Link href="/services" className="hover:text-gray-600 transition">บริการ</Link>
-            <Link href="/news" className="hover:text-gray-600 transition">ข่าวสาร</Link>
-            <Link href="/about" className="hover:text-gray-600 transition">เกี่ยวกับเรา</Link>
-            <Link href="/contact" className="hover:text-gray-600 transition">ติดต่อเรา</Link>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   )
 }
