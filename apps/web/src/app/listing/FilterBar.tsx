@@ -1,41 +1,21 @@
-'use client'
+﻿'use client'
 
 import { useRouter, usePathname } from 'next/navigation'
-import type { RoomType } from '@/types'
 
-const ROOM_TYPES: (RoomType | 'all')[] = ['all', 'Studio', '1BR', '2BR', '3BR', 'Penthouse', 'อื่นๆ']
-
-const RENT_PRICE_BUCKETS = [
-  { value: 'all', label: 'ทุกราคา' },
-  { value: 'low', label: '≤15K' },
-  { value: 'mid', label: '15K–30K' },
-  { value: 'high', label: '30K–60K' },
-  { value: 'premium', label: '60K+' },
-]
-
-const SALE_PRICE_BUCKETS = [
-  { value: 'all', label: 'ทุกราคา' },
-  { value: 'low', label: '≤2M' },
-  { value: 'mid', label: '2M–5M' },
-  { value: 'high', label: '5M–10M' },
-  { value: 'premium', label: '10M+' },
-]
+const ROOM_TYPES = ['all', 'Studio', '1BR', '2BR', '3BR', 'Penthouse', 'อื่นๆ'] as const
 
 interface Props {
   currentListingType: string
   currentRoomType: string
   currentProvince: string
-  currentDistrict: string
   currentBtsMrt: string
-  currentPriceBucket: string
   provinces: string[]
-  districts: string[]
   btsMrtOptions: string[]
 }
 
 export default function FilterBar({
-  currentListingType, currentRoomType, currentProvince, currentDistrict,
-  currentBtsMrt, currentPriceBucket, provinces, districts, btsMrtOptions,
+  currentListingType, currentRoomType, currentProvince, currentBtsMrt,
+  provinces, btsMrtOptions,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -43,22 +23,16 @@ export default function FilterBar({
   function setFilter(key: string, value: string) {
     const params = new URLSearchParams()
     const lt = key === 'listing_type' ? value : currentListingType
-    const rt = key === 'room_type' ? value : currentRoomType
-    const pv = key === 'province' ? value : currentProvince
-    const dt = key === 'district' ? value : (key === 'province' ? 'all' : currentDistrict)
-    const bm = key === 'bts_mrt' ? value : currentBtsMrt
-    const pb = key === 'price_bucket' ? value : (key === 'listing_type' ? 'all' : currentPriceBucket)
+    const rt = key === 'room_type'    ? value : currentRoomType
+    const pv = key === 'province'     ? value : currentProvince
+    const bm = key === 'bts_mrt'     ? value : currentBtsMrt
     if (lt && lt !== 'all') params.set('listing_type', lt)
     if (rt && rt !== 'all') params.set('room_type', rt)
     if (pv && pv !== 'all') params.set('province', pv)
-    if (dt && dt !== 'all') params.set('district', dt)
     if (bm && bm !== 'all') params.set('bts_mrt', bm)
-    if (pb && pb !== 'all') params.set('price_bucket', pb)
     const qs = params.toString()
     router.push(`${pathname}${qs ? '?' + qs : ''}`)
   }
-
-  const priceBuckets = currentListingType === 'sale' ? SALE_PRICE_BUCKETS : RENT_PRICE_BUCKETS
 
   return (
     <div className="space-y-1.5">
@@ -84,20 +58,7 @@ export default function FilterBar({
         ))}
       </div>
 
-      {/* Row 3: price range */}
-      {currentListingType !== 'all' && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-          <span className="text-xs text-gray-400 font-medium whitespace-nowrap">ราคา:</span>
-          {priceBuckets.map(b => (
-            <button key={b.value} onClick={() => setFilter('price_bucket', b.value)}
-              className={`px-3 py-1.5 text-xs rounded-full transition font-medium whitespace-nowrap flex-shrink-0 active:scale-95 ${currentPriceBucket === b.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'}`}>
-              {b.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Row 4: province */}
+      {/* Row 3: province */}
       {provinces.length > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
           <span className="text-xs text-gray-400 font-medium whitespace-nowrap">จังหวัด:</span>
@@ -114,24 +75,7 @@ export default function FilterBar({
         </div>
       )}
 
-      {/* Row 5: district (only when province selected) */}
-      {currentProvince !== 'all' && districts.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-          <span className="text-xs text-gray-400 font-medium whitespace-nowrap">เขต/อำเภอ:</span>
-          <button onClick={() => setFilter('district', 'all')}
-            className={`px-3 py-1.5 text-xs rounded-full transition font-medium whitespace-nowrap flex-shrink-0 active:scale-95 ${currentDistrict === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'}`}>
-            ทุกเขต
-          </button>
-          {districts.map(d => (
-            <button key={d} onClick={() => setFilter('district', d)}
-              className={`px-3 py-1.5 text-xs rounded-full transition font-medium whitespace-nowrap flex-shrink-0 active:scale-95 ${currentDistrict === d ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'}`}>
-              {d}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Row 6: BTS/MRT */}
+      {/* Row 4: BTS/MRT */}
       {btsMrtOptions.length > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
           <span className="text-xs text-gray-400 font-medium whitespace-nowrap">BTS/MRT:</span>

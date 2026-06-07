@@ -9,9 +9,9 @@
  * Renders nothing if no active banners exist for the position.
  */
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { createServiceClient } from '@/lib/supabase/server'
+import BannerImage from '@/components/shared/BannerImage'
 
 interface Banner {
   id: string
@@ -43,21 +43,10 @@ export async function BannerStrip({ position }: { position: string }) {
   if (banners.length === 0) return null
 
   return (
-    <div className="w-full overflow-hidden">
+    <div className="w-full">
       {banners.map(b => {
         if (!b.image_url) return null
-        const img = (
-          <div className="relative w-full" style={{ aspectRatio: '6/1', minHeight: 64, maxHeight: 120 }}>
-            <Image
-              src={b.image_url}
-              alt={b.title ?? 'แบนเนอร์'}
-              fill
-              className="object-cover"
-              sizes="100vw"
-              priority={false}
-            />
-          </div>
-        )
+        const img = <BannerImage src={b.image_url} alt={b.title ?? undefined} sizes="100vw" maxHeight={200} />
         return b.link_url ? (
           <Link key={b.id} href={b.link_url} target="_blank" rel="noopener noreferrer" className="block">
             {img}
@@ -80,17 +69,7 @@ export async function BannerSidebar({ position }: { position: string }) {
     <div className="space-y-3">
       {banners.map(b => {
         if (!b.image_url) return null
-        const img = (
-          <div className="relative w-full rounded-xl overflow-hidden" style={{ aspectRatio: '1/1' }}>
-            <Image
-              src={b.image_url}
-              alt={b.title ?? 'แบนเนอร์'}
-              fill
-              className="object-cover"
-              sizes="300px"
-            />
-          </div>
-        )
+        const img = <BannerImage src={b.image_url} alt={b.title ?? undefined} sizes="300px" className="rounded-xl" maxHeight={160} />
         return b.link_url ? (
           <Link key={b.id} href={b.link_url} target="_blank" rel="noopener noreferrer" className="block hover:opacity-90 transition">
             {img}

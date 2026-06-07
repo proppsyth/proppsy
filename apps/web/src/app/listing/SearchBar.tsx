@@ -1,31 +1,33 @@
-'use client'
+﻿'use client'
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Search, X } from 'lucide-react'
 import { useState } from 'react'
 
-export default function SearchBar({ currentQ }: { currentQ: string }) {
+export default function SearchBar({ currentQ, targetPath }: { currentQ: string; targetPath?: string }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [q, setQ] = useState(currentQ)
 
+  const dest = targetPath ?? pathname
+
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
-    const params = new URLSearchParams(searchParams.toString())
+    const params = targetPath ? new URLSearchParams() : new URLSearchParams(searchParams.toString())
     if (q.trim()) {
       params.set('q', q.trim())
     } else {
       params.delete('q')
     }
-    router.push(`${pathname}?${params.toString()}`)
+    router.push(`${dest}${params.size > 0 ? '?' + params.toString() : ''}`)
   }
 
   function handleClear() {
     setQ('')
-    const params = new URLSearchParams(searchParams.toString())
+    const params = targetPath ? new URLSearchParams() : new URLSearchParams(searchParams.toString())
     params.delete('q')
-    router.push(`${pathname}?${params.toString()}`)
+    router.push(`${dest}${params.size > 0 ? '?' + params.toString() : ''}`)
   }
 
   return (

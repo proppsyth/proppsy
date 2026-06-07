@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import Image from 'next/image'
@@ -35,16 +35,15 @@ export default function HeroBannerClient({ slides, currentQ }: Props) {
     >
       {slide.type === 'image' ? (
         /* ── DB image banner ── */
-        <div className="relative w-full" style={{ minHeight: 280, maxHeight: 480, aspectRatio: '16/6' }}>
+        <div className="relative w-full" style={{ aspectRatio: '16/9', maxHeight: '250px' }}>
           <Image
             src={slide.imageUrl!}
             alt={slide.title ?? 'แบนเนอร์'}
             fill
-            className="object-cover"
+            className="object-cover object-center"
             sizes="100vw"
             priority
           />
-          {/* Overlay with optional link */}
           {slide.linkUrl && (
             <Link
               href={slide.linkUrl}
@@ -54,7 +53,6 @@ export default function HeroBannerClient({ slides, currentQ }: Props) {
               aria-label={slide.title ?? 'ดูรายละเอียด'}
             />
           )}
-          {/* Search overlay on first image slide if no title conflict */}
           <div className="absolute inset-0 bg-black/20 flex items-end justify-center pb-8 pointer-events-none">
             <div className="pointer-events-auto w-full max-w-xl px-4">
               <Suspense fallback={<div className="h-12" />}>
@@ -94,7 +92,6 @@ export default function HeroBannerClient({ slides, currentQ }: Props) {
         </div>
       )}
 
-      {/* Prev/Next (only when multiple slides) */}
       {slides.length > 1 && (
         <>
           <button onClick={prev}

@@ -78,7 +78,7 @@ export default function NewBannerPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1.5">รูปแบนเนอร์</label>
             {imageState.url ? (
               <div className="relative rounded-xl overflow-hidden bg-gray-100" style={{ aspectRatio: '16/9' }}>
-                <Image src={imageState.url} alt="banner" fill className="object-cover" sizes="100vw" />
+                <Image src={imageState.url} alt="banner" fill className="object-cover object-center" sizes="100vw" />
                 <button type="button" onClick={imageState.clear}
                   className="absolute top-2 right-2 w-7 h-7 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition">
                   <X className="w-4 h-4" />

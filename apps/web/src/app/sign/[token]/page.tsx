@@ -37,7 +37,7 @@ export default async function ContractSignPage({
     .select(`
       *,
       contract:contracts(
-        id, doc_type, status, signed_at, docx_url,
+        id, doc_type, status, signed_at, docx_url, pdf_url, finalized_pdf_url,
         rent_price, deposit_amount, deposit_months, contract_months,
         move_in_date, end_date,
         stock:stock(id, unit_no, unit_name, building, floor, room_type, project_name),
@@ -149,6 +149,7 @@ export default async function ContractSignPage({
       ownerFullName={ownerFullName}
       tenantFullName={tenantFullName}
       docxUrl={contract?.docx_url ?? null}
+      pdfUrl={contract?.finalized_pdf_url ?? contract?.pdf_url ?? null}
       rentPrice={contract?.rent_price ?? null}
       depositAmount={contract?.deposit_amount ?? null}
       depositMonths={contract?.deposit_months ?? null}

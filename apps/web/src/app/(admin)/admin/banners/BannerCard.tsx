@@ -66,9 +66,9 @@ export default function BannerCard({ banner }: { banner: Banner }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex gap-4">
       {/* Thumbnail — 16:9 */}
-      <div className="w-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100" style={{ aspectRatio: '16/9' }}>
+      <div className="relative w-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100" style={{ aspectRatio: '16/9' }}>
         {banner.image_url ? (
-          <Image src={banner.image_url} alt={banner.title} width={96} height={54} className="object-cover w-full h-full" />
+          <Image src={banner.image_url} alt={banner.title} fill className="object-cover object-center" sizes="96px" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">ไม่มีรูป</div>
         )}
