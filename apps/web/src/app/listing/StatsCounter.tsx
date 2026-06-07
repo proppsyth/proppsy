@@ -2,7 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react'
 
-const STATS = [
+export interface StatItem {
+  value: number
+  label: string
+  unit: string
+  icon: string
+}
+
+const DEFAULT_STATS: StatItem[] = [
   { value: 1240, label: 'สัญญาที่ออกแล้ว', unit: 'ฉบับ', icon: '📄' },
   { value: 68,   label: 'เอเจนต์ที่ใช้งาน', unit: 'คน',   icon: '👤' },
   { value: 530,  label: 'ทรัพย์ในระบบ',    unit: 'รายการ', icon: '🏠' },
@@ -28,9 +35,10 @@ function CountUp({ target, active }: { target: number; active: boolean }) {
   return <>{count.toLocaleString('th-TH')}</>
 }
 
-export default function StatsCounter() {
+export default function StatsCounter({ stats }: { stats?: StatItem[] }) {
   const [visible, setVisible] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const displayStats = stats ?? DEFAULT_STATS
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -48,7 +56,7 @@ export default function StatsCounter() {
           ตัวเลขจริงจากระบบ Proppsy
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center text-white">
-          {STATS.map(s => (
+          {displayStats.map(s => (
             <div key={s.label}>
               <p className="text-3xl mb-2">{s.icon}</p>
               <p className="text-3xl sm:text-4xl font-bold tabular-nums">
