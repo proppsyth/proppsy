@@ -1,6 +1,6 @@
 ﻿import Link from 'next/link'
 import StorageImage from '@/components/shared/StorageImage'
-import { Building2, ArrowRight, Newspaper, Play } from 'lucide-react'
+import { Building2, ArrowRight, Newspaper } from 'lucide-react'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -28,7 +28,10 @@ export const metadata: Metadata = {
   },
 }
 
-const YOUTUBE_ID = '16IweHfUBa4'
+function extractYouTubeId(url: string): string | null {
+  const match = url.match(/(?:v=|\/embed\/|\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  return match?.[1] ?? null
+}
 
 const ARTICLE_CATEGORY_LABELS: Record<string, string> = {
   general: 'ทั่วไป',
@@ -64,12 +67,16 @@ export default async function HomePage({
 
   const supabase = createServiceClient()
 
-  const [{ data: projectRows }, { data: latestNews }, { data: latestArticles }, { data: activePartners }] = await Promise.all([
+  const [{ data: projectRows }, { data: latestNews }, { data: latestArticles }, { data: activePartners }, { data: featuredVideos }] = await Promise.all([
     supabase.from('projects').select('province, bts_mrt').not('province', 'is', null),
     supabase.from('news').select('id, title, summary, cover_url, created_at').eq('published', true).order('created_at', { ascending: false }).limit(3),
     supabase.from('articles').select('id, title, slug, excerpt, category').eq('is_published', true).order('created_at', { ascending: false }).limit(4),
     supabase.from('partners').select('id, name_th, name_en, logo_url, website').eq('is_active', true).order('sort_order'),
+    supabase.from('website_videos').select('id, title, youtube_url').eq('is_active', true).eq('featured', true).order('sort_order').limit(1),
   ])
+
+  const heroVideo = featuredVideos?.[0] ?? null
+  const heroVideoId = heroVideo ? extractYouTubeId(heroVideo.youtube_url) : null
 
   const provinces = [...new Set(
     (projectRows ?? []).map((r: { province?: string }) => r.province).filter((p): p is string => !!p)
@@ -177,36 +184,29 @@ export default async function HomePage({
       {/* ── Animated Stats ── */}
       <StatsCounter />
 
-      {/* ── YouTube Section ── */}
-      {YOUTUBE_ID ? (
+      {/* ── YouTube / Video Section ── */}
+      {heroVideoId ? (
         <div className="bg-gray-900 py-12">
           <div className="max-w-4xl mx-auto px-4">
             <p className="text-center text-gray-400 text-xs font-medium uppercase tracking-widest mb-3">วิดีโอแนะนำ</p>
-            <h2 className="text-center text-white text-xl font-bold mb-6">ดูการใช้งาน Proppsy</h2>
+            <h2 className="text-center text-white text-xl font-bold mb-6">{heroVideo!.title}</h2>
             <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl">
               <iframe
-                src={`https://www.youtube.com/embed/${YOUTUBE_ID}?rel=0`}
-                title="Proppsy Demo"
+                src={`https://www.youtube.com/embed/${heroVideoId}?rel=0`}
+                title={heroVideo!.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 className="absolute inset-0 w-full h-full"
               />
             </div>
+            <p className="text-center mt-4">
+              <Link href="/videos" className="text-sm text-gray-400 hover:text-white transition">
+                ดูวิดีโอทั้งหมด →
+              </Link>
+            </p>
           </div>
         </div>
-      ) : (
-        <div className="bg-gray-900 py-12">
-          <div className="max-w-4xl mx-auto px-4 text-center">
-            <div className="border-2 border-dashed border-gray-600 rounded-2xl p-16 flex flex-col items-center gap-4">
-              <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
-                <Play className="w-7 h-7 text-white fill-white" />
-              </div>
-              <p className="text-white font-semibold">วิดีโอแนะนำ Proppsy</p>
-              <p className="text-gray-400 text-sm">ตั้งค่า YOUTUBE_ID ใน apps/web/src/app/page.tsx</p>
-            </div>
-          </div>
-        </div>
-      )}
+      ) : null}
 
       {/* ── Trust / Partners ── */}
       {(activePartners?.length ?? 0) > 0 && (

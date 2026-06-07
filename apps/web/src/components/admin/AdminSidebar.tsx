@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, Building2, Coins, Package, Receipt,
   FileText, FileCode, MapPin, Newspaper, BookOpen, Image as GalleryIcon,
-  HelpCircle, BarChart3, ScrollText, Settings, LogOut, Menu, X, ArrowLeft, Handshake,
+  HelpCircle, BarChart3, ScrollText, Settings, LogOut, Menu, X, ArrowLeft, Handshake, Video,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
@@ -54,6 +54,7 @@ const NAV_SECTIONS = [
       { href: '/admin/articles', icon: BookOpen, label: 'บทความ' },
       { href: '/admin/banners', icon: GalleryIcon, label: 'แบนเนอร์' },
       { href: '/admin/partners', icon: Handshake, label: 'พาร์ทเนอร์' },
+      { href: '/admin/videos', icon: Video, label: 'วิดีโอ' },
       { href: '/admin/faq', icon: HelpCircle, label: 'FAQ & คู่มือ' },
     ],
   },
