@@ -126,9 +126,6 @@ export default async function HomePage({
         <HeroBanner currentQ={q ?? ''} />
       </Suspense>
 
-      {/* ── Listing top banner ── */}
-      <BannerStrip position="listing_top" />
-
       {/* ── Quick filters ── */}
       <div className="bg-white border-b border-gray-100 shadow-sm sticky top-14 z-10">
         <div className="max-w-6xl mx-auto px-4 py-2.5">
@@ -183,6 +180,9 @@ export default async function HomePage({
 
       {/* ── Animated Stats ── */}
       <StatsCounter />
+
+      {/* ── Listing top banner ── */}
+      <BannerStrip position="listing_top" />
 
       {/* ── YouTube / Video Section ── */}
       {heroVideoId ? (

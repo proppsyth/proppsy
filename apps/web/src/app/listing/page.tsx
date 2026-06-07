@@ -4,8 +4,6 @@ import PublicNav from '@/components/shared/PublicNav'
 import PublicFooter from '@/components/shared/PublicFooter'
 import ListingPageClient, { type FilterState } from './ListingPageClient'
 import type { StockWithProject } from './PropertyCard'
-import StatsCounter from './StatsCounter'
-import { BannerStrip } from '@/components/shared/BannerZone'
 
 export const metadata: Metadata = {
   title: 'อสังหาริมทรัพย์ทั้งหมด — Proppsy',
@@ -48,27 +46,10 @@ export default async function ListingPage({
 
   const supabase = createServiceClient()
 
-  // Filter options + real stats — always fetch all, not filtered by current selection
-  const [
-    { data: projectRows },
-    { data: roomTypeRows },
-    { count: contractCount },
-    { count: agentCount },
-    { count: stockCount },
-  ] = await Promise.all([
+  const [{ data: projectRows }, { data: roomTypeRows }] = await Promise.all([
     supabase.from('projects').select('id, province, bts_mrt'),
     supabase.from('stock').select('room_type').not('room_type', 'is', null).eq('is_published', true),
-    supabase.from('contracts').select('*', { count: 'exact', head: true }),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('account_status', 'approved'),
-    supabase.from('stock').select('*', { count: 'exact', head: true }).eq('is_published', true),
   ])
-
-  const siteStats = [
-    { value: contractCount ?? 0, label: 'สัญญาที่ออกแล้ว', unit: 'ฉบับ',   icon: '📄' },
-    { value: agentCount   ?? 0, label: 'เอเจนต์ที่ใช้งาน', unit: 'คน',     icon: '👤' },
-    { value: stockCount   ?? 0, label: 'ทรัพย์ในระบบ',    unit: 'รายการ',  icon: '🏠' },
-    { value: 9,                  label: 'ประเภทสัญญา',     unit: 'ประเภท',  icon: '📋' },
-  ]
 
   const provinces = [...new Set(
     (projectRows ?? []).map(r => r.province as string | null).filter((p): p is string => !!p)
@@ -172,16 +153,7 @@ export default async function ListingPage({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 1. Navbar */}
       <PublicNav />
-
-      {/* 2. Proppsy Statistics — real system stats give credibility before banner/listings */}
-      <StatsCounter stats={siteStats} />
-
-      {/* 3. Listing Banner */}
-      <BannerStrip position="listing_top" />
-
-      {/* 4. Property Filters + 5. Property Listings */}
       <div className="bg-white border-b border-gray-100 px-4 py-3.5">
         <h1 className="text-base font-bold text-gray-900">อสังหาริมทรัพย์ทั้งหมด</h1>
         <p className="text-xs text-gray-400 mt-0.5">เช่า-ขาย คอนโด บ้าน ทาวน์เฮ้าส์ ทั่วประเทศไทย</p>
@@ -194,8 +166,6 @@ export default async function ListingPage({
         filterOptions={{ provinces, btsMrtOptions, roomTypes }}
         currentFilters={currentFilters}
       />
-
-      {/* 6. Footer */}
       <PublicFooter />
     </div>
   )
