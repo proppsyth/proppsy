@@ -20,7 +20,7 @@ import { AiLimitModal } from '@/components/shared/AiLimitModal'
 
 const PREFIX_SYNC: Record<string, string> = { นาย: 'Mr.', นาง: 'Mrs.', นางสาว: 'Ms.' }
 const PREFIXES_TH = ['นาย', 'นาง', 'นางสาว']
-const PREFIXES_EN = ['Mr.', 'Mrs.', 'Miss', 'Ms.']
+const PREFIXES_EN = ['Mr.', 'Mrs.', 'Ms.']
 const KNOWN_SOURCES = ['line_oa', 'facebook', 'instagram', 'tiktok', 'website', 'referral', 'walk_in', 'online', 'other']
 const LEAD_STATUS_OPTIONS = [
   { value: 'lead',        label: 'Lead' },
@@ -185,30 +185,38 @@ export default function CustomerForm({ initialData, customerId }: Props) {
       const result = await parseDocument(base64, mimeType)
       if ('error' in result) { setOcrMessage(result.error); return }
 
+      const updates: Partial<FormState> = {}
       const fields: string[] = []
-      const apply = (k: keyof FormState, v: string | null | undefined) => {
-        if (v) { set(k, v); fields.push(k) }
+      const applyTo = (k: keyof FormState, v: string | null | undefined) => {
+        if (v) { (updates as Record<string, string>)[k] = v; fields.push(k) }
       }
 
       const isPassport = result.doc_type === 'passport'
 
-      apply('prefix', result.prefix)
-      apply('first_name_th', result.first_name_th)
-      apply('last_name_th', result.last_name_th)
-      apply('first_name_en', result.first_name_en)
-      apply('last_name_en', result.last_name_en)
-      apply('national_id', result.national_id)
+      applyTo('prefix', result.prefix)
+      applyTo('first_name_th', result.first_name_th)
+      applyTo('last_name_th', result.last_name_th)
+      applyTo('first_name_en', result.first_name_en)
+      applyTo('last_name_en', result.last_name_en)
+      applyTo('national_id', result.national_id)
 
       if (!isPassport) {
-        apply('address_no', result.address_no)
-        apply('moo', result.moo)
-        apply('address_road', result.address_road)
-        apply('province', result.province)
-        apply('district', result.district)
-        apply('subdistrict', result.subdistrict)
-        apply('zip', result.zip)
+        applyTo('address_no', result.address_no)
+        applyTo('moo', result.moo)
+        applyTo('address_road', result.address_road)
+        applyTo('province', result.province)
+        applyTo('district', result.district)
+        applyTo('subdistrict', result.subdistrict)
+        applyTo('zip', result.zip)
       }
 
+      // Auto-sync English prefix from Thai prefix
+      if (updates.prefix) {
+        const eng = PREFIX_SYNC[updates.prefix]
+        if (eng) updates.prefix_en = eng
+      }
+
+      setForm(f => ({ ...f, ...updates }))
       await idCardState.upload(file)
       refreshQuota()
 

@@ -19,7 +19,8 @@ import { AiLimitModal } from '@/components/shared/AiLimitModal'
 // ─── Constants ───────────────────────────────────────────────
 
 const PREFIXES_TH = ['นาย', 'นาง', 'นางสาว']
-const PREFIXES_EN = ['Mr.', 'Mrs.', 'Miss', 'Ms.']
+const PREFIXES_EN = ['Mr.', 'Mrs.', 'Ms.']
+const PREFIX_SYNC: Record<string, string> = { นาย: 'Mr.', นาง: 'Mrs.', นางสาว: 'Ms.' }
 const BANK_OPTIONS = [
   'ธนาคารกรุงเทพ', 'ธนาคารกสิกรไทย', 'ธนาคารไทยพาณิชย์',
   'ธนาคารกรุงไทย', 'ธนาคารกรุงศรีอยุธยา', 'ธนาคารทหารไทยธนชาต',
@@ -27,8 +28,6 @@ const BANK_OPTIONS = [
 ]
 
 // ─── Types ───────────────────────────────────────────────────
-
-const PREFIX_SYNC: Record<string, string> = { นาย: 'Mr.', นาง: 'Mrs.', นางสาว: 'Ms.' }
 
 interface FormState {
   prefix: string
@@ -137,6 +136,8 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
   const [bankOcrMessage, setBankOcrMessage] = useState('')
   const [sigMode, setSigMode] = useState<'upload' | 'draw'>('upload')
   const [showLimitModal, setShowLimitModal] = useState(false)
+  // Auto-fill bank_account_name from owner's full name (true for new owners or when no bank name set)
+  const [bankNameIsAuto, setBankNameIsAuto] = useState(!initialData?.bank_account_name)
   const { quota, refresh: refreshQuota, isExhausted } = useAiQuota()
 
   const ocrInputRef = useRef<HTMLInputElement>(null)
@@ -154,9 +155,25 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
     entityId: ownerId,
     initialUrl: initialData?.signature_url ?? '',
   })
+  const bankBookState = useDocumentUpload({
+    category: 'bank-books',
+    entityId: ownerId,
+    isPrivate: true,
+    watermarkStyle: 'bank-book',
+    initialUrl: initialData?.bank_book_url ?? '',
+  })
 
+  // set: updates a single field; auto-fills bank_account_name from name fields when in auto mode
   const set = (k: keyof FormState, v: string) =>
-    setForm(f => ({ ...f, [k]: v }))
+    setForm(f => {
+      const next: FormState = { ...f, [k]: v }
+      if (bankNameIsAuto && (k === 'first_name_th' || k === 'last_name_th')) {
+        const fn = k === 'first_name_th' ? v : f.first_name_th
+        const ln = k === 'last_name_th' ? v : f.last_name_th
+        next.bank_account_name = [fn, ln].filter(Boolean).join(' ')
+      }
+      return next
+    })
 
   // ─── OCR Document ─────────────────────────────────────────
 
@@ -167,30 +184,46 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
       const result = await parseDocument(base64, mimeType)
       if ('error' in result) { setOcrMessage(result.error); return }
 
-      const fields: (keyof FormState)[] = []
-      const apply = (k: keyof FormState, v: string | null | undefined) => {
-        if (v) { set(k, v); fields.push(k) }
+      const updates: Partial<FormState> = {}
+      const fields: string[] = []
+      const applyTo = (k: keyof FormState, v: string | null | undefined) => {
+        if (v) { (updates as Record<string, string>)[k] = v; fields.push(k) }
       }
 
       const isPassport = result.doc_type === 'passport'
 
-      apply('prefix', result.prefix)
-      apply('first_name_th', result.first_name_th)
-      apply('last_name_th', result.last_name_th)
-      apply('first_name_en', result.first_name_en)
-      apply('last_name_en', result.last_name_en)
-      apply('national_id', result.national_id)
+      applyTo('prefix', result.prefix)
+      applyTo('first_name_th', result.first_name_th)
+      applyTo('last_name_th', result.last_name_th)
+      applyTo('first_name_en', result.first_name_en)
+      applyTo('last_name_en', result.last_name_en)
+      applyTo('national_id', result.national_id)
 
       if (!isPassport) {
-        apply('address_no', result.address_no)
-        apply('moo', result.moo)
-        apply('address_road', result.address_road)
-        apply('province', result.province)
-        apply('district', result.district)
-        apply('subdistrict', result.subdistrict)
-        apply('zip', result.zip)
+        applyTo('address_no', result.address_no)
+        applyTo('moo', result.moo)
+        applyTo('address_road', result.address_road)
+        applyTo('province', result.province)
+        applyTo('district', result.district)
+        applyTo('subdistrict', result.subdistrict)
+        applyTo('zip', result.zip)
       }
 
+      // Auto-sync English prefix from Thai prefix
+      if (updates.prefix) {
+        const eng = PREFIX_SYNC[updates.prefix]
+        if (eng) updates.prefix_en = eng
+      }
+
+      // Auto-fill bank_account_name from owner's full name (if not overridden by OCR or manual edit)
+      if (bankNameIsAuto) {
+        const fn = updates.first_name_th ?? ''
+        const ln = updates.last_name_th ?? ''
+        const fullName = [fn, ln].filter(Boolean).join(' ')
+        if (fullName) updates.bank_account_name = fullName
+      }
+
+      setForm(f => ({ ...f, ...updates }))
       await idCardState.upload(file)
       refreshQuota()
 
@@ -216,12 +249,21 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
       const result = await parseBankBook(base64, mimeType)
       if ('error' in result) { setBankOcrMessage(result.error); return }
 
+      const updates: Partial<FormState> = {}
       const fields: string[] = []
-      if (result.bank_name) { set('bank_name', result.bank_name); fields.push('ธนาคาร') }
-      if (result.bank_account_name) { set('bank_account_name', result.bank_account_name); fields.push('ชื่อบัญชี') }
-      if (result.bank_account_no) { set('bank_account_no', result.bank_account_no); fields.push('เลขบัญชี') }
 
+      if (result.bank_name) { updates.bank_name = result.bank_name; fields.push('ธนาคาร') }
+      if (result.bank_account_name) {
+        updates.bank_account_name = result.bank_account_name
+        fields.push('ชื่อบัญชี')
+        setBankNameIsAuto(false) // OCR result takes priority over auto-fill
+      }
+      if (result.bank_account_no) { updates.bank_account_no = result.bank_account_no; fields.push('เลขบัญชี') }
+
+      if (Object.keys(updates).length > 0) setForm(f => ({ ...f, ...updates }))
+      await bankBookState.upload(file) // Store bank book image automatically
       refreshQuota()
+
       setBankOcrMessage(fields.length
         ? `กรอกข้อมูลธนาคาร: ${fields.join(', ')}`
         : 'ไม่พบข้อมูลธนาคาร กรุณากรอกเอง')
@@ -237,6 +279,7 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
         ...toInput(form),
         id_card_url: idCardState.url || undefined,
         signature_url: sigState.url || undefined,
+        bank_book_url: bankBookState.url || undefined,
       }
       if (ownerId) {
         const res = await updateOwner(ownerId, input)
@@ -413,7 +456,7 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
           <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-3">
             <BookOpen className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-blue-700 mb-2">สแกนสมุดบัญชีเพื่อกรอกข้อมูลธนาคารอัตโนมัติ</p>
+              <p className="text-xs text-blue-700 mb-2">สแกนสมุดบัญชีเพื่อกรอกข้อมูลธนาคารอัตโนมัติ และบันทึกภาพ</p>
               <input
                 ref={bankOcrInputRef}
                 type="file"
@@ -447,6 +490,13 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
             </div>
           </div>
 
+          {/* Bank book image (auto-attached from OCR or manual upload) */}
+          <DocumentUploader
+            {...bankBookState}
+            label="รูปสมุดบัญชี"
+            isPrivate
+          />
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>ธนาคาร</Label>
@@ -459,7 +509,12 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
                 {BANK_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
-            <Field label="ชื่อบัญชี" value={form.bank_account_name} onChange={v => set('bank_account_name', v)} placeholder="ชื่อเจ้าของบัญชี" />
+            <Field
+              label="ชื่อบัญชี"
+              value={form.bank_account_name}
+              onChange={v => { setBankNameIsAuto(false); set('bank_account_name', v) }}
+              placeholder="ชื่อเจ้าของบัญชี"
+            />
             <div className="sm:col-span-2">
               <Field label="เลขที่บัญชี" value={form.bank_account_no} onChange={v => set('bank_account_no', v)} placeholder="xxx-x-xxxxx-x" />
             </div>

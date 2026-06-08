@@ -150,6 +150,7 @@ export interface Owner {
   bank_name?: string
   bank_account_no?: string
   bank_account_name?: string
+  bank_book_url?: string
   signature_url?: string
   notes?: string
   is_archived?: boolean

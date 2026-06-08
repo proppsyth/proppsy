@@ -46,6 +46,42 @@ export async function processPropertyImages(
   return { main, thumb }
 }
 
+// Bank book → small "Proppsy" watermark at bottom-right corner (non-intrusive).
+export async function applyBankBookWatermark(file: File): Promise<Blob> {
+  const img = await loadImage(file)
+  const scale = Math.min(1, 1280 / Math.max(img.width, img.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(img.width * scale)
+  canvas.height = Math.round(img.height * scale)
+  const ctx = canvas.getContext('2d')!
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+  const fontSize = Math.max(11, Math.round(canvas.width * 0.025))
+  const pad = Math.round(fontSize * 0.5)
+  const text = 'Proppsy'
+
+  ctx.font = `bold ${fontSize}px 'Sarabun', sans-serif`
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  const tw = ctx.measureText(text).width
+  const bx = canvas.width - tw - pad * 3
+  const by = canvas.height - fontSize - pad * 3
+
+  ctx.fillStyle = 'rgba(0,0,0,0.38)'
+  ctx.fillRect(bx, by, tw + pad * 2, fontSize + pad * 2)
+
+  ctx.fillStyle = 'rgba(255,255,255,0.90)'
+  ctx.fillText(text, bx + pad, by + pad)
+
+  return new Promise((resolve, reject) =>
+    canvas.toBlob(
+      blob => blob ? resolve(blob) : reject(new Error('canvas toBlob failed')),
+      'image/webp',
+      WEBP_QUALITY,
+    )
+  )
+}
+
 // ID card → resize + centred watermark strip overlay.
 export async function applyIdCardWatermark(file: File): Promise<Blob> {
   const img = await loadImage(file)

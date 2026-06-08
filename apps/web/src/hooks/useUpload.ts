@@ -5,6 +5,7 @@ import {
   processPropertyImages,
   processToWebp,
   applyIdCardWatermark,
+  applyBankBookWatermark,
 } from '@/lib/upload/imageProcessor'
 import {
   uploadPublic,
@@ -120,7 +121,7 @@ export function usePropertyImages(options: {
 // Single-file uploader for ID cards, signatures, profile photos, news covers.
 // Supports both public and private (signed URL) buckets.
 
-export type DocumentCategory = 'id-cards' | 'signatures' | 'profiles' | 'news-covers' | 'article-covers' | 'banner-images' | 'partner-logos'
+export type DocumentCategory = 'id-cards' | 'signatures' | 'profiles' | 'news-covers' | 'article-covers' | 'banner-images' | 'partner-logos' | 'bank-books'
 
 const DOCS_BUCKET = 'documents'
 const SECURE_BUCKET = 'secure-documents'
@@ -138,6 +139,7 @@ export function useDocumentUpload(options: {
   entityId?: string
   isPrivate?: boolean
   enableWatermark?: boolean
+  watermarkStyle?: 'bank-book'
   initialUrl?: string
 }): DocumentUploadState {
   const [url, setUrl] = useState(options.initialUrl ?? '')
@@ -156,9 +158,11 @@ export function useDocumentUpload(options: {
 
     try {
       setProgress({ phase: 'processing', percent: 30 })
-      const blob = options.enableWatermark
-        ? await applyIdCardWatermark(file)
-        : await processToWebp(file, 1280)
+      const blob = options.watermarkStyle === 'bank-book'
+        ? await applyBankBookWatermark(file)
+        : options.enableWatermark
+          ? await applyIdCardWatermark(file)
+          : await processToWebp(file, 1280)
 
       setProgress({ phase: 'uploading', percent: 65 })
       const path = `${folder}${Date.now()}.webp`
@@ -179,7 +183,7 @@ export function useDocumentUpload(options: {
     } catch (e) {
       setProgress({ phase: 'error', percent: 0, error: (e as Error).message })
     }
-  }, [bucket, folder, options.enableWatermark, options.isPrivate, url])
+  }, [bucket, folder, options.enableWatermark, options.watermarkStyle, options.isPrivate, url])
 
   const clear = useCallback(() => {
     setUrl('')
