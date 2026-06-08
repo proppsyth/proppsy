@@ -12,6 +12,7 @@ import {
   type ReservationLease,
   buildLeaseFormDefaults,
   defaultPenaltyAmount,
+  computeLeaseEndDate,
 } from '@/lib/contracts/leaseFromReservation'
 
 interface Props {
@@ -69,12 +70,9 @@ export default function CreateLeasePanel({ reservation }: Props) {
     })
   }
 
-  const computedEndDate = (() => {
-    if (!form.moveInDate) return null
-    const d = new Date(form.moveInDate)
-    d.setMonth(d.getMonth() + (parseInt(form.contractMonths) || 12))
-    return d.toISOString().split('T')[0]!
-  })()
+  const computedEndDate = form.moveInDate
+    ? computeLeaseEndDate(form.moveInDate, parseInt(form.contractMonths) || 12)
+    : null
 
   const availableTemplates = TEMPLATE_REGISTRY.filter(t => t.docType === 'rental')
   const availableLanguages = availableTemplates.map(t => t.language)

@@ -19,6 +19,7 @@ import {
   type TemplateDefinition,
 } from '@/lib/contracts/templateRegistry'
 import { calculateCommission, commissionHint } from '@/lib/contracts/commissionRules'
+import { computeLeaseEndDate } from '@/lib/contracts/leaseFromReservation'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -203,9 +204,7 @@ export default function ContractWizard() {
       const months = parseInt(s.contract_months) || 12
       const next = { ...s, move_in_date: v }
       if (v) {
-        const d = new Date(v)
-        d.setMonth(d.getMonth() + months)
-        next.end_date = d.toISOString().split('T')[0]!
+        next.end_date = computeLeaseEndDate(v, months)
         next.payment_day_of_month = String(new Date(v).getDate())
         // Auto-fill payment_date from contract date
         next.payment_date = v
@@ -220,9 +219,7 @@ export default function ContractWizard() {
       const rent = parseFloat(s.rent_price) || 0
       const next: WizardState = { ...s, contract_months: v }
       if (s.move_in_date) {
-        const d = new Date(s.move_in_date)
-        d.setMonth(d.getMonth() + months)
-        next.end_date = d.toISOString().split('T')[0]!
+        next.end_date = computeLeaseEndDate(s.move_in_date, months)
       }
       if (rent > 0 && months > 0 && !s.commission_net) {
         next.commission_net = String(calculateCommission(months, rent).commission_amount)

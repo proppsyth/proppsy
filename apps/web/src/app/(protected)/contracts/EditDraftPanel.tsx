@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Pencil, X, Loader2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 import { updateContractDraft } from './actions'
 import { calculateCommission, commissionHint } from '@/lib/contracts/commissionRules'
+import { computeLeaseEndDate } from '@/lib/contracts/leaseFromReservation'
 
 interface DraftData {
   contractId: string
@@ -138,9 +139,7 @@ export default function EditDraftPanel({ data }: Props) {
       const months = parseInt(f.contractMonths) || 12
       const next = { ...f, moveInDate: v }
       if (v) {
-        const d = new Date(v)
-        d.setMonth(d.getMonth() + months)
-        next.endDate = d.toISOString().split('T')[0]!
+        next.endDate = computeLeaseEndDate(v, months)
         next.paymentDayOfMonth = String(new Date(v).getDate())
       }
       return next
@@ -153,9 +152,7 @@ export default function EditDraftPanel({ data }: Props) {
       const rent = parseFloat(f.rentPrice) || 0
       const next: typeof f = { ...f, contractMonths: v }
       if (f.moveInDate) {
-        const d = new Date(f.moveInDate)
-        d.setMonth(d.getMonth() + months)
-        next.endDate = d.toISOString().split('T')[0]!
+        next.endDate = computeLeaseEndDate(f.moveInDate, months)
       }
       // Auto-fill commission only when it hasn't been manually set
       if (rent > 0 && months > 0 && !f.commissionNet) {

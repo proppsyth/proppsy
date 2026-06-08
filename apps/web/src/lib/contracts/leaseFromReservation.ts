@@ -50,6 +50,24 @@ export function defaultPenaltyAmount(monthlyRent: number): number {
 }
 
 /**
+ * Compute the lease end date (last day within the paid term).
+ *
+ * A 12-month lease starting June 19, 2026 ends June 18, 2027 —
+ * the day before the anniversary. Month 1 covers June 19–July 18;
+ * Month 12 covers May 19–June 18.
+ *
+ * Formula: moveIn + N months − 1 day.
+ * Use this function everywhere end_date is computed so the rule is consistent
+ * across lease creation, EditDraftPanel, ContractWizard, and payment schedules.
+ */
+export function computeLeaseEndDate(moveInDateStr: string, contractMonths: number): string {
+  const d = new Date(moveInDateStr)
+  d.setMonth(d.getMonth() + contractMonths)
+  d.setDate(d.getDate() - 1)
+  return d.toISOString().split('T')[0]!
+}
+
+/**
  * Build initial form state for CreateLeasePanel from a reservation snapshot.
  * Does NOT include `language` — the panel sets that from its own template list.
  */

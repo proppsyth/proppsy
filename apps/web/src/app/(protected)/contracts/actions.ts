@@ -9,6 +9,7 @@ import {
   captureFinalizationSnapshot, appendTimelineEvent, docTypeToCategory,
 } from '@/lib/contracts/lifecycleEngine'
 import { createLeasePackage } from '@/lib/contracts/documentEngine'
+import { computeLeaseEndDate } from '@/lib/contracts/leaseFromReservation'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -244,15 +245,10 @@ export async function createLeaseFromReservation(
 
   const id = await nextId(supabase, 'C')
 
-  // Compute end_date from move_in_date + contract_months if both provided
+  // Compute end_date: last day within the paid term (moveIn + N months − 1 day)
   const moveIn = extras.move_in_date ?? reservation.move_in_date ?? null
   const contractMonths = extras.contract_months ?? reservation.contract_months ?? 12
-  let endDate: string | null = null
-  if (moveIn) {
-    const d = new Date(moveIn)
-    d.setMonth(d.getMonth() + contractMonths)
-    endDate = d.toISOString().split('T')[0]!
-  }
+  const endDate = moveIn ? computeLeaseEndDate(moveIn, contractMonths) : null
 
   const { error } = await supabase.from('contracts').insert({
     id,
