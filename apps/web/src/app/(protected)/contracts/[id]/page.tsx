@@ -227,12 +227,21 @@ export default async function ContractDetailPage({
                 {contract.rent_price != null && (
                   <FinRow label={isReceipt ? 'จำนวนเงิน' : 'ค่าเช่า / เดือน'} value={`฿${fmt(contract.rent_price)}`} />
                 )}
-                {contract.deposit_amount != null && (
+                {isReservation && (contract as { booking_amount?: number | null }).booking_amount != null && (
                   <FinRow
-                    label={isRental
-                      ? `เงินมัดจำ/จอง${contract.deposit_months ? ` (${contract.deposit_months} เดือน)` : ''}`
-                      : `เงินจอง${contract.deposit_months ? ` (${contract.deposit_months} เดือน)` : ''}`
-                    }
+                    label="เงินจอง (Booking Amount)"
+                    value={`฿${fmt((contract as { booking_amount?: number | null }).booking_amount!)}`}
+                  />
+                )}
+                {isReservation && contract.deposit_amount != null && (
+                  <FinRow
+                    label={`เงินประกันสัญญา${contract.deposit_months ? ` (${contract.deposit_months} เดือน)` : ''}`}
+                    value={`฿${fmt(contract.deposit_amount)}`}
+                  />
+                )}
+                {!isReservation && contract.deposit_amount != null && (
+                  <FinRow
+                    label={`เงินมัดจำ/จอง${contract.deposit_months ? ` (${contract.deposit_months} เดือน)` : ''}`}
                     value={`฿${fmt(contract.deposit_amount)}`}
                   />
                 )}
@@ -325,6 +334,7 @@ export default async function ContractDetailPage({
                 rentPrice:             contract.rent_price ?? null,
                 depositMonths:         contract.deposit_months ?? null,
                 depositAmount:         contract.deposit_amount ?? null,
+                bookingAmount:         (contract as { booking_amount?: number | null }).booking_amount ?? null,
                 contractMonths:        contract.contract_months ?? null,
                 moveInDate:            contract.move_in_date ?? null,
                 endDate:               contract.end_date ?? null,

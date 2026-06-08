@@ -250,6 +250,7 @@ export interface Contract {
   status: ContractStatus
   rent_price?: number
   deposit_amount?: number
+  booking_amount?: number
   security_deposit?: number
   commission_net?: number
   deposit_months?: number

@@ -138,13 +138,13 @@
 {section:3. BOOKING DEPOSIT|3. เงินมัดจำ}
 {muted}ข้อ 3. เงินมัดจำ{/muted}
 
-| 3.1 | On the date of this agreement, the Lessee has paid a booking deposit of | <<ค่าเช่าเติมลูกน้ำ>> | Baht (<<ค่าเช่าภาษาอังกฤษ>>) to the Lessor. The Lessor has received this amount in full. Both parties agree that this deposit constitutes part of the security deposit. |
+| 3.1 | On the date of this agreement, the Lessee has paid a booking deposit of | <<เงินจอง>> | Baht (<<เงินจองภาษาอังกฤษ>>) to the Lessor. The Lessor has received this amount in full. Both parties agree that this deposit constitutes part of the security deposit. |
 | 0.5: | 5.5 | :2: | 2 |
 
-| | {zh}合同签订当日，承租方已向出租方支付预订定金 <<ค่าเช่าเติมลูกน้ำ>> 泰铢（<<ค่าเช่าภาษาอังกฤษ>>）。出租方已收到上述款项，双方同意将该款项作为押金的一部分。{/zh} |
+| | {zh}合同签订当日，承租方已向出租方支付预订定金 <<เงินจอง>> 泰铢（<<เงินจองภาษาอังกฤษ>>）。出租方已收到上述款项，双方同意将该款项作为押金的一部分。{/zh} |
 | 0.5 | 9.5 |
 
-| | {muted}ผู้เช่าตกลงวางเงินมัดจำ{/muted} | {muted}<<ค่าเช่าเติมลูกน้ำ>>{/muted} | {muted}บาท (<<ค่าเช่าตัวอักษร>>) ผู้ให้เช่าได้รับไว้ครบถ้วนแล้ว และถือเป็นเงินค้ำประกันส่วนหนึ่ง{/muted} |
+| | {muted}ผู้เช่าตกลงวางเงินมัดจำ{/muted} | {muted}<<เงินจอง>>{/muted} | {muted}บาท (<<เงินจองตัวอักษร>>) ผู้ให้เช่าได้รับไว้ครบถ้วนแล้ว และถือเป็นเงินค้ำประกันส่วนหนึ่ง{/muted} |
 | 0.5 | 2.5 | :2: | 7 |
 {space:8}
 

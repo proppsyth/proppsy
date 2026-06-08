@@ -34,6 +34,7 @@ interface WizardState {
   rent_price: string
   deposit_months: string
   deposit_amount: string
+  booking_amount: string
   contract_months: string
   move_in_date: string
   end_date: string
@@ -75,7 +76,7 @@ function makeInitState(): WizardState {
     stock_id: '', stock_label: '',
     owner_id: '', owner_label: '',
     customer_id: '', customer_label: '',
-    rent_price: '', deposit_months: '1', deposit_amount: '',
+    rent_price: '', deposit_months: '2', deposit_amount: '', booking_amount: '',
     contract_months: '12', move_in_date: '', end_date: '',
     cleaning_fee: '', ac_count: '', ac_wash_per_unit: '',
     penalty_amount: '', commission_net: '',
@@ -171,12 +172,16 @@ export default function ContractWizard() {
   function handleRentChange(v: string) {
     setState(s => {
       const rent = parseFloat(v)
-      const depositMonths = parseFloat(s.deposit_months) || 1
+      const depositMonths = parseFloat(s.deposit_months) || 2
       const contractMonths = parseInt(s.contract_months) || 0
       const next: WizardState = {
         ...s,
         rent_price: v,
         deposit_amount: rent > 0 ? String(rent * depositMonths) : s.deposit_amount,
+        // Sync booking_amount to rent when it hasn't been manually overridden
+        booking_amount: (!s.booking_amount || s.booking_amount === s.rent_price) && rent > 0
+          ? String(rent)
+          : s.booking_amount,
       }
       if (rent > 0 && contractMonths > 0 && !s.commission_net) {
         next.commission_net = String(calculateCommission(contractMonths, rent).commission_amount)
@@ -188,7 +193,7 @@ export default function ContractWizard() {
   function handleDepositMonthsChange(v: string) {
     setState(s => {
       const rent = parseFloat(s.rent_price)
-      const months = parseFloat(v) || 1
+      const months = parseFloat(v) || 2
       return { ...s, deposit_months: v, deposit_amount: rent > 0 ? String(rent * months) : s.deposit_amount }
     })
   }
@@ -245,10 +250,11 @@ export default function ContractWizard() {
       }
       if (r.rent_price) {
         const rent = r.rent_price
-        const depositMult = (r.deposit != null ? r.deposit : null) ?? (parseFloat(s.deposit_months) || 1)
+        const depositMult = (r.deposit != null ? r.deposit : null) ?? (parseFloat(s.deposit_months) || 2)
         next.rent_price = String(rent)
         next.deposit_months = String(depositMult)
         next.deposit_amount = String(rent * depositMult)
+        next.booking_amount = String(rent)
       }
       return next
     })
@@ -291,7 +297,7 @@ export default function ContractWizard() {
       if (!state.move_in_date) errs.push('กรุณาระบุวันเข้าอยู่ / เริ่มสัญญา')
     }
     if (isReservation) {
-      if (!state.deposit_amount) errs.push('กรุณากรอกเงินจอง')
+      if (!state.booking_amount) errs.push('กรุณากรอกเงินจอง (Booking Amount)')
       if (!state.move_in_date) errs.push('กรุณาระบุวันที่นัดเข้าอยู่ / วันเริ่มสัญญาเช่า')
     }
     if (isReceipt) {
@@ -336,6 +342,7 @@ export default function ContractWizard() {
         rent_price:        num(state.rent_price),
         deposit_months:    num(state.deposit_months),
         deposit_amount:    num(state.deposit_amount),
+        booking_amount:    num(state.booking_amount),
         contract_months:   num(state.contract_months),
         move_in_date:      state.move_in_date || null,
         end_date:          state.end_date || null,
@@ -586,8 +593,27 @@ export default function ContractWizard() {
             <>
               <Section title="เงื่อนไขการจอง">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="เงินจอง (บาท)" value={state.deposit_amount} onChange={v => set('deposit_amount', v)} type="number" placeholder="0" required hasError={showErrors && !state.deposit_amount} />
                   <Field label="ค่าเช่าต่อเดือน (บาท)" value={state.rent_price} onChange={handleRentChange} type="number" placeholder="0" />
+                  <Field label="เงินจอง / Booking Amount (บาท)" value={state.booking_amount} onChange={v => set('booking_amount', v)} type="number" placeholder="เท่ากับค่าเช่า 1 เดือน" required hasError={showErrors && !state.booking_amount} />
+                  <Field label="จำนวนเดือนเงินประกัน" value={state.deposit_months} onChange={handleDepositMonthsChange} type="number" placeholder="2" />
+                  {(state.deposit_amount || state.booking_amount) && (
+                    <div className="col-span-full bg-blue-50 rounded-lg px-3 py-2.5 space-y-1.5">
+                      {state.deposit_amount && (
+                        <div className="flex justify-between text-xs text-gray-600">
+                          <span>เงินประกันสัญญา ({state.deposit_months || '2'} เดือน)</span>
+                          <span className="font-semibold text-gray-800">฿{fmt(parseFloat(state.deposit_amount))}</span>
+                        </div>
+                      )}
+                      {state.booking_amount && state.deposit_amount && (
+                        <div className="flex justify-between text-xs text-blue-700">
+                          <span>ยอดชำระวันทำสัญญาเช่า = ประกัน + เดือนแรก − จอง</span>
+                          <span className="font-semibold">
+                            ฿{fmt(parseFloat(state.deposit_amount) + parseFloat(state.rent_price || '0') - parseFloat(state.booking_amount))}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <Field label="ค่าปรับกรณียกเลิก (บาท)" value={state.penalty_amount} onChange={v => set('penalty_amount', v)} type="number" placeholder="0" />
                   <Field label="วันที่นัดเข้าอยู่ / วันเริ่มสัญญาเช่า" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" required hasError={showErrors && !state.move_in_date} />
                   <Field label="วันหมดอายุการจอง" value={state.reservation_expire_date} onChange={v => set('reservation_expire_date', v)} type="date" />
@@ -736,7 +762,9 @@ export default function ContractWizard() {
                 <ReviewRow label="ลูกค้า" value={state.customer_label} />
               )}
               {state.rent_price && <ReviewRow label="ค่าเช่า / เดือน" value={`฿${fmt(parseFloat(state.rent_price))}`} />}
-              {state.deposit_amount && <ReviewRow label="เงินมัดจำ / จอง" value={`฿${fmt(parseFloat(state.deposit_amount))}`} />}
+              {isReservation && state.booking_amount && <ReviewRow label="เงินจอง (Booking Amount)" value={`฿${fmt(parseFloat(state.booking_amount))}`} />}
+              {isReservation && state.deposit_amount && <ReviewRow label={`เงินประกันสัญญา (${state.deposit_months || '2'} เดือน)`} value={`฿${fmt(parseFloat(state.deposit_amount))}`} />}
+              {!isReservation && state.deposit_amount && <ReviewRow label="เงินมัดจำ / จอง" value={`฿${fmt(parseFloat(state.deposit_amount))}`} />}
               {state.contract_months && <ReviewRow label="ระยะสัญญา" value={`${state.contract_months} เดือน`} />}
               {state.move_in_date && <ReviewRow label="วันเข้าอยู่" value={new Date(state.move_in_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })} />}
               {state.end_date && <ReviewRow label="วันสิ้นสุด" value={new Date(state.end_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })} />}

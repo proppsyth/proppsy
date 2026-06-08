@@ -14,6 +14,7 @@ interface DraftData {
   rentPrice: number | null
   depositMonths: number | null
   depositAmount: number | null
+  bookingAmount: number | null
   contractMonths: number | null
   moveInDate: string | null
   endDate: string | null
@@ -69,6 +70,7 @@ export default function EditDraftPanel({ data }: Props) {
     rentPrice:            str(data.rentPrice),
     depositMonths:        str(data.depositMonths),
     depositAmount:        str(data.depositAmount),
+    bookingAmount:        str(data.bookingAmount),
     contractMonths:       str(data.contractMonths),
     moveInDate:           str2(data.moveInDate),
     endDate:              str2(data.endDate),
@@ -102,7 +104,7 @@ export default function EditDraftPanel({ data }: Props) {
 
   function handleRentChange(v: string) {
     const rent = parseFloat(v) || 0
-    const depositMonths = parseFloat(form.depositMonths) || 1
+    const depositMonths = parseFloat(form.depositMonths) || 2
     const contractMonths = parseInt(form.contractMonths) || 0
     setForm(f => {
       const next: typeof f = {
@@ -110,6 +112,9 @@ export default function EditDraftPanel({ data }: Props) {
         rentPrice: v,
         depositAmount: rent > 0 ? String(rent * depositMonths) : f.depositAmount,
         securityDeposit: isLease && rent > 0 && !f.securityDeposit ? String(rent * 2) : f.securityDeposit,
+        bookingAmount: isReservation && (!f.bookingAmount || f.bookingAmount === f.rentPrice) && rent > 0
+          ? String(rent)
+          : f.bookingAmount,
       }
       if (rent > 0 && contractMonths > 0 && !f.commissionNet) {
         next.commissionNet = String(calculateCommission(contractMonths, rent).commission_amount)
@@ -120,7 +125,7 @@ export default function EditDraftPanel({ data }: Props) {
 
   function handleDepositMonthsChange(v: string) {
     const rent = parseFloat(form.rentPrice) || 0
-    const months = parseFloat(v) || 1
+    const months = parseFloat(v) || 2
     setForm(f => ({
       ...f,
       depositMonths: v,
@@ -171,6 +176,7 @@ export default function EditDraftPanel({ data }: Props) {
         rent_price:            num(form.rentPrice),
         deposit_months:        num(form.depositMonths),
         deposit_amount:        num(form.depositAmount),
+        booking_amount:        num(form.bookingAmount),
         contract_months:       int(form.contractMonths),
         move_in_date:          form.moveInDate || null,
         end_date:              form.endDate || null,
@@ -251,7 +257,26 @@ export default function EditDraftPanel({ data }: Props) {
           )}
           {isReservation && (
             <>
-              <Field label="เงินจอง (บาท)" value={form.depositAmount} onChange={v => set('depositAmount', v)} type="number" />
+              <Field label="เงินจอง / Booking Amount (บาท)" value={form.bookingAmount} onChange={v => set('bookingAmount', v)} type="number" />
+              <Field label="จำนวนเดือนเงินประกัน" value={form.depositMonths} onChange={handleDepositMonthsChange} type="number" />
+              {(form.depositAmount || form.bookingAmount) && (
+                <div className="col-span-full bg-blue-50 rounded-lg px-3 py-2 space-y-1">
+                  {form.depositAmount && (
+                    <div className="flex justify-between text-xs text-gray-600">
+                      <span>เงินประกันสัญญา ({form.depositMonths || '2'} เดือน)</span>
+                      <span className="font-semibold text-gray-800">฿{(parseFloat(form.depositAmount) || 0).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {form.bookingAmount && form.depositAmount && (
+                    <div className="flex justify-between text-xs text-blue-700">
+                      <span>ยอดชำระวันทำสัญญาเช่า</span>
+                      <span className="font-semibold">
+                        ฿{((parseFloat(form.depositAmount) || 0) + (parseFloat(form.rentPrice) || 0) - (parseFloat(form.bookingAmount) || 0)).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
               <Field label="วันที่นัดเข้าอยู่ / วันเริ่มสัญญาเช่า" value={form.moveInDate} onChange={v => set('moveInDate', v)} type="date" />
               <Field label="วันหมดอายุการจอง" value={form.reservationExpireDate} onChange={v => set('reservationExpireDate', v)} type="date" />
               <Field label="วันที่ชำระ" value={form.paymentDate} onChange={v => set('paymentDate', v)} type="date" />

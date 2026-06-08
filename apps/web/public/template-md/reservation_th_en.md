@@ -126,16 +126,16 @@
 
 {section:3. BOOKING DEPOSIT|ข้อ 3. เงินมัดจำ}
 
-| 3.1 | On the date of this agreement, the Lessee has paid a booking deposit of | <<ค่าเช่าเติมลูกน้ำ>> | Baht |
+| 3.1 | On the date of this agreement, the Lessee has paid a booking deposit of | <<เงินจอง>> | Baht |
 | 0.5: | 7 | :1.5: | 1 |
 
-| | (<<ค่าเช่าภาษาอังกฤษ>>) | to the Lessor. The Lessor has received this amount in full. |
+| | (<<เงินจองภาษาอังกฤษ>>) | to the Lessor. The Lessor has received this amount in full. |
 | 0.5 | :3.5: | 6 |
 
 | | Both parties agree that this deposit constitutes part of the security deposit. |
 | 0.5 | 9.5 |
 
-| | {muted}ผู้เช่าตกลงวางเงินมัดจำ{/muted} | {muted}<<ค่าเช่าเติมลูกน้ำ>>{/muted} | {muted}บาท{/muted} | {muted}(<<ค่าเช่าตัวอักษร>>){/muted} |
+| | {muted}ผู้เช่าตกลงวางเงินมัดจำ{/muted} | {muted}<<เงินจอง>>{/muted} | {muted}บาท{/muted} | {muted}(<<เงินจองตัวอักษร>>){/muted} |
 | 0.5 | 3 | :2: | 0.5 | :4: |
 
 | | {muted}ผู้ให้เช่าได้รับไว้ครบถ้วนแล้ว และถือเป็นเงินค้ำประกันส่วนหนึ่ง{/muted} |

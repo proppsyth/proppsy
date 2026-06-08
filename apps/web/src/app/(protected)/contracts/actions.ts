@@ -22,6 +22,7 @@ export type ContractInput = {
   rent_price?: number | null
   deposit_months?: number | null
   deposit_amount?: number | null
+  booking_amount?: number | null
   contract_months?: number | null
   move_in_date?: string | null
   end_date?: string | null
@@ -271,6 +272,8 @@ export async function createLeaseFromReservation(
     rent_price:           extras.rent_price ?? reservation.rent_price,
     deposit_months:       extras.deposit_months ?? reservation.deposit_months ?? 2,
     deposit_amount:       extras.deposit_amount ?? reservation.deposit_amount,
+    // booking_amount is reservation-only; leases don't carry it forward
+    booking_amount:       null,
     security_deposit:     extras.security_deposit ?? null,
     contract_months:      contractMonths,
     move_in_date:         moveIn,
@@ -485,8 +488,10 @@ export async function createChildDocument(
     if (input.amount != null) {
       row.deposit_amount = input.amount
     } else if (docType === 'invoice_reservation' || docType === 'receipt_reservation') {
-      // Booking fee: prefer stored deposit_amount, fall back to 1 month rent
-      row.deposit_amount = lease.deposit_amount ?? (lease.rent_price ?? 0)
+      // Booking fee: use booking_amount field; fall back to deposit_amount, then 1 month rent
+      const storedBooking = (lease as { booking_amount?: number | null }).booking_amount
+      row.deposit_amount = storedBooking ?? lease.deposit_amount ?? (lease.rent_price ?? 0)
+      row.booking_amount = storedBooking ?? lease.deposit_amount ?? (lease.rent_price ?? 0)
     } else {
       // Security deposit: prefer stored security_deposit field, then deposit_amount,
       // then compute from deposit_months (never hardcode 2 months)
@@ -575,6 +580,7 @@ export type DraftFields = {
   rent_price?: number | null
   deposit_months?: number | null
   deposit_amount?: number | null
+  booking_amount?: number | null
   contract_months?: number | null
   move_in_date?: string | null
   end_date?: string | null

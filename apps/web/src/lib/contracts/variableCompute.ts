@@ -270,24 +270,34 @@ export function computeVariables(
     v['รวมค่าเช่าทั้งหมด'] = withCommas(rent * months)
   }
 
-  v['จำนวนเงินวันทำสัญญา']              = withCommas(deposit)
-  v['จำนวนเงินวันทำสัญญาตัวอักษร']      = bahtText(deposit)
-  v['จำนวนเงินวันทำสัญญาภาษาอังกฤษ']   = bahtTextEn(deposit)
+  // ─── Reservation financial model ─────────────────────────────
+  // booking_amount  = reservation fee paid today (new dedicated field)
+  // deposit_amount  = security deposit (rent × deposit_months)
+  // contract_day_payment = security deposit + 1 month advance rent − booking fee
+  const bookingAmt = (contract as { booking_amount?: number | null }).booking_amount ?? 0
+  const depositMths = contract.deposit_months ?? 2
+  const contractDayPayment = deposit + rent - bookingAmt
+
+  v['เงินจอง']               = withCommas(bookingAmt)
+  v['เงินจองตัวอักษร']        = bahtText(bookingAmt)
+  v['เงินจองภาษาอังกฤษ']     = bahtTextEn(bookingAmt)
+  v['booking_amount']         = withCommas(bookingAmt)
+
+  v['เงินประกันสัญญา']              = withCommas(deposit)
+  v['เงินประกันสัญญาตัวอักษร']       = bahtText(deposit)
+  v['จำนวนเดือนเงินประกัน']          = String(depositMths)
+
+  v['จำนวนเงินวันทำสัญญา']              = withCommas(contractDayPayment)
+  v['จำนวนเงินวันทำสัญญาตัวอักษร']      = bahtText(contractDayPayment)
+  v['จำนวนเงินวันทำสัญญาภาษาอังกฤษ']   = bahtTextEn(contractDayPayment)
 
   // ─── Standard monetary variables ─────────────────────────────
-  // <<booking_amount>> / <<security_deposit>> — canonical names usable in all templates.
-  // <<booking_months>> / <<security_deposit_months>> — dynamically computed; never hardcoded.
   const securityDepositAmt = (contract as { security_deposit?: number | null }).security_deposit ?? null
-  const bookingMonths = rent > 0 && deposit > 0
-    ? Math.round((deposit / rent) * 10) / 10
-    : (contract.deposit_months ?? 1)
   const securityDepositMonths = rent > 0 && securityDepositAmt != null && securityDepositAmt > 0
     ? Math.round((securityDepositAmt / rent) * 10) / 10
-    : (contract.deposit_months ?? 2)
+    : depositMths
 
-  v['booking_amount']          = withCommas(deposit)
   v['security_deposit']        = securityDepositAmt != null ? withCommas(securityDepositAmt) : '-'
-  v['booking_months']          = String(bookingMonths)
   v['security_deposit_months'] = String(securityDepositMonths)
 
   v['ค่าปรับเติมลูกน้ำ']   = withCommas(penalty)
@@ -344,9 +354,8 @@ export function computeVariables(
   const docType = contract.doc_type ?? ''
   const unitRef = [stock?.project_name, stock?.unit_no ? `(${stock.unit_no})` : ''].filter(Boolean).join(' ')
   if (docType.includes('reservation')) {
-    const bm = bookingMonths
-    const bmLabel = bm === 1 ? '1 month' : `${bm} months`
-    v['รายละเอียดใบแจ้งหนี้'] = `ค่ามัดจำการจอง ${bm} เดือน / Booking Deposit (${bmLabel}) — ${unitRef}`
+    const bmLabel = bookingAmt > 0 && rent > 0 ? `${Math.round((bookingAmt / rent) * 10) / 10} month(s)` : '1 month'
+    v['รายละเอียดใบแจ้งหนี้'] = `ค่ามัดจำการจอง / Booking Deposit (${bmLabel}) — ${unitRef}`
   } else if (docType.includes('deposit')) {
     const sdAmt = securityDepositAmt ?? deposit
     const sdm = rent > 0 && sdAmt > 0 ? Math.round((sdAmt / rent) * 10) / 10 : securityDepositMonths
