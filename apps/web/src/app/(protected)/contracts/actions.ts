@@ -245,7 +245,7 @@ export async function createLeaseFromReservation(
   const id = await nextId(supabase, 'C')
 
   // Compute end_date from move_in_date + contract_months if both provided
-  const moveIn = extras.move_in_date ?? null
+  const moveIn = extras.move_in_date ?? reservation.move_in_date ?? null
   const contractMonths = extras.contract_months ?? reservation.contract_months ?? 12
   let endDate: string | null = null
   if (moveIn) {
@@ -281,7 +281,7 @@ export async function createLeaseFromReservation(
     cleaning_fee:         extras.cleaning_fee ?? reservation.cleaning_fee,
     ac_count:             extras.ac_count ?? reservation.ac_count,
     ac_wash_per_unit:     extras.ac_wash_per_unit ?? reservation.ac_wash_per_unit,
-    penalty_amount:       extras.penalty_amount ?? null,
+    penalty_amount:       extras.penalty_amount ?? reservation.penalty_amount ?? null,
     commission_net:       reservation.commission_net,
     vat_7:                reservation.vat_7 ?? false,
     wht_3:                reservation.wht_3 ?? false,

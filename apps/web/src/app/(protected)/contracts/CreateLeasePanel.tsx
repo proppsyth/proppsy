@@ -8,37 +8,20 @@ import {
   TEMPLATE_REGISTRY, LANGUAGE_LABELS,
   type LanguageVersion,
 } from '@/lib/contracts/templateRegistry'
-
-interface ReservationSnapshot {
-  reservationId: string
-  rentPrice: number | null
-  depositMonths: number | null
-  depositAmount: number | null
-  contractMonths: number | null
-  waterUnitPrice: number | null
-  electricUnitPrice: number | null
-  internetFee: number | null
-  commonFee: number | null
-  parkingFee: number | null
-  cleaningFee: number | null
-  acCount: number | null
-  acWashPerUnit: number | null
-  paymentGraceDays: number | null
-  paymentDayOfMonth: number | null
-  occupantCount: number | null
-}
+import {
+  type ReservationLease,
+  buildLeaseFormDefaults,
+  defaultPenaltyAmount,
+} from '@/lib/contracts/leaseFromReservation'
 
 interface Props {
-  reservation: ReservationSnapshot
+  reservation: ReservationLease
 }
 
 function fmt(n: number): string {
   return new Intl.NumberFormat('th-TH').format(n)
 }
 
-function today(): string {
-  return new Date().toISOString().split('T')[0]!
-}
 
 export default function CreateLeasePanel({ reservation }: Props) {
   const router = useRouter()
@@ -47,50 +30,32 @@ export default function CreateLeasePanel({ reservation }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
 
-  const [form, setForm] = useState(() => {
-    const rent = reservation.rentPrice ?? 0
-    return {
-    moveInDate:        today(),
-    contractMonths:    String(reservation.contractMonths ?? 12),
-    rentPrice:         String(reservation.rentPrice ?? ''),
-    depositMonths:     String(reservation.depositMonths ?? '1'),
-    depositAmount:     String(reservation.depositAmount ?? ''),
-    securityDeposit:   rent > 0 ? String(rent * 2) : '',
-    cleaningFee:       String(reservation.cleaningFee ?? ''),
-    acCount:           String(reservation.acCount ?? ''),
-    acWashPerUnit:     String(reservation.acWashPerUnit ?? ''),
-    occupantCount:     String(reservation.occupantCount ?? '1'),
-    paymentGraceDays:  String(reservation.paymentGraceDays ?? '5'),
-    paymentDayOfMonth: String(reservation.paymentDayOfMonth ?? ''),
-    penaltyAmount:     '',
-    waterUnitPrice:    String(reservation.waterUnitPrice ?? ''),
-    electricUnitPrice: String(reservation.electricUnitPrice ?? ''),
-    internetFee:       String(reservation.internetFee ?? ''),
-    commonFee:         String(reservation.commonFee ?? ''),
-    parkingFee:        String(reservation.parkingFee ?? ''),
-    language:          'th' as LanguageVersion,
-  }})
+  const [form, setForm] = useState(() => ({
+    ...buildLeaseFormDefaults(reservation),
+    language: 'th' as LanguageVersion,
+  }))
 
   const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   function handleRentChange(v: string) {
     const rent = parseFloat(v)
-    const depositMonths = parseFloat(form.depositMonths) || 1
+    const depositMonths = parseFloat(form.depositMonths) || 2
     setForm(f => ({
       ...f,
       rentPrice: v,
-      depositAmount: rent > 0 ? String(rent * depositMonths) : f.depositAmount,
-      securityDeposit: rent > 0 ? String(rent * 2) : f.securityDeposit,
+      // depositAmount = booking fee from reservation — not recomputed on rent change
+      securityDeposit: rent > 0 ? String(rent * depositMonths) : f.securityDeposit,
+      penaltyAmount:   rent > 0 ? String(defaultPenaltyAmount(rent)) : f.penaltyAmount,
     }))
   }
 
   function handleDepositMonthsChange(v: string) {
     const rent = parseFloat(form.rentPrice)
-    const months = parseFloat(v) || 1
+    const months = parseFloat(v) || 2
     setForm(f => ({
       ...f,
       depositMonths: v,
-      depositAmount: rent > 0 ? String(rent * months) : f.depositAmount,
+      securityDeposit: rent > 0 ? String(rent * months) : f.securityDeposit,
     }))
   }
 
