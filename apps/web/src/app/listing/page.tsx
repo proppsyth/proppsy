@@ -40,6 +40,7 @@ export default async function ListingPage({
   const price_bucket = params.price_bucket ?? 'all'
   const status       = params.status       ?? 'available'
   const sort         = params.sort         ?? 'newest'
+  const co_agent     = params.co_agent     ?? 'all'
   const page         = Math.max(1, parseInt(params.page ?? '1'))
   const from         = (page - 1) * PAGE_SIZE
   const to           = from + PAGE_SIZE - 1
@@ -81,7 +82,7 @@ export default async function ListingPage({
     let stockQuery = supabase
       .from('stock')
       .select(
-        'id, unit_no, project_name, project_id, room_type, size_sqm, floor, rent_price, sale_price, listing_type, status, is_premium, photo_urls, photo_thumb_urls, project:projects(province, district, bts_mrt)',
+        'id, unit_no, project_name, project_id, room_type, size_sqm, floor, rent_price, sale_price, listing_type, status, is_premium, co_agent_accepted, photo_urls, photo_thumb_urls, project:projects(province, district, bts_mrt)',
         { count: 'exact' }
       )
       .eq('is_published', true)
@@ -112,6 +113,9 @@ export default async function ListingPage({
         else                         stockQuery = stockQuery.gte('rent_price',  range[0]).lte('rent_price',  range[1])
       }
     }
+
+    // Co-agent filter
+    if (co_agent === 'yes') stockQuery = stockQuery.eq('co_agent_accepted', true)
 
     // Project IDs (location filter, already resolved above)
     if (projectIds !== null && projectIds.length > 0) {
@@ -148,6 +152,7 @@ export default async function ListingPage({
     price_bucket,
     status,
     sort,
+    co_agent,
     page: String(page),
   }
 

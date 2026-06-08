@@ -68,6 +68,7 @@ interface FormState {
   contract_term: string
   furniture: string[]
   facilities: string[]
+  co_agent_accepted: boolean
   status: string
   notes: string
   contract_end_date: string
@@ -79,8 +80,8 @@ const DEFAULT: FormState = {
   room_type: '', size_sqm: '', view_direction: '',
   listing_type: 'rent', rent_price: '', sale_price: '',
   deposit: '2', contract_term: '12',
-  furniture: [], facilities: [], status: 'available',
-  notes: '', contract_end_date: '',
+  furniture: [], facilities: [], co_agent_accepted: false,
+  status: 'available', notes: '', contract_end_date: '',
 }
 
 function stockToForm(s: Stock): FormState {
@@ -103,6 +104,7 @@ function stockToForm(s: Stock): FormState {
     contract_term: s.contract_term?.toString() ?? '12',
     furniture: s.furniture ?? [],
     facilities: s.facilities ?? [],
+    co_agent_accepted: s.co_agent_accepted ?? false,
     status: s.status ?? 'available',
     notes: s.notes ?? '',
     contract_end_date: s.contract_end_date ?? '',
@@ -130,6 +132,7 @@ function toInput(f: FormState): StockInput {
     contract_term: i(f.contract_term) ?? 0,
     furniture: f.furniture,
     facilities: f.facilities,
+    co_agent_accepted: f.co_agent_accepted,
     status: f.status || 'available',
     photo_urls: [],
     notes: f.notes || undefined,
@@ -424,7 +427,7 @@ export default function StockForm({ initialData, stockId, allowAI = true, initia
           </div>
           <div>
             <Label text="ขนาด (ตร.ม.)" />
-            <input value={form.size_sqm} onChange={setField('size_sqm')} type="number" step="0.5" min="0" placeholder="35" className={INPUT_CLS} />
+            <input value={form.size_sqm} onChange={setField('size_sqm')} type="number" step="0.01" min="0" placeholder="35" className={INPUT_CLS} />
           </div>
           <div>
             <Label text="ทิศหน้าห้อง" />
@@ -537,6 +540,19 @@ export default function StockForm({ initialData, stockId, allowAI = true, initia
       {/* ── Photos ───────────────────────────────────────────── */}
       <Section title="รูปภาพ">
         <ImageUploader {...photoState} />
+      </Section>
+
+      {/* ── Co-Agent ─────────────────────────────────────────── */}
+      <Section title="ความร่วมมือ">
+        <label className="flex items-center gap-3 cursor-pointer w-fit">
+          <input
+            type="checkbox"
+            checked={form.co_agent_accepted}
+            onChange={e => set('co_agent_accepted', e.target.checked)}
+            className="w-4 h-4 rounded accent-blue-600"
+          />
+          <span className="text-sm text-gray-700">รับ Co-Agent (ยินดีทำงานร่วมกับเอเจนต์อื่น)</span>
+        </label>
       </Section>
 
       {/* ── Status & Notes ───────────────────────────────────── */}

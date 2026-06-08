@@ -2,6 +2,7 @@ import Link from 'next/link'
 import StorageImage from '@/components/shared/StorageImage'
 import { Building2, Maximize, MapPin, Train } from 'lucide-react'
 import type { StockWithProject } from './PropertyCard'
+import { formatRoomType } from '@/types'
 
 function fmt(n: number) {
   return new Intl.NumberFormat('th-TH').format(n)
@@ -60,7 +61,7 @@ export default function PropertyListItem({ stock }: { stock: StockWithProject })
         <div className="flex items-center gap-1.5 flex-wrap">
           {stock.listing_type !== 'sale' && <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-600">เช่า</span>}
           {stock.listing_type !== 'rent' && <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-600">ขาย</span>}
-          {stock.room_type && <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{stock.room_type}</span>}
+          {stock.room_type && <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{formatRoomType(stock.room_type)}</span>}
           {stock.size_sqm && <span className="text-[11px] text-gray-400 flex items-center gap-0.5"><Maximize className="w-3 h-3" />{stock.size_sqm}ตร.ม.</span>}
         </div>
 

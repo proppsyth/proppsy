@@ -38,6 +38,7 @@ export interface PropertyImagesState {
   progress: UploadProgress
   addImages: (files: File[]) => Promise<void>
   removeImage: (index: number) => void
+  reorderImages: (from: number, to: number) => void
 }
 
 export function usePropertyImages(options: {
@@ -97,7 +98,22 @@ export function usePropertyImages(options: {
     setThumbUrls(prev => prev.filter((_, i) => i !== index))
   }, [mainUrls, thumbUrls])
 
-  return { mainUrls, thumbUrls, progress, addImages, removeImage }
+  const reorderImages = useCallback((from: number, to: number) => {
+    setMainUrls(prev => {
+      const arr = [...prev]
+      const [item] = arr.splice(from, 1)
+      if (item !== undefined) arr.splice(to, 0, item)
+      return arr
+    })
+    setThumbUrls(prev => {
+      const arr = [...prev]
+      const [item] = arr.splice(from, 1)
+      if (item !== undefined) arr.splice(to, 0, item)
+      return arr
+    })
+  }, [])
+
+  return { mainUrls, thumbUrls, progress, addImages, removeImage, reorderImages }
 }
 
 // ─── useDocumentUpload ────────────────────────────────────────

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Building2, Maximize, Layers, Phone, MessageCircle, MapPin, Wind } from 'lucide-react'
+import { ArrowLeft, Building2, Maximize, Layers, MapPin, Wind, Eye, Users } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { Stock } from '@/types'
@@ -12,6 +12,7 @@ import PhotoGallery from '@/app/(protected)/stock/[id]/PhotoGallery'
 import ContactCard from './ContactCard'
 import ShareButtons from './ShareButtons'
 import StickyActionBar from './StickyActionBar'
+import ViewTracker from './ViewTracker'
 import ProjectSection from './ProjectSection'
 import { BannerSidebar } from '@/components/shared/BannerZone'
 
@@ -129,6 +130,8 @@ export default async function PublicPropertyDetailPage({
   if (!stockRaw) notFound()
 
   const stock = stockRaw as unknown as Stock & {
+    view_count?: number
+    co_agent_accepted?: boolean
     project?: ProjectData
     agent?: { name?: string; nickname?: string; email?: string; phone?: string; line_id?: string; logo_url?: string; avatar_url?: string; company_name?: string; team_name?: string; first_name_th?: string; last_name_th?: string; position?: string; public_slug?: string }
   }
@@ -136,6 +139,23 @@ export default async function PublicPropertyDetailPage({
   const isRent = stock.listing_type !== 'sale'
   const isSale = stock.listing_type !== 'rent'
   const projectName = stock.project?.name_th ?? stock.project_name
+
+  // Sibling units in same project (fetch in parallel-ish after main query resolves)
+  const siblingRes = stock.project_id
+    ? await supabase
+      .from('stock')
+      .select('id, unit_no, room_type, rent_price, sale_price, listing_type, photo_thumb_urls, photo_urls')
+      .eq('project_id', stock.project_id)
+      .eq('is_published', true)
+      .eq('status', 'available')
+      .neq('id', id)
+      .limit(6)
+    : null
+  const siblingUnits = (siblingRes?.data ?? []) as Array<{
+    id: string; unit_no?: string; room_type?: string
+    rent_price?: number; sale_price?: number; listing_type?: string
+    photo_thumb_urls?: string[]; photo_urls?: string[]
+  }>
 
   const hasProject = !!stock.project && (
     stock.project.developer ||
@@ -151,6 +171,7 @@ export default async function PublicPropertyDetailPage({
 
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+      <ViewTracker stockId={stock.id} />
       <PublicNav />
 
       <div className="max-w-6xl mx-auto px-4 py-6 pb-28">
@@ -173,6 +194,11 @@ export default async function PublicPropertyDetailPage({
                 {isRent && <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-blue-100 text-blue-700">เช่า</span>}
                 {isSale && stock.listing_type !== 'rent' && <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-700">ขาย</span>}
                 {stock.room_type && <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-600">{formatRoomType(stock.room_type)}</span>}
+                {stock.co_agent_accepted && (
+                  <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-teal-50 text-teal-700 flex items-center gap-1">
+                    <Users className="w-3 h-3" />Co-Agent Welcome
+                  </span>
+                )}
                 {stock.is_premium && (
                   <span
                     className="text-xs px-2.5 py-1 rounded-full font-bold text-white animate-hot-glow"
@@ -210,9 +236,15 @@ export default async function PublicPropertyDetailPage({
                 )}
               </div>
 
-              {/* Share */}
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <p className="text-xs text-gray-400 mb-2">แชร์ประกาศนี้</p>
+              {/* View count + Share */}
+              <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+                {(stock.view_count ?? 0) > 0 && (
+                  <p className="flex items-center gap-1 text-xs text-gray-400">
+                    <Eye className="w-3.5 h-3.5" />
+                    {(stock.view_count ?? 0).toLocaleString('th-TH')} ครั้งที่เข้าชม
+                  </p>
+                )}
+                <p className="text-xs text-gray-400">แชร์ประกาศนี้</p>
                 <ShareButtons
                   path={`/listing/${stock.id}`}
                   title={[projectName, stock.unit_no].filter(Boolean).join(' · ') || 'ทรัพย์'}
@@ -243,6 +275,13 @@ export default async function PublicPropertyDetailPage({
                 )}
                 {stock.contract_term != null && stock.contract_term > 0 && (
                   <DetailItem icon={null} label="สัญญาขั้นต่ำ" value={`${stock.contract_term} เดือน`} />
+                )}
+                {stock.co_agent_accepted && (
+                  <div className="col-span-2 flex items-center gap-1.5 text-sm text-teal-700 bg-teal-50 rounded-xl px-3 py-2">
+                    <Users className="w-4 h-4 flex-shrink-0" />
+                    <span className="font-medium">รับ Co-Agent</span>
+                    <span className="text-xs text-teal-600">— เอเจนต์ยินดีร่วมงานกับเอเจนต์อื่น</span>
+                  </div>
                 )}
               </div>
             </div>
@@ -282,6 +321,45 @@ export default async function PublicPropertyDetailPage({
             {/* Project Section */}
             {hasProject && stock.project && (
               <ProjectSection project={stock.project} />
+            )}
+
+            {/* Other Available Units in Same Project */}
+            {siblingUnits.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/70">
+                  <h2 className="text-sm font-semibold text-gray-700">ยูนิตอื่นในโครงการนี้</h2>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {siblingUnits.map(u => {
+                    const photo = u.photo_thumb_urls?.[0] ?? u.photo_urls?.[0]
+                    const price = u.listing_type === 'sale' ? u.sale_price : u.rent_price
+                    return (
+                      <Link key={u.id} href={`/listing/${u.id}`}
+                        className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition">
+                        {photo ? (
+                          <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                            <Image src={photo} alt="" fill sizes="48px" className="object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                            <Building2 className="w-5 h-5 text-gray-300" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">{u.unit_no ? `ยูนิต ${u.unit_no}` : u.id}</p>
+                          {u.room_type && <p className="text-xs text-gray-500">{formatRoomType(u.room_type)}</p>}
+                        </div>
+                        {price != null && (
+                          <p className="text-sm font-semibold text-gray-900 flex-shrink-0">
+                            ฿{fmt(price)}
+                            {u.listing_type !== 'sale' && <span className="text-xs font-normal text-gray-400">/เดือน</span>}
+                          </p>
+                        )}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
             )}
           </div>
 

@@ -35,6 +35,7 @@ export interface FilterState {
   status?: string
   sort?: string
   page?: string
+  co_agent?: string
 }
 
 export interface FilterOptions {
@@ -54,6 +55,7 @@ function buildUrl(filters: FilterState): string {
   if (filters.status && filters.status !== 'available') params.set('status', filters.status)
   if (filters.sort && filters.sort !== 'newest') params.set('sort', filters.sort)
   if (filters.page && filters.page !== '1') params.set('page', filters.page)
+  if (filters.co_agent && filters.co_agent === 'yes') params.set('co_agent', 'yes')
   return `/listing${params.size > 0 ? '?' + params.toString() : ''}`
 }
 
@@ -88,6 +90,7 @@ function FilterPanel({ currentFilters, filterOptions, onFilter, onClear }: Filte
     currentFilters.bts_mrt && currentFilters.bts_mrt !== 'all' ? 1 : null,
     currentFilters.price_bucket && currentFilters.price_bucket !== 'all' ? 1 : null,
     currentFilters.status && currentFilters.status !== 'available' ? 1 : null,
+    currentFilters.co_agent === 'yes' ? 1 : null,
   ].filter(Boolean).length
 
   function handleSearch(e: React.FormEvent) {
@@ -224,6 +227,20 @@ function FilterPanel({ currentFilters, filterOptions, onFilter, onClear }: Filte
         </div>
       </div>
 
+      {/* Co-agent */}
+      <div>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Co-Agent</p>
+        <label className="flex items-center gap-2 cursor-pointer w-fit">
+          <input
+            type="checkbox"
+            checked={currentFilters.co_agent === 'yes'}
+            onChange={e => onFilter({ co_agent: e.target.checked ? 'yes' : 'all', page: '1' })}
+            className="w-4 h-4 rounded accent-blue-600"
+          />
+          <span className="text-xs text-gray-600">เฉพาะทรัพย์ที่รับ Co-Agent</span>
+        </label>
+      </div>
+
       {/* Clear all */}
       {activeCount > 0 && (
         <button
@@ -285,6 +302,7 @@ export default function ListingPageClient({
     currentFilters.bts_mrt && currentFilters.bts_mrt !== 'all' ? 1 : null,
     currentFilters.price_bucket && currentFilters.price_bucket !== 'all' ? 1 : null,
     currentFilters.status && currentFilters.status !== 'available' ? 1 : null,
+    currentFilters.co_agent === 'yes' ? 1 : null,
   ].filter(Boolean).length
 
   return (

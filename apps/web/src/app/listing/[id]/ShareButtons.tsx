@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Link2, Check, Share2 } from 'lucide-react'
+// LINE and Facebook share removed — native browser share + copy link is sufficient
 
 interface Props {
   path: string
@@ -18,9 +19,6 @@ export default function ShareButtons({ path, title }: Props) {
     setHasNativeShare('share' in navigator)
   }, [path])
 
-  const encodedUrl   = encodeURIComponent(url)
-  const encodedTitle = encodeURIComponent(title)
-
   function handleNativeShare() {
     navigator.share({ title, url }).catch(() => {})
   }
@@ -34,32 +32,6 @@ export default function ShareButtons({ path, title }: Props) {
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      {/* LINE */}
-      <a
-        href={`https://social-plugins.line.me/lineit/share?url=${encodedUrl}&text=${encodedTitle}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#06C755] hover:bg-[#05a347] text-white text-xs font-semibold rounded-xl transition"
-      >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="white" aria-hidden="true">
-          <path d="M14 6.7c0-3.3-3.1-6-7-6S0 3.4 0 6.7c0 3 2.5 5.4 5.9 5.9.23.05.54.16.62.36.07.17.05.45.02.63l-.1.57c-.03.2-.14.68.6.37.73-.31 3.97-2.34 5.42-4.01C13.97 9.43 14 8.17 14 6.7z" />
-        </svg>
-        LINE
-      </a>
-
-      {/* Facebook */}
-      <a
-        href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1877F2] hover:bg-[#166fe5] text-white text-xs font-semibold rounded-xl transition"
-      >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="white" aria-hidden="true">
-          <path d="M16 8.05C16 3.6 12.4 0 8 0S0 3.6 0 8.05c0 4 2.9 7.3 6.75 7.9V10.4H4.7V8.05h2.05V6.3c0-2 1.2-3.1 3-3.1.85 0 1.75.15 1.75.15v1.95h-1c-.97 0-1.27.6-1.27 1.2v1.45h2.17l-.35 2.35H9.23V16C13.1 15.35 16 12.05 16 8.05z" />
-        </svg>
-        Facebook
-      </a>
-
       {/* Native share — rendered only after mount on supported devices */}
       {hasNativeShare && (
         <button

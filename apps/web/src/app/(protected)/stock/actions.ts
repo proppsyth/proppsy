@@ -30,6 +30,7 @@ export type StockInput = {
   status: string
   photo_urls: string[]
   photo_thumb_urls?: string[]
+  co_agent_accepted?: boolean
   notes?: string
   contract_end_date?: string
 }

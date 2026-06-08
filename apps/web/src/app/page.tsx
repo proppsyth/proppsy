@@ -88,7 +88,7 @@ export default async function HomePage({
   // Fetch top properties matching quick filters (fetch extra for geographic client-filter)
   let stockQuery = supabase
     .from('stock')
-    .select('id, unit_no, room_type, size_sqm, floor, rent_price, sale_price, listing_type, photo_urls, photo_thumb_urls, project_name, project_id, is_premium, project:projects(province, district, bts_mrt)')
+    .select('id, unit_no, room_type, size_sqm, floor, rent_price, sale_price, listing_type, photo_urls, photo_thumb_urls, project_name, project_id, is_premium, co_agent_accepted, project:projects(province, district, bts_mrt)')
     .eq('status', 'available')
     .eq('is_published', true)
     .order('is_premium', { ascending: false })

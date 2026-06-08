@@ -2,6 +2,7 @@ import Link from 'next/link'
 import StorageImage from '@/components/shared/StorageImage'
 import { Building2, Maximize, Layers, MapPin, Train } from 'lucide-react'
 import type { Stock } from '@/types'
+import { formatRoomType } from '@/types'
 
 export type StockWithProject = Stock & {
   project?: { province?: string; district?: string; bts_mrt?: string[] } | null
@@ -66,8 +67,9 @@ export default function PropertyCard({ stock }: { stock: StockWithProject }) {
           </p>
         )}
         <div className="flex items-center gap-2 mt-2 text-xs text-gray-400 flex-wrap">
-          {stock.room_type && <span className="bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">{stock.room_type}</span>}
+          {stock.room_type && <span className="bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">{formatRoomType(stock.room_type)}</span>}
           {stock.size_sqm && <span className="flex items-center gap-0.5"><Maximize className="w-3 h-3" />{stock.size_sqm} ตร.ม.</span>}
+          {stock.co_agent_accepted && <span className="bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full border border-teal-100 text-[10px] font-medium">Co-Agent</span>}
           {stock.floor && <span className="flex items-center gap-0.5"><Layers className="w-3 h-3" />ชั้น {stock.floor}</span>}
           {stations.map(s => (
             <span key={s} className="flex items-center gap-0.5 text-blue-500"><Train className="w-3 h-3" />{s}</span>

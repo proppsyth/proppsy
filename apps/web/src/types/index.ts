@@ -226,6 +226,8 @@ export interface Stock {
   is_premium?: boolean
   published_at?: string
   premium_expires_at?: string
+  co_agent_accepted?: boolean
+  view_count?: number
   notes?: string
   raw_text?: string
   contract_end_date?: string

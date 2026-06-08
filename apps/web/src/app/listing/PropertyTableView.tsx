@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { StockWithProject } from './PropertyCard'
+import { formatRoomType } from '@/types'
 
 function fmt(n: number) {
   return new Intl.NumberFormat('th-TH').format(n)
@@ -48,7 +49,7 @@ export default function PropertyTableView({ stocks }: { stocks: StockWithProject
                     {stock.listing_type !== 'rent' && <span className="text-[11px] px-1.5 py-0.5 rounded bg-green-100 text-green-600 font-medium">ขาย</span>}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{stock.room_type ?? '—'}</td>
+                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{stock.room_type ? formatRoomType(stock.room_type) : '—'}</td>
                 <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
                   {stock.size_sqm ? `${stock.size_sqm} ตร.ม.` : '—'}
                 </td>
