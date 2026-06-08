@@ -79,6 +79,25 @@ export function computeVariables(
     v['เริ่มต่อสัญญา']       = toThaiDate(moveInDate)
     v['enเริ่มต่อสัญญา']     = toEnDate(moveInDate)
     v['enเริ่มต่อสัญญาLong'] = toEnDateLong(moveInDate)
+
+    // Reservation Section 4: scheduled lease-signing / move-in date
+    // Named distinctly from <<ทำสัญญาวันที่*>> (= contract.created_at) to avoid collision
+    v['วันนัดทำสัญญาตัวอักษร']       = toThaiDateFull(moveInDate)
+    v['วันนัดทำสัญญาภาษาไทย']        = toThaiDate(moveInDate)
+    v['วันนัดทำสัญญาภาษาอังกฤษ']     = toEnDate(moveInDate)
+    v['วันนัดทำสัญญาภาษาอังกฤษLong'] = toEnDateLong(moveInDate)
+    v['วันเข้าอยู่ตัวอักษร']          = toThaiDateFull(moveInDate)
+    v['วันเข้าอยู่ภาษาไทย']           = toThaiDate(moveInDate)
+    v['วันเข้าอยู่ภาษาอังกฤษLong']   = toEnDateLong(moveInDate)
+  }
+
+  // Reservation expiry date (วันหมดอายุการจอง)
+  const reservExpireDate = (contract as { reservation_expire_date?: string | null }).reservation_expire_date
+  if (reservExpireDate) {
+    const expDate = new Date(reservExpireDate)
+    v['วันหมดอายุการจอง']                 = toThaiDate(expDate)
+    v['วันหมดอายุการจองตัวอักษร']          = toThaiDateFull(expDate)
+    v['วันหมดอายุการจองภาษาอังกฤษLong']   = toEnDateLong(expDate)
   }
 
   // Original lease date for renewal (stored in extra_vars)
