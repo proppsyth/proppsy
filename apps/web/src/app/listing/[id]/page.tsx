@@ -14,6 +14,8 @@ import ShareButtons from './ShareButtons'
 import StickyActionBar from './StickyActionBar'
 import ViewTracker from './ViewTracker'
 import ProjectSection from './ProjectSection'
+import RecentlyViewed from './RecentlyViewed'
+import SaveButton from '@/components/shared/SaveButton'
 import { BannerSidebar } from '@/components/shared/BannerZone'
 
 export async function generateMetadata({
@@ -244,7 +246,10 @@ export default async function PublicPropertyDetailPage({
                     {(stock.view_count ?? 0).toLocaleString('th-TH')} ครั้งที่เข้าชม
                   </p>
                 )}
-                <p className="text-xs text-gray-400">แชร์ประกาศนี้</p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <p className="text-xs text-gray-400">แชร์ประกาศนี้</p>
+                  <SaveButton stockId={stock.id} />
+                </div>
                 <ShareButtons
                   path={`/listing/${stock.id}`}
                   title={[projectName, stock.unit_no].filter(Boolean).join(' · ') || 'ทรัพย์'}
@@ -323,7 +328,12 @@ export default async function PublicPropertyDetailPage({
               <ProjectSection project={stock.project} />
             )}
 
-            {/* Other Available Units in Same Project */}
+          </div>
+
+          {/* Right: Contact + sidebar banners + sibling units */}
+          <div className="space-y-4 min-w-0">
+            <ContactCard agent={stock.agent ?? null} stockId={stock.id} />
+            <BannerSidebar position="listing_sidebar" />
             {siblingUnits.length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/70">
@@ -361,12 +371,16 @@ export default async function PublicPropertyDetailPage({
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Right: Contact + sidebar banners */}
-          <div className="space-y-4 min-w-0">
-            <ContactCard agent={stock.agent ?? null} stockId={stock.id} />
-            <BannerSidebar position="listing_sidebar" />
+            <RecentlyViewed current={{
+              id: stock.id,
+              project_name: projectName ?? stock.project_name ?? undefined,
+              unit_no: stock.unit_no ?? undefined,
+              room_type: stock.room_type ?? undefined,
+              rent_price: stock.rent_price,
+              sale_price: stock.sale_price,
+              listing_type: stock.listing_type ?? undefined,
+              photo_thumb_url: stock.photo_thumb_urls?.[0] ?? stock.photo_urls?.[0] ?? undefined,
+            }} />
           </div>
         </div>
       </div>

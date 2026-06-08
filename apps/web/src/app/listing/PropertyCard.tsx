@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import StorageImage from '@/components/shared/StorageImage'
+import SaveButton from '@/components/shared/SaveButton'
 import { Building2, Maximize, Layers, MapPin, Train } from 'lucide-react'
 import type { Stock } from '@/types'
 import { formatRoomType } from '@/types'
@@ -52,6 +53,9 @@ export default function PropertyCard({ stock }: { stock: StockWithProject }) {
             HOT
           </span>
         )}
+        <div className="absolute bottom-2 right-2 z-10">
+          <SaveButton stockId={stock.id} variant="card" />
+        </div>
       </div>
       <div className="p-4">
         {price != null && (

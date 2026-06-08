@@ -260,6 +260,7 @@ export default async function StockDetailPage({
             <StockShareButtons
               stockId={s.id}
               title={stockDisplayTitle(s)}
+              viewCount={s.view_count ?? 0}
             />
           )}
 
