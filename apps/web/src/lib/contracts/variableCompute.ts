@@ -56,6 +56,7 @@ export function computeVariables(
   v['ทำสัญญาวันที่ภาษาอังกฤษLong'] = toEnDateLong(contractDate)
   v['ปีที่ทำสัญญา']              = thaiYear(contractDate)
   v['ทำสัญญาเดือนอย่างเดียว']    = String(contractDate.getMonth() + 1)
+  v['ทำสัญญาวันอย่างเดียว']      = String(contractDate.getDate())
 
   if (endDate) {
     v['ทำสัญญาวันที่สิ้นสุดตัวอักษร']   = toThaiDateFull(endDate)
