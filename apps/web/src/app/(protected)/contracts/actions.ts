@@ -246,7 +246,7 @@ export async function createLeaseFromReservation(
 
   // Compute end_date from move_in_date + contract_months if both provided
   const moveIn = extras.move_in_date ?? null
-  const contractMonths = extras.contract_months ?? 12
+  const contractMonths = extras.contract_months ?? reservation.contract_months ?? 12
   let endDate: string | null = null
   if (moveIn) {
     const d = new Date(moveIn)

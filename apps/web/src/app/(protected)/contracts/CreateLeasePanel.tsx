@@ -14,6 +14,7 @@ interface ReservationSnapshot {
   rentPrice: number | null
   depositMonths: number | null
   depositAmount: number | null
+  contractMonths: number | null
   waterUnitPrice: number | null
   electricUnitPrice: number | null
   internetFee: number | null
@@ -50,7 +51,7 @@ export default function CreateLeasePanel({ reservation }: Props) {
     const rent = reservation.rentPrice ?? 0
     return {
     moveInDate:        today(),
-    contractMonths:    '12',
+    contractMonths:    String(reservation.contractMonths ?? 12),
     rentPrice:         String(reservation.rentPrice ?? ''),
     depositMonths:     String(reservation.depositMonths ?? '1'),
     depositAmount:     String(reservation.depositAmount ?? ''),

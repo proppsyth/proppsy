@@ -617,6 +617,7 @@ export default function ContractWizard() {
                   <Field label="ค่าปรับกรณียกเลิก (บาท)" value={state.penalty_amount} onChange={v => set('penalty_amount', v)} type="number" placeholder="0" />
                   <Field label="วันที่นัดเข้าอยู่ / วันเริ่มสัญญาเช่า" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" required hasError={showErrors && !state.move_in_date} />
                   <Field label="วันหมดอายุการจอง" value={state.reservation_expire_date} onChange={v => set('reservation_expire_date', v)} type="date" />
+                  <Field label="ระยะเวลาสัญญาเช่า (เดือน)" value={state.contract_months} onChange={handleContractMonthsChange} type="number" placeholder="12" />
                 </div>
                 <div className="flex items-center gap-3 mt-4">
                   <Toggle label="VAT 7%" checked={state.vat_7} onChange={v => set('vat_7', v)} />

@@ -399,6 +399,7 @@ export default async function ContractDetailPage({
                 rentPrice:         contract.rent_price ?? null,
                 depositMonths:     contract.deposit_months ?? null,
                 depositAmount:     contract.deposit_amount ?? null,
+                contractMonths:    contract.contract_months ?? null,
                 waterUnitPrice:    (contract as { water_unit_price?: number | null }).water_unit_price ?? null,
                 electricUnitPrice: (contract as { electric_unit_price?: number | null }).electric_unit_price ?? null,
                 internetFee:       (contract as { internet_fee?: number | null }).internet_fee ?? null,

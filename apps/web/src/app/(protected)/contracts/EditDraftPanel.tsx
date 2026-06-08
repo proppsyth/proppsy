@@ -277,6 +277,7 @@ export default function EditDraftPanel({ data }: Props) {
                   )}
                 </div>
               )}
+              <Field label="ระยะเวลาสัญญาเช่า (เดือน)" value={form.contractMonths} onChange={handleContractMonthsChange} type="number" />
               <Field label="วันที่นัดเข้าอยู่ / วันเริ่มสัญญาเช่า" value={form.moveInDate} onChange={v => set('moveInDate', v)} type="date" />
               <Field label="วันหมดอายุการจอง" value={form.reservationExpireDate} onChange={v => set('reservationExpireDate', v)} type="date" />
               <Field label="วันที่ชำระ" value={form.paymentDate} onChange={v => set('paymentDate', v)} type="date" />
