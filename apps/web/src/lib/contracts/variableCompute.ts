@@ -320,8 +320,8 @@ export function computeVariables(
   v['รวมทคสอและลอตัวอักษร']   = bahtText(mgmt)
 
   // ─── VAT / WHT calculations ──────────────────────────────────
-  // Base amount: deposit for reservation/commission docs, otherwise rent
-  const invoiceBase = deposit > 0 ? deposit : (contract.commission_net ?? rent)
+  // VAT/WHT only applies to commission amounts — NEVER to deposit, rent, or tenant-facing amounts.
+  const invoiceBase = contract.commission_net ?? 0
   const vat7Amt  = contract.vat_7 ? Math.round(invoiceBase * 0.07 * 100) / 100 : 0
   const wht3Amt  = contract.wht_3 ? Math.round(invoiceBase * 0.03 * 100) / 100 : 0
   const netTotal = invoiceBase + vat7Amt - wht3Amt

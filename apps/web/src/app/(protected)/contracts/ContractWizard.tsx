@@ -76,7 +76,7 @@ function makeInitState(): WizardState {
     owner_id: '', owner_label: '',
     customer_id: '', customer_label: '',
     rent_price: '', deposit_months: '1', deposit_amount: '',
-    contract_months: '12', move_in_date: today, end_date: '',
+    contract_months: '12', move_in_date: '', end_date: '',
     cleaning_fee: '', ac_count: '', ac_wash_per_unit: '',
     penalty_amount: '', commission_net: '',
     vat_7: false, wht_3: false, occupant_count: '1',
@@ -245,8 +245,10 @@ export default function ContractWizard() {
       }
       if (r.rent_price) {
         const rent = r.rent_price
+        const depositMult = (r.deposit != null ? r.deposit : null) ?? (parseFloat(s.deposit_months) || 1)
         next.rent_price = String(rent)
-        next.deposit_amount = String(rent * (parseFloat(s.deposit_months) || 1))
+        next.deposit_months = String(depositMult)
+        next.deposit_amount = String(rent * depositMult)
       }
       return next
     })
@@ -290,7 +292,7 @@ export default function ContractWizard() {
     }
     if (isReservation) {
       if (!state.deposit_amount) errs.push('กรุณากรอกเงินจอง')
-      if (!state.move_in_date) errs.push('กรุณาระบุวันที่ทำสัญญาจอง')
+      if (!state.move_in_date) errs.push('กรุณาระบุวันที่นัดเข้าอยู่ / วันเริ่มสัญญาเช่า')
     }
     if (isReceipt) {
       if (!state.rent_price) errs.push('กรุณากรอกจำนวนเงิน')
@@ -587,7 +589,7 @@ export default function ContractWizard() {
                   <Field label="เงินจอง (บาท)" value={state.deposit_amount} onChange={v => set('deposit_amount', v)} type="number" placeholder="0" required hasError={showErrors && !state.deposit_amount} />
                   <Field label="ค่าเช่าต่อเดือน (บาท)" value={state.rent_price} onChange={handleRentChange} type="number" placeholder="0" />
                   <Field label="ค่าปรับกรณียกเลิก (บาท)" value={state.penalty_amount} onChange={v => set('penalty_amount', v)} type="number" placeholder="0" />
-                  <Field label="วันที่ทำสัญญาจอง" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" required hasError={showErrors && !state.move_in_date} />
+                  <Field label="วันที่นัดเข้าอยู่ / วันเริ่มสัญญาเช่า" value={state.move_in_date} onChange={v => set('move_in_date', v)} type="date" required hasError={showErrors && !state.move_in_date} />
                   <Field label="วันหมดอายุการจอง" value={state.reservation_expire_date} onChange={v => set('reservation_expire_date', v)} type="date" />
                 </div>
                 <div className="flex items-center gap-3 mt-4">

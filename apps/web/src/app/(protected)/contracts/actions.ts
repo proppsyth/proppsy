@@ -1114,8 +1114,8 @@ export async function generateContractPdf(
         } : null,
         stockDesc,
         amount,
-        vat7:  contract.vat_7 ?? false,
-        wht3:  contract.wht_3 ?? false,
+        vat7:  false,  // invoice/receipt docs are tenant-facing — VAT/WHT never applies
+        wht3:  false,
         isReceipt,
         paymentMethod: (contract as { payment_method?: string | null }).payment_method ?? null,
         bankRef:       (contract as { bank_ref?: string | null }).bank_ref ?? null,

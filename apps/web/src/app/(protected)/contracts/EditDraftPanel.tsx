@@ -252,7 +252,7 @@ export default function EditDraftPanel({ data }: Props) {
           {isReservation && (
             <>
               <Field label="เงินจอง (บาท)" value={form.depositAmount} onChange={v => set('depositAmount', v)} type="number" />
-              <Field label="วันที่ทำสัญญาจอง" value={form.moveInDate} onChange={v => set('moveInDate', v)} type="date" />
+              <Field label="วันที่นัดเข้าอยู่ / วันเริ่มสัญญาเช่า" value={form.moveInDate} onChange={v => set('moveInDate', v)} type="date" />
               <Field label="วันหมดอายุการจอง" value={form.reservationExpireDate} onChange={v => set('reservationExpireDate', v)} type="date" />
               <Field label="วันที่ชำระ" value={form.paymentDate} onChange={v => set('paymentDate', v)} type="date" />
             </>
@@ -261,9 +261,13 @@ export default function EditDraftPanel({ data }: Props) {
         </div>
 
         {/* VAT/WHT */}
-        <div className="flex flex-wrap gap-3 pt-1">
-          <Toggle label="VAT 7%" checked={form.vat7} onChange={v => set('vat7', v)} />
-          <Toggle label="หัก ณ ที่จ่าย 3%" checked={form.wht3} onChange={v => set('wht3', v)} />
+        <div className="space-y-1.5 pt-1">
+          <label className="block text-xs text-gray-500 font-medium">VAT / ภาษีหัก ณ ที่จ่าย</label>
+          <div className="flex flex-wrap gap-2">
+            <Toggle label="VAT 7%" checked={form.vat7} onChange={v => set('vat7', v)} />
+            <Toggle label="หัก ณ ที่จ่าย 3%" checked={form.wht3} onChange={v => set('wht3', v)} />
+          </div>
+          <p className="text-xs text-gray-400">ส่งผลต่อค่าคอมมิชชันเท่านั้น — ไม่กระทบค่าเช่า เงินจอง หรือเงินประกัน</p>
         </div>
 
         {/* Collapsible fees */}
