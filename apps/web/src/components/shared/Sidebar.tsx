@@ -24,6 +24,7 @@ const NAV_ITEMS = [
   { href: '/customers', icon: '👥', label: 'ลูกค้า', permission: 'customer' },
   { href: '/projects', icon: '🏢', label: 'โครงการ', permission: 'project' },
   { href: '/contracts', icon: '📄', label: 'สัญญา', permission: 'contract' },
+  { href: '/co-agents', icon: '🤝', label: 'Co-Agent', permission: null },
   { href: '/calendar', icon: '📅', label: 'นัดหมาย & ปฏิทิน', permission: null },
   { href: '/commission', icon: '💰', label: 'คอมมิชชัน', permission: null },
   { href: '/credits', icon: '⚡', label: 'เครดิต', permission: null },

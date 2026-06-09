@@ -2,11 +2,12 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, ChevronLeft, Loader2, X, AlertCircle, Sparkles } from 'lucide-react'
+import { Plus, ChevronLeft, Loader2, X, AlertCircle, Sparkles, User } from 'lucide-react'
 import { DOC_TYPE_LABELS } from '@/types'
 import type { ContractDocType } from '@/types'
 import { createChildDocument } from './actions'
 import { calculateCommission, calculateCommissionSplit, commissionHint } from '@/lib/contracts/commissionRules'
+import { computeLeaseEndDate } from '@/lib/contracts/leaseFromReservation'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -14,6 +15,10 @@ interface LeaseSummary {
   rentPrice: number | null
   depositAmount: number | null
   depositMonths: number | null
+  /** Security deposit (rent × deposit_months) */
+  securityDeposit?: number | null
+  /** Booking fee collected at reservation time */
+  bookingAmount?: number | null
   contractMonths: number | null
   moveInDate: string | null
   endDate: string | null
@@ -29,12 +34,37 @@ interface LeaseSummary {
   paymentGraceDays: number | null
 }
 
+export interface CoAgentProfile {
+  id: string
+  prefix_th: string | null
+  prefix_en: string | null
+  first_name_th: string
+  last_name_th: string
+  first_name_en: string | null
+  last_name_en: string | null
+  address_no: string | null
+  moo: string | null
+  soi: string | null
+  road: string | null
+  subdistrict: string | null
+  district: string | null
+  province: string | null
+  zip: string | null
+  bank_name: string | null
+  bank_account_name: string | null
+  bank_account_no: string | null
+  national_id: string | null
+  tax_id: string | null
+}
+
 interface Props {
   /** ID of the parent contract (lease or reservation) */
   leaseId: string
   leaseData: LeaseSummary
   /** 'lease' = full doc set; 'reservation' = only invoice/receipt reservation */
   parentCategory?: 'lease' | 'reservation'
+  /** Pre-fetched co-agent profiles belonging to this agent */
+  coAgents?: CoAgentProfile[]
 }
 
 interface FormValues {
@@ -56,13 +86,21 @@ interface FormValues {
   penaltyAmount: string
   issueDate: string
   // Co-agent profile
+  selectedCoAgentId: string
   coAgentName: string
   coAgentNationalId: string
-  coAgentAddress: string
+  coAgentTaxId: string
+  coAgentAddressNo: string
+  coAgentMoo: string
+  coAgentSoi: string
+  coAgentRoad: string
+  coAgentSubdistrict: string
+  coAgentDistrict: string
+  coAgentProvince: string
   coAgentBankName: string
   coAgentAccountName: string
   coAgentAccountNo: string
-  coAgentTaxId: string
+  coAgentPaymentDirection: string
   noticeDetails: string
 }
 
@@ -153,7 +191,7 @@ function todayStr(): string {
 
 // ─── Component ───────────────────────────────────────────────
 
-export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory = 'lease' }: Props) {
+export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory = 'lease', coAgents = [] }: Props) {
   const router = useRouter()
   const [selectedType, setSelectedType] = useState<ContractDocType | null>(null)
   const [error, setError] = useState('')
@@ -163,21 +201,41 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
 
   function makeInitForm(type?: ContractDocType | null): FormValues {
     const today = todayStr()
+    const isCoAgentDoc = type === 'co_agent'
+    const isRenewal    = type === 'renewal'
 
-    // Autofill commission from lease data (business rule: amount calculated from rent × multiplier)
+    // Autofill commission from lease data
     const commissionNet = leaseData.commissionNet
       ?? (leaseData.rentPrice && leaseData.contractMonths
         ? calculateCommission(leaseData.contractMonths, leaseData.rentPrice).commission_amount
         : null)
 
-    // Default co-agent split from lease, or 50% if co-agent doc
-    const isCoAgentDoc = type === 'co_agent'
     const splitPct = leaseData.coAgentSplitPct ?? (isCoAgentDoc ? 50 : null)
     const coAgentCommission = leaseData.coAgentCommission
       ?? (commissionNet && splitPct ? calculateCommissionSplit(commissionNet, splitPct).co_agent_amount : null)
 
+    // Invoice/receipt amount: deposit docs = security deposit; reservation docs = booking fee
+    const isDepositDoc     = type === 'invoice_deposit' || type === 'receipt_deposit'
+    const isReservationDoc = type === 'invoice_reservation' || type === 'receipt_reservation'
+    let defaultAmount: string
+    if (isDepositDoc) {
+      const security = leaseData.securityDeposit
+        ?? ((leaseData.rentPrice ?? 0) * (leaseData.depositMonths ?? 2))
+      defaultAmount = security > 0 ? String(security) : String(leaseData.depositAmount ?? '')
+    } else if (isReservationDoc) {
+      defaultAmount = String(leaseData.bookingAmount ?? leaseData.depositAmount ?? '')
+    } else {
+      defaultAmount = String(leaseData.depositAmount ?? '')
+    }
+
+    // Renewal: pre-fill new start from lease end date, compute new end date
+    const renewalMoveIn  = isRenewal ? (leaseData.endDate ?? '') : ''
+    const renewalEndDate = isRenewal && leaseData.endDate
+      ? computeLeaseEndDate(leaseData.endDate, leaseData.contractMonths ?? 12)
+      : ''
+
     return {
-      amount:             String(leaseData.depositAmount ?? ''),
+      amount:             defaultAmount,
       paymentDate:        today,
       paymentMethod:      'transfer',
       bankRef:            '',
@@ -189,18 +247,26 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
       wht3:               leaseData.wht3,
       newRentPrice:       String(leaseData.rentPrice ?? ''),
       newContractMonths:  String(leaseData.contractMonths ?? '12'),
-      newMoveInDate:      '',
-      newEndDate:         '',
+      newMoveInDate:      renewalMoveIn,
+      newEndDate:         renewalEndDate,
       effectiveEndDate:   '',
       penaltyAmount:      '',
       issueDate:          today,
+      selectedCoAgentId:  '',
       coAgentName:        '',
       coAgentNationalId:  '',
-      coAgentAddress:     '',
+      coAgentTaxId:       '',
+      coAgentAddressNo:   '',
+      coAgentMoo:         '',
+      coAgentSoi:         '',
+      coAgentRoad:        '',
+      coAgentSubdistrict: '',
+      coAgentDistrict:    '',
+      coAgentProvince:    '',
       coAgentBankName:    '',
       coAgentAccountName: '',
       coAgentAccountNo:   '',
-      coAgentTaxId:       '',
+      coAgentPaymentDirection: 'agent_to_co_agent',
       noticeDetails:      '',
       ...(type === 'receipt_rent' ? { amount: String(leaseData.rentPrice ?? '') } : {}),
     }
@@ -241,6 +307,53 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
     }))
   }
 
+  // Renewal: when start date changes, recompute end date
+  function handleRenewalMoveInChange(v: string) {
+    const months = parseInt(form.newContractMonths) || leaseData.contractMonths || 12
+    setForm(f => ({
+      ...f,
+      newMoveInDate: v,
+      newEndDate: v ? computeLeaseEndDate(v, months) : '',
+    }))
+  }
+
+  // Renewal: when contract months changes, recompute end date
+  function handleRenewalContractMonthsChange(v: string) {
+    const months = parseInt(v) || leaseData.contractMonths || 12
+    setForm(f => ({
+      ...f,
+      newContractMonths: v,
+      newEndDate: f.newMoveInDate ? computeLeaseEndDate(f.newMoveInDate, months) : f.newEndDate,
+    }))
+  }
+
+  // Co-agent: when a saved profile is selected, auto-fill all fields
+  function handleSelectCoAgent(profileId: string) {
+    const profile = coAgents.find(p => p.id === profileId)
+    if (!profile) {
+      setForm(f => ({ ...f, selectedCoAgentId: profileId }))
+      return
+    }
+    const fullNameTh = [profile.prefix_th, profile.first_name_th, profile.last_name_th].filter(Boolean).join(' ')
+    setForm(f => ({
+      ...f,
+      selectedCoAgentId:  profileId,
+      coAgentName:        fullNameTh,
+      coAgentNationalId:  profile.national_id ?? '',
+      coAgentTaxId:       profile.tax_id ?? '',
+      coAgentAddressNo:   profile.address_no ?? '',
+      coAgentMoo:         profile.moo ?? '',
+      coAgentSoi:         profile.soi ?? '',
+      coAgentRoad:        profile.road ?? '',
+      coAgentSubdistrict: profile.subdistrict ?? '',
+      coAgentDistrict:    profile.district ?? '',
+      coAgentProvince:    profile.province ?? '',
+      coAgentBankName:    profile.bank_name ?? '',
+      coAgentAccountName: profile.bank_account_name ?? '',
+      coAgentAccountNo:   profile.bank_account_no ?? '',
+    }))
+  }
+
   function handleSubmit() {
     if (!selectedType) return
     setError('')
@@ -254,37 +367,45 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
         extraVars['รายละเอียด'] = form.noticeDetails
       }
 
-      // Co-agent profile snapshot for document generation
+      // Co-agent profile snapshot — structured fields for variableCompute
       const coAgentInfo: Record<string, string> | null = selectedType === 'co_agent' ? {
         ชื่อ:        form.coAgentName,
         เลขบัตร:     form.coAgentNationalId,
-        เลขเสียภาษี: form.coAgentTaxId,
-        ที่อยู่:      form.coAgentAddress,
+        เลขเสียภาษี: form.coAgentTaxId || form.coAgentNationalId,
+        บ้านเลขที่:  form.coAgentAddressNo,
+        หมู่ที่:     form.coAgentMoo,
+        ซอย:         form.coAgentSoi,
+        ถนน:         form.coAgentRoad,
+        แขวงตำบล:    form.coAgentSubdistrict,
+        เขตอำเภอ:    form.coAgentDistrict,
+        จังหวัด:     form.coAgentProvince,
         ธนาคาร:      form.coAgentBankName,
         ชื่อบัญชี:   form.coAgentAccountName,
         เลขบัญชี:    form.coAgentAccountNo,
       } : null
 
       const result = await createChildDocument(leaseId, selectedType, {
-        amount:             num(form.amount),
-        paymentDate:        form.paymentDate || null,
-        paymentMethod:      form.paymentMethod,
-        bankRef:            form.bankRef || null,
-        periodDate:         form.periodDate || null,
-        commissionNet:      num(form.commissionNet),
-        coAgentSplitPct:    int(form.coAgentSplitPct),
-        coAgentCommission:  num(form.coAgentCommission),
-        coAgentInfo:        coAgentInfo,
-        vat7:               form.vat7,
-        wht3:               form.wht3,
-        newRentPrice:       num(form.newRentPrice),
-        newContractMonths:  int(form.newContractMonths),
-        newMoveInDate:      form.newMoveInDate || null,
-        newEndDate:         form.newEndDate || null,
-        effectiveEndDate:   form.effectiveEndDate || null,
-        penaltyAmount:      num(form.penaltyAmount),
-        issueDate:          form.issueDate || null,
-        extraVars:          Object.keys(extraVars).length > 0 ? extraVars : undefined,
+        amount:                    num(form.amount),
+        paymentDate:               form.paymentDate || null,
+        paymentMethod:             form.paymentMethod,
+        bankRef:                   form.bankRef || null,
+        periodDate:                form.periodDate || null,
+        commissionNet:             num(form.commissionNet),
+        coAgentSplitPct:           int(form.coAgentSplitPct),
+        coAgentCommission:         num(form.coAgentCommission),
+        coAgentInfo:               coAgentInfo,
+        coAgentId:                 form.selectedCoAgentId || null,
+        coAgentPaymentDirection:   selectedType === 'co_agent' ? form.coAgentPaymentDirection : null,
+        vat7:                      form.vat7,
+        wht3:                      form.wht3,
+        newRentPrice:              num(form.newRentPrice),
+        newContractMonths:         int(form.newContractMonths),
+        newMoveInDate:             form.newMoveInDate || null,
+        newEndDate:                form.newEndDate || null,
+        effectiveEndDate:          form.effectiveEndDate || null,
+        penaltyAmount:             num(form.penaltyAmount),
+        issueDate:                 form.issueDate || null,
+        extraVars:                 Object.keys(extraVars).length > 0 ? extraVars : undefined,
       })
 
       if (result.error) { setError(result.error); return }
@@ -318,7 +439,13 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
           <>
             <Field label="จำนวนเงิน (บาท)" value={form.amount}
               onChange={v => set('amount', v)} type="number"
-              hint={`จากสัญญา: ฿${fmt(leaseData.depositAmount ?? 0)}`}
+              hint={
+                selectedType === 'invoice_deposit' || selectedType === 'receipt_deposit'
+                  ? `เงินประกัน (${leaseData.depositMonths ?? 2} เดือน): ฿${fmt((leaseData.rentPrice ?? 0) * (leaseData.depositMonths ?? 2))}`
+                  : selectedType === 'invoice_reservation' || selectedType === 'receipt_reservation'
+                  ? `เงินจอง: ฿${fmt(leaseData.bookingAmount ?? leaseData.depositAmount ?? 0)}`
+                  : `จากสัญญา: ฿${fmt(leaseData.depositAmount ?? 0)}`
+              }
             />
             <Field label="วันที่ชำระ" value={form.paymentDate}
               onChange={v => set('paymentDate', v)} type="date" />
@@ -372,11 +499,19 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
               hint={`ปัจจุบัน: ฿${fmt(leaseData.rentPrice ?? 0)}`}
             />
             <Field label="ระยะสัญญาใหม่ (เดือน)" value={form.newContractMonths}
-              onChange={v => set('newContractMonths', v)} type="number" />
+              onChange={handleRenewalContractMonthsChange} type="number" />
             <Field label="วันเริ่มต้นสัญญาใหม่ *" value={form.newMoveInDate}
-              onChange={v => set('newMoveInDate', v)} type="date" />
-            <Field label="วันสิ้นสุดสัญญาใหม่" value={form.newEndDate}
-              onChange={v => set('newEndDate', v)} type="date" />
+              onChange={handleRenewalMoveInChange} type="date"
+              hint={leaseData.endDate ? `วันหมดสัญญาปัจจุบัน: ${new Date(leaseData.endDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}` : undefined}
+            />
+            <div>
+              <label className="block text-xs text-gray-500 mb-1 font-medium">วันสิ้นสุดสัญญาใหม่ (คำนวณอัตโนมัติ)</label>
+              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600">
+                {form.newEndDate
+                  ? new Date(form.newEndDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+                  : '—'}
+              </div>
+            </div>
           </>
         )}
 
@@ -414,28 +549,92 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
 
         {isCoAgent && (
           <>
-            <div className="px-3 py-2 bg-indigo-50 rounded-lg text-xs text-indigo-700 flex items-start gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-              <span>ข้อมูลคอมมิชชันดึงจากสัญญาหลักอัตโนมัติ — ตรวจสอบและแก้ไขได้</span>
-            </div>
+            {/* Profile selector */}
+            {coAgents.length > 0 && (
+              <div className="mb-1">
+                <label className="block text-xs text-gray-500 mb-1 font-medium">เลือก Co-Agent ที่บันทึกไว้</label>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, selectedCoAgentId: '', coAgentName: '', coAgentNationalId: '', coAgentTaxId: '', coAgentAddressNo: '', coAgentMoo: '', coAgentSoi: '', coAgentRoad: '', coAgentSubdistrict: '', coAgentDistrict: '', coAgentProvince: '', coAgentBankName: '', coAgentAccountName: '', coAgentAccountNo: '' }))}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-medium transition ${!form.selectedCoAgentId ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                  >
+                    <User className="w-3 h-3" />
+                    กรอกใหม่
+                  </button>
+                  {coAgents.map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSelectCoAgent(p.id)}
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition ${form.selectedCoAgentId === p.id ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                    >
+                      {[p.prefix_th, p.first_name_th, p.last_name_th].filter(Boolean).join(' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <p className="text-xs font-semibold text-gray-600 mt-1">ข้อมูล Co-Agent</p>
             <Field label="ชื่อ Co-Agent *" value={form.coAgentName}
               onChange={v => set('coAgentName', v)} placeholder="ชื่อเต็ม" />
-            <Field label="เลขบัตรประชาชน / เลขทะเบียนนิติบุคคล *" value={form.coAgentNationalId}
-              onChange={v => set('coAgentNationalId', v)} placeholder="13 หลัก" />
-            <Field label="เลขประจำตัวผู้เสียภาษี" value={form.coAgentTaxId}
-              onChange={v => set('coAgentTaxId', v)} placeholder="ไม่บังคับ" />
-            <Field label="ที่อยู่" value={form.coAgentAddress}
-              onChange={v => set('coAgentAddress', v)} placeholder="บ้านเลขที่ ถนน แขวง เขต จังหวัด" />
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="เลขบัตรประชาชน *" value={form.coAgentNationalId}
+                onChange={v => set('coAgentNationalId', v)} placeholder="13 หลัก" />
+              <Field label="เลขผู้เสียภาษี" value={form.coAgentTaxId}
+                onChange={v => set('coAgentTaxId', v)} placeholder="ถ้าต่างจากบัตร" />
+            </div>
+
+            <p className="text-xs font-semibold text-gray-600 mt-1">ที่อยู่</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="บ้านเลขที่" value={form.coAgentAddressNo}
+                onChange={v => set('coAgentAddressNo', v)} placeholder="123/4" />
+              <Field label="หมู่ที่" value={form.coAgentMoo}
+                onChange={v => set('coAgentMoo', v)} placeholder="ไม่บังคับ" />
+              <Field label="ซอย" value={form.coAgentSoi}
+                onChange={v => set('coAgentSoi', v)} placeholder="ไม่บังคับ" />
+              <Field label="ถนน" value={form.coAgentRoad}
+                onChange={v => set('coAgentRoad', v)} placeholder="ถนนสุขุมวิท" />
+              <Field label="แขวง/ตำบล" value={form.coAgentSubdistrict}
+                onChange={v => set('coAgentSubdistrict', v)} placeholder="คลองเตย" />
+              <Field label="เขต/อำเภอ" value={form.coAgentDistrict}
+                onChange={v => set('coAgentDistrict', v)} placeholder="คลองเตย" />
+              <Field label="จังหวัด" value={form.coAgentProvince}
+                onChange={v => set('coAgentProvince', v)} placeholder="กรุงเทพมหานคร" />
+            </div>
 
             <p className="text-xs font-semibold text-gray-600 mt-1">ข้อมูลธนาคาร</p>
             <Field label="ชื่อธนาคาร" value={form.coAgentBankName}
               onChange={v => set('coAgentBankName', v)} placeholder="เช่น กสิกรไทย, ไทยพาณิชย์" />
-            <Field label="ชื่อบัญชี" value={form.coAgentAccountName}
-              onChange={v => set('coAgentAccountName', v)} placeholder="ชื่อเจ้าของบัญชี" />
-            <Field label="เลขบัญชี" value={form.coAgentAccountNo}
-              onChange={v => set('coAgentAccountNo', v)} placeholder="xxx-x-xxxxx-x" />
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="ชื่อบัญชี" value={form.coAgentAccountName}
+                onChange={v => set('coAgentAccountName', v)} placeholder="ชื่อเจ้าของบัญชี" />
+              <Field label="เลขบัญชี" value={form.coAgentAccountNo}
+                onChange={v => set('coAgentAccountNo', v)} placeholder="xxx-x-xxxxx-x" />
+            </div>
+
+            <p className="text-xs font-semibold text-gray-600 mt-1">ทิศทางการชำระเงิน</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'agent_to_co_agent', label: 'Agent → Co-Agent', desc: 'Agent ชำระให้ Co-Agent' },
+                { value: 'co_agent_to_agent', label: 'Co-Agent → Agent', desc: 'Co-Agent ชำระให้ Agent' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => set('coAgentPaymentDirection', opt.value)}
+                  className={`flex flex-col items-start px-3 py-2 rounded-lg border text-xs transition ${
+                    form.coAgentPaymentDirection === opt.value
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="font-semibold">{opt.label}</span>
+                  <span className="text-gray-400 text-[10px]">{opt.desc}</span>
+                </button>
+              ))}
+            </div>
 
             <p className="text-xs font-semibold text-gray-600 mt-1">คอมมิชชัน</p>
             <div className="space-y-1">

@@ -72,7 +72,7 @@ export default async function ContractDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: contract }, { data: furnitureItems }, { data: keyItems }, { data: signers }, { data: relatedDocs }] = await Promise.all([
+  const [{ data: contract }, { data: furnitureItems }, { data: keyItems }, { data: signers }, { data: relatedDocs }, { data: coAgents }] = await Promise.all([
     supabase
       .from('contracts')
       .select('*, stock:stock(*), owner:owners(*), customer:customers(*)')
@@ -100,6 +100,11 @@ export default async function ContractDetailPage({
       .eq('parent_contract_id', id)
       .eq('agent_uid', user.id)
       .order('created_at', { ascending: true }),
+    supabase
+      .from('co_agents')
+      .select('id,prefix_th,prefix_en,first_name_th,last_name_th,first_name_en,last_name_en,address_no,moo,soi,road,subdistrict,district,province,zip,bank_name,bank_account_name,bank_account_no,national_id,tax_id')
+      .eq('agent_uid', user.id)
+      .order('created_at', { ascending: false }),
   ])
 
   if (!contract) notFound()
@@ -374,6 +379,8 @@ export default async function ContractDetailPage({
                 rentPrice:             contract.rent_price ?? null,
                 depositAmount:         contract.deposit_amount ?? null,
                 depositMonths:         contract.deposit_months ?? null,
+                bookingAmount:         (contract as { booking_amount?: number | null }).booking_amount ?? null,
+                securityDeposit:       (contract as { security_deposit?: number | null }).security_deposit ?? null,
                 contractMonths:        contract.contract_months ?? null,
                 moveInDate:            contract.move_in_date ?? null,
                 endDate:               contract.end_date ?? null,
@@ -443,10 +450,13 @@ export default async function ContractDetailPage({
           {isMasterLease && isActive && (
             <CreateChildDocPanel
               leaseId={contract.id}
+              coAgents={(coAgents ?? []) as import('../CreateChildDocPanel').CoAgentProfile[]}
               leaseData={{
                 rentPrice:            contract.rent_price ?? null,
                 depositAmount:        contract.deposit_amount ?? null,
                 depositMonths:        contract.deposit_months ?? null,
+                securityDeposit:      (contract as { security_deposit?: number | null }).security_deposit ?? null,
+                bookingAmount:        (contract as { booking_amount?: number | null }).booking_amount ?? null,
                 contractMonths:       contract.contract_months ?? null,
                 moveInDate:           contract.move_in_date ?? null,
                 endDate:              contract.end_date ?? null,

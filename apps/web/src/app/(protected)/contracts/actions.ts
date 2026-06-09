@@ -354,6 +354,8 @@ export type ChildDocInput = {
   coAgentSplitPct?: number | null
   coAgentCommission?: number | null
   coAgentInfo?: Record<string, string> | null
+  coAgentId?: string | null
+  coAgentPaymentDirection?: string | null
   vat7?: boolean
   wht3?: boolean
   newRentPrice?: number | null
@@ -522,12 +524,14 @@ export async function createChildDocument(
   }
 
   if (docType === 'co_agent') {
-    if (input.commissionNet != null)    row.commission_net = input.commissionNet
-    if (input.coAgentSplitPct != null)  row.co_agent_split_pct = input.coAgentSplitPct
-    if (input.coAgentCommission != null) row.co_agent_commission = input.coAgentCommission
-    if (input.coAgentInfo)              row.co_agent_info = input.coAgentInfo
-    if (input.vat7 !== undefined)       row.vat_7 = input.vat7
-    if (input.wht3 !== undefined)       row.wht_3 = input.wht3
+    if (input.commissionNet != null)         row.commission_net = input.commissionNet
+    if (input.coAgentSplitPct != null)       row.co_agent_split_pct = input.coAgentSplitPct
+    if (input.coAgentCommission != null)     row.co_agent_commission = input.coAgentCommission
+    if (input.coAgentInfo)                   row.co_agent_info = input.coAgentInfo
+    if (input.coAgentId)                     row.co_agent_id = input.coAgentId
+    if (input.coAgentPaymentDirection)       row.co_agent_payment_direction = input.coAgentPaymentDirection
+    if (input.vat7 !== undefined)            row.vat_7 = input.vat7
+    if (input.wht3 !== undefined)            row.wht_3 = input.wht3
   }
 
   if (['termination','cancellation','end_contract'].includes(docType)) {

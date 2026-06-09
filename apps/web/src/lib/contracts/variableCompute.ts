@@ -45,18 +45,23 @@ export function computeVariables(
   const moveInDate   = contract.move_in_date ? new Date(contract.move_in_date) : null
   const endDate      = contract.end_date ? new Date(contract.end_date) : null
 
+  // Lease agreements are dated from the move-in date (effective tenancy start),
+  // not from when the document was created in the system.
+  const isLease = (contract as { contract_category?: string | null }).contract_category === 'lease'
+  const effectiveDate = isLease && moveInDate ? moveInDate : contractDate
+
   v['thเมื่อวันที่']             = toThaiDate(contractDate)
   v['เมื่อวันที่']               = toThaiDate(contractDate)
   v['เมื่อวันที่ภาษาไทย']        = toThaiDate(contractDate)
   v['enเมื่อวันที่']             = toEnDate(contractDate)
   v['เมื่อวันที่ภาษาอังกฤษ']     = toEnDate(contractDate)
-  v['ทำสัญญาวันที่ตัวอักษร']     = toThaiDateFull(contractDate)
-  v['ทำสัญญาวันที่ภาษาไทย']      = toThaiDate(contractDate)
-  v['ทำสัญญาวันที่ภาษาอังกฤษ']    = toEnDate(contractDate)
-  v['ทำสัญญาวันที่ภาษาอังกฤษLong'] = toEnDateLong(contractDate)
-  v['ปีที่ทำสัญญา']              = thaiYear(contractDate)
-  v['ทำสัญญาเดือนอย่างเดียว']    = String(contractDate.getMonth() + 1)
-  v['ทำสัญญาวันอย่างเดียว']      = String(contractDate.getDate())
+  v['ทำสัญญาวันที่ตัวอักษร']     = toThaiDateFull(effectiveDate)
+  v['ทำสัญญาวันที่ภาษาไทย']      = toThaiDate(effectiveDate)
+  v['ทำสัญญาวันที่ภาษาอังกฤษ']    = toEnDate(effectiveDate)
+  v['ทำสัญญาวันที่ภาษาอังกฤษLong'] = toEnDateLong(effectiveDate)
+  v['ปีที่ทำสัญญา']              = thaiYear(effectiveDate)
+  v['ทำสัญญาเดือนอย่างเดียว']    = String(effectiveDate.getMonth() + 1)
+  v['ทำสัญญาวันอย่างเดียว']      = String(effectiveDate.getDate())
 
   if (endDate) {
     v['ทำสัญญาวันที่สิ้นสุดตัวอักษร']   = toThaiDateFull(endDate)
@@ -213,7 +218,7 @@ export function computeVariables(
     v['โครงการ']               = stock.project_name ?? '-'
     v['เลขที่ห้องชุด']         = stock.unit_no ?? '-'
     v['เลขที่ห้อง']            = stock.unit_no ?? '-'
-    v['ขนาด']                  = stock.size_sqm ? `${stock.size_sqm} ตร.ม.` : '-'
+    v['ขนาด']                  = stock.size_sqm != null ? String(stock.size_sqm) : '-'
     v['ชั้น']                  = stock.floor != null ? String(stock.floor) : '-'
     v['ตึก']                   = stock.building ?? extra['ตึก'] ?? '-'
     v['ประเภทห้อง']            = stock.room_type ?? '-'
@@ -399,25 +404,50 @@ export function computeVariables(
   v['รายละเอียด']       = extra['รายละเอียด'] ?? '-'
 
   // ─── Co-Agent specific ───────────────────────────────────────
-  // These come from extra_vars entered by the agent in the wizard
-  v['ชื่อ']             = extra['ชื่อ'] ?? '-'
-  v['เลขเสียภาษี']     = extra['เลขเสียภาษี'] ?? '-'
-  v['บ้านเลขที่']      = extra['บ้านเลขที่'] ?? '-'
-  v['หมู่ที่']         = extra['หมู่ที่'] ?? ''
-  v['ถนน']             = extra['ถนน'] ?? '-'
-  v['แขวงตำบล']        = extra['แขวงตำบล'] ?? '-'
-  v['เขตอำเภอ']        = extra['เขตอำเภอ'] ?? '-'
-  v['จังหวัด']         = extra['จังหวัด'] ?? '-'
-  v['บริษัท (ถ้ามี)'] = extra['บริษัท (ถ้ามี)'] ?? ''
+  // co_agent_info JSONB stores the profile snapshot saved at document creation.
+  // Fall back to extra_vars for older documents created before this schema.
+  const coAgentInfo: Record<string, string> =
+    (contract as { co_agent_info?: Record<string, string> | null }).co_agent_info ?? {}
+  const coiGet = (key: string) => coAgentInfo[key] ?? extra[key] ?? '-'
+  const coiGetOpt = (key: string) => coAgentInfo[key] ?? extra[key] ?? ''
+
+  v['ชื่อ']             = coiGet('ชื่อ')
+  v['เลขเสียภาษี']     = coiGet('เลขเสียภาษี')
+  v['บ้านเลขที่']      = coAgentInfo['บ้านเลขที่'] ?? coAgentInfo['ที่อยู่'] ?? extra['บ้านเลขที่'] ?? '-'
+  v['หมู่ที่']         = coiGetOpt('หมู่ที่')
+  v['ถนน']             = coiGet('ถนน')
+  v['แขวงตำบล']        = coiGet('แขวงตำบล')
+  v['เขตอำเภอ']        = coiGet('เขตอำเภอ')
+  v['จังหวัด']         = coiGet('จังหวัด')
+  v['บริษัท (ถ้ามี)'] = coiGetOpt('บริษัท (ถ้ามี)')
   v['/2']              = withCommas(rent / 2)
-  v['ธนาคาร Co-Agent']      = extra['ธนาคาร Co-Agent'] ?? '-'
-  v['ชื่อบัญชี Co-Agent']   = extra['ชื่อบัญชี Co-Agent'] ?? '-'
-  v['เลขบัญชี Co-Agent']    = extra['เลขบัญชี Co-Agent'] ?? '-'
+  v['ธนาคาร Co-Agent']      = coAgentInfo['ธนาคาร'] ?? extra['ธนาคาร Co-Agent'] ?? '-'
+  v['ชื่อบัญชี Co-Agent']   = coAgentInfo['ชื่อบัญชี'] ?? extra['ชื่อบัญชี Co-Agent'] ?? '-'
+  v['เลขบัญชี Co-Agent']    = coAgentInfo['เลขบัญชี'] ?? extra['เลขบัญชี Co-Agent'] ?? '-'
   v['คอมมิชชั่น%']          = (() => {
     const rp = (contract as { commission_rate_pct?: number | null }).commission_rate_pct
     return rp != null ? `${rp}%` : (extra['คอมมิชชั่น%'] ?? '-')
   })()
   v['ค่าธรรมเนียม Co-Agent'] = extra['ค่าธรรมเนียม Co-Agent'] || withCommas(rent / 2)
+
+  // Payment direction: whose bank receives the commission payment
+  const payDir = (contract as { co_agent_payment_direction?: string | null }).co_agent_payment_direction ?? ''
+  const dirLabel = payDir === 'agent_to_co_agent'
+    ? 'Agent → Co-Agent (Agent ชำระให้ Co-Agent)'
+    : payDir === 'co_agent_to_agent'
+    ? 'Co-Agent → Agent (Co-Agent ชำระให้ Agent)'
+    : extra['ทิศทางชำระ'] ?? ''
+  v['ทิศทางชำระ'] = dirLabel
+  // Recipient bank: Co-Agent bank if Agent pays Co-Agent, Agent bank if Co-Agent pays Agent
+  if (payDir === 'co_agent_to_agent') {
+    v['ธนาคารผู้รับ']      = agent?.bank_name ?? '-'
+    v['ชื่อบัญชีผู้รับ']  = agent?.bank_account_name ?? '-'
+    v['เลขบัญชีผู้รับ']   = extra['เลขบัญชีผู้รับ'] ?? '-'
+  } else {
+    v['ธนาคารผู้รับ']      = v['ธนาคาร Co-Agent']!
+    v['ชื่อบัญชีผู้รับ']  = v['ชื่อบัญชี Co-Agent']!
+    v['เลขบัญชีผู้รับ']   = v['เลขบัญชี Co-Agent']!
+  }
 
   // ─── Commission-specific ──────────────────────────────────────
   {

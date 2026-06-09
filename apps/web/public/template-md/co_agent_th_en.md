@@ -129,9 +129,13 @@
 | 10 | 0 |
 {space:8}
 
-{section:PAYMENT INFORMATION|ข้อมูลบัญชีธนาคาร Co-Agent}
+{section:PAYMENT INFORMATION|ข้อมูลบัญชีธนาคาร}
 
-{bankcard:<<ธนาคาร Co-Agent>>|<<ชื่อบัญชี Co-Agent>>|<<เลขบัญชี Co-Agent>>}
+| Payment direction / {muted}ทิศทางการชำระเงิน{/muted} | <<ทิศทางชำระ>> |
+| 3 | :7: |
+{space:4}
+
+{bankcard:<<ธนาคารผู้รับ>>|<<ชื่อบัญชีผู้รับ>>|<<เลขบัญชีผู้รับ>>}
 {space:8}
 
 | Confirmed and accepted by both parties. / {muted}ยืนยัน และยอมรับข้อตกลง{/muted} | |
