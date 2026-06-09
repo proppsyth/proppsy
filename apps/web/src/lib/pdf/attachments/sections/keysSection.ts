@@ -9,12 +9,12 @@ function fmtPenalty(amount: number): string {
   return new Intl.NumberFormat('th-TH').format(amount)
 }
 
-function sigBox(label: string, labelEn: string, subLabel: string, subLabelEn: string, sigDataUrl: string | null, dateText: string): string {
+function sigBox(label: string, labelEn: string, subLabel: string, subLabelEn: string, name: string, sigDataUrl: string | null, dateText: string): string {
   return `<div class="att-sig-box">
     <div class="att-sig-img">${sigDataUrl ? `<img src="${sigDataUrl}" />` : ''}</div>
     <div class="att-sig-line"></div>
     <div class="att-sig-label">${esc(label)} / ${esc(labelEn)}</div>
-    <div class="att-sig-date">${esc(subLabel)} / ${esc(subLabelEn)}<br/>${dateText}</div>
+    <div class="att-sig-date">(${esc(name)})<br/>${esc(subLabel)} / ${esc(subLabelEn)}<br/>${dateText}</div>
   </div>`
 }
 
@@ -80,7 +80,7 @@ export function buildKeysSection(params: {
   </tbody>
 </table>
 <div class="att-sig-row" style="margin-top:16pt">
-  ${sigBox('ผู้ให้เช่า', 'Landlord', 'ส่งมอบกุญแจ', 'Handover', signerData.ownerSignatureDataUrl, dateText)}
-  ${sigBox('ผู้เช่า', 'Tenant', 'รับมอบกุญแจ', 'Received', signerData.customerSignatureDataUrl, dateText)}
+  ${sigBox('ผู้ให้เช่า', 'Landlord', 'ส่งมอบกุญแจ', 'Handover', signerData.ownerName, signerData.ownerSignatureDataUrl, dateText)}
+  ${sigBox('ผู้เช่า', 'Tenant', 'รับมอบกุญแจ', 'Received', signerData.customerName, signerData.customerSignatureDataUrl, dateText)}
 </div>`
 }

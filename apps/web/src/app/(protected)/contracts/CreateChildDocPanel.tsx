@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, ChevronLeft, Loader2, X, AlertCircle, Sparkles, User } from 'lucide-react'
+import AddressSelector from '@/components/shared/AddressSelector'
 import { DOC_TYPE_LABELS } from '@/types'
 import type { ContractDocType } from '@/types'
 import { createChildDocument } from './actions'
@@ -97,6 +98,7 @@ interface FormValues {
   coAgentSubdistrict: string
   coAgentDistrict: string
   coAgentProvince: string
+  coAgentZip: string
   coAgentBankName: string
   coAgentAccountName: string
   coAgentAccountNo: string
@@ -118,7 +120,6 @@ const LEASE_DOC_GROUPS: Array<{
       { type: 'invoice_deposit',     label: 'ใบแจ้งหนี้เงินประกัน' },
       { type: 'receipt_deposit',     label: 'ใบเสร็จเงินประกัน' },
       { type: 'receipt_rent',        label: 'ใบเสร็จค่าเช่า' },
-      { type: 'receipt_book',        label: 'ใบเสร็จ (สมุด)' },
     ],
   },
   {
@@ -147,7 +148,6 @@ const LEASE_DOC_GROUPS: Array<{
     color: 'text-teal-700 border-teal-200 bg-teal-50 hover:bg-teal-100',
     types: [
       { type: 'installment_schedule', label: 'ตารางผ่อนชำระ' },
-      { type: 'furniture_list',       label: 'รายการเฟอร์นิเจอร์' },
     ],
   },
   {
@@ -262,6 +262,7 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
       coAgentSubdistrict: '',
       coAgentDistrict:    '',
       coAgentProvince:    '',
+      coAgentZip:         '',
       coAgentBankName:    '',
       coAgentAccountName: '',
       coAgentAccountNo:   '',
@@ -347,6 +348,7 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
       coAgentSubdistrict: profile.subdistrict ?? '',
       coAgentDistrict:    profile.district ?? '',
       coAgentProvince:    profile.province ?? '',
+      coAgentZip:         profile.zip ?? '',
       coAgentBankName:    profile.bank_name ?? '',
       coAgentAccountName: profile.bank_account_name ?? '',
       coAgentAccountNo:   profile.bank_account_no ?? '',
@@ -375,9 +377,10 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
         หมู่ที่:     form.coAgentMoo,
         ซอย:         form.coAgentSoi,
         ถนน:         form.coAgentRoad,
-        แขวงตำบล:    form.coAgentSubdistrict,
-        เขตอำเภอ:    form.coAgentDistrict,
-        จังหวัด:     form.coAgentProvince,
+        แขวงตำบล:      form.coAgentSubdistrict,
+        เขตอำเภอ:      form.coAgentDistrict,
+        จังหวัด:       form.coAgentProvince,
+        รหัสไปรษณีย์:  form.coAgentZip,
         ธนาคาร:      form.coAgentBankName,
         ชื่อบัญชี:   form.coAgentAccountName,
         เลขบัญชี:    form.coAgentAccountNo,
@@ -555,7 +558,7 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
                 <div className="flex gap-2 flex-wrap">
                   <button
                     type="button"
-                    onClick={() => setForm(f => ({ ...f, selectedCoAgentId: '', coAgentName: '', coAgentNationalId: '', coAgentTaxId: '', coAgentAddressNo: '', coAgentMoo: '', coAgentSoi: '', coAgentRoad: '', coAgentSubdistrict: '', coAgentDistrict: '', coAgentProvince: '', coAgentBankName: '', coAgentAccountName: '', coAgentAccountNo: '' }))}
+                    onClick={() => setForm(f => ({ ...f, selectedCoAgentId: '', coAgentName: '', coAgentNationalId: '', coAgentTaxId: '', coAgentAddressNo: '', coAgentMoo: '', coAgentSoi: '', coAgentRoad: '', coAgentSubdistrict: '', coAgentDistrict: '', coAgentProvince: '', coAgentZip: '', coAgentBankName: '', coAgentAccountName: '', coAgentAccountNo: '' }))}
                     className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-medium transition ${!form.selectedCoAgentId ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
                   >
                     <User className="w-3 h-3" />
@@ -595,13 +598,22 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
                 onChange={v => set('coAgentSoi', v)} placeholder="ไม่บังคับ" />
               <Field label="ถนน" value={form.coAgentRoad}
                 onChange={v => set('coAgentRoad', v)} placeholder="ถนนสุขุมวิท" />
-              <Field label="แขวง/ตำบล" value={form.coAgentSubdistrict}
-                onChange={v => set('coAgentSubdistrict', v)} placeholder="คลองเตย" />
-              <Field label="เขต/อำเภอ" value={form.coAgentDistrict}
-                onChange={v => set('coAgentDistrict', v)} placeholder="คลองเตย" />
-              <Field label="จังหวัด" value={form.coAgentProvince}
-                onChange={v => set('coAgentProvince', v)} placeholder="กรุงเทพมหานคร" />
             </div>
+            <AddressSelector
+              province={form.coAgentProvince}
+              district={form.coAgentDistrict}
+              subdistrict={form.coAgentSubdistrict}
+              zip={form.coAgentZip}
+              onChange={(field, value) => {
+                const keyMap: Record<string, keyof FormValues> = {
+                  province:    'coAgentProvince',
+                  district:    'coAgentDistrict',
+                  subdistrict: 'coAgentSubdistrict',
+                  zip:         'coAgentZip',
+                }
+                set(keyMap[field]!, value)
+              }}
+            />
 
             <p className="text-xs font-semibold text-gray-600 mt-1">ข้อมูลธนาคาร</p>
             <Field label="ชื่อธนาคาร" value={form.coAgentBankName}

@@ -1,3 +1,5 @@
+import type { SignerData } from '../buildAttachments'
+
 function esc(s: string): string {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 }
@@ -7,9 +9,12 @@ export function buildPhotosSection(params: {
   stockUnitNo: string
   stockProjectName: string
   photoDataUrls: string[]
-  contractDate: string
+  signerData: SignerData
 }): string {
-  const { photoDataUrls } = params
+  const { photoDataUrls, signerData } = params
+  const dateText = signerData.contractDate
+    ? `วันที่ / Date: ${esc(signerData.contractDate)}`
+    : 'วันที่ / Date: ................................'
 
   const photoCells = photoDataUrls.map((url, i) => `<div class="att-photo-cell">
   <img class="att-photo-img" src="${url}" alt="Photo ${i + 1}" />
@@ -29,21 +34,25 @@ export function buildPhotosSection(params: {
     <div class="att-section-en">Property Photos — Unit ${esc(params.stockUnitNo)}, ${esc(params.stockProjectName)}</div>
   </div>
 </div>
-<div class="att-note">รูปถ่ายสภาพห้องและทรัพย์สิน ณ วันที่ ${esc(params.contractDate)} / Property condition photos as of ${esc(params.contractDate)} · ${photoDataUrls.length} ภาพ / photos</div>
+<div class="att-note">รูปถ่ายสภาพห้องและทรัพย์สิน ณ วันที่ ${esc(signerData.contractDate)} / Property condition photos as of ${esc(signerData.contractDate)} · ${photoDataUrls.length} ภาพ / photos</div>
 ${noPhotos}
 <div class="att-photo-grid">
   ${photoCells}
 </div>
 <div class="att-sig-row">
   <div class="att-sig-box">
+    <div class="att-sig-img">${signerData.ownerSignatureDataUrl ? `<img src="${signerData.ownerSignatureDataUrl}" />` : ''}</div>
     <div class="att-sig-line"></div>
     <div class="att-sig-label">ผู้ให้เช่าตรวจรับ / Landlord confirmed</div>
-    <div class="att-sig-date">วันที่ / Date: ................................</div>
+    <div class="att-sig-date">(${esc(signerData.ownerName)})</div>
+    <div class="att-sig-date">${dateText}</div>
   </div>
   <div class="att-sig-box">
+    <div class="att-sig-img">${signerData.customerSignatureDataUrl ? `<img src="${signerData.customerSignatureDataUrl}" />` : ''}</div>
     <div class="att-sig-line"></div>
     <div class="att-sig-label">ผู้เช่าตรวจรับ / Tenant confirmed</div>
-    <div class="att-sig-date">วันที่ / Date: ................................</div>
+    <div class="att-sig-date">(${esc(signerData.customerName)})</div>
+    <div class="att-sig-date">${dateText}</div>
   </div>
 </div>`
 }

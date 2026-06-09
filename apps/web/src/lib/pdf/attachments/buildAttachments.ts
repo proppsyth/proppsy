@@ -3,7 +3,6 @@ import { buildCoverSection }      from './sections/coverSection'
 import { buildIdCardSection }     from './sections/idCardSection'
 import { buildInventorySection }  from './sections/inventorySection'
 import { buildPhotosSection }     from './sections/photosSection'
-import { buildFacilitiesSection } from './sections/facilitiesSection'
 import { buildKeysSection }       from './sections/keysSection'
 
 const MAX_PHOTOS = 16
@@ -30,6 +29,8 @@ export interface SignerData {
   ownerSignatureDataUrl: string | null
   customerSignatureDataUrl: string | null
   contractDate: string
+  ownerName: string
+  customerName: string
 }
 
 /** Build complete attachment HTML for the requested sections.
@@ -67,6 +68,8 @@ export async function buildAttachmentHtml(input: AttachmentInput): Promise<strin
     ownerSignatureDataUrl:    ownerSigDataUrl    ?? null,
     customerSignatureDataUrl: customerSigDataUrl ?? null,
     contractDate:             input.contractDate ?? '',
+    ownerName:                input.ownerName,
+    customerName:             input.customerName,
   }
 
   const parts: string[] = []
@@ -113,15 +116,7 @@ export async function buildAttachmentHtml(input: AttachmentInput): Promise<strin
           stockUnitNo:      input.stockUnitNo,
           stockProjectName: input.stockProjectName,
           photoDataUrls,
-          contractDate:     input.contractDate ?? '',
-        }))
-        break
-
-      case 'facilities':
-        parts.push(buildFacilitiesSection({
-          sectionNum:       sectionNum++,
-          stockProjectName: input.stockProjectName,
-          facilities:       input.projectFacilities,
+          signerData,
         }))
         break
 

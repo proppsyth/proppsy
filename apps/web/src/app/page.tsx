@@ -215,19 +215,26 @@ export default async function HomePage({
             <p className="text-center text-gray-400 text-xs font-medium uppercase tracking-widest mb-6">
               เชื่อใจโดยเอเจนต์และบริษัทอสังหาฯ ชั้นนำ
             </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {activePartners!.map(p => (
-                p.website ? (
-                  <a key={p.id} href={p.website} target="_blank" rel="noopener noreferrer"
-                    className="px-4 py-2 bg-gray-50 border border-gray-100 rounded-full text-sm text-gray-600 font-medium hover:bg-gray-100 transition">
-                    {p.name_th}
-                  </a>
-                ) : (
-                  <span key={p.id} className="px-4 py-2 bg-gray-50 border border-gray-100 rounded-full text-sm text-gray-600 font-medium">
-                    {p.name_th}
-                  </span>
+            <div className="flex flex-wrap justify-center gap-4">
+              {activePartners!.map(p => {
+                const inner = (
+                  <div className="flex items-center gap-2.5 px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl hover:bg-gray-100 transition">
+                    {p.logo_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.logo_url} alt={p.name_en ?? p.name_th} className="h-7 w-auto object-contain flex-shrink-0" />
+                    )}
+                    <div className="flex flex-col leading-tight">
+                      {p.name_en && <span className="text-sm font-semibold text-gray-800">{p.name_en}</span>}
+                      <span className={`text-gray-500 ${p.name_en ? 'text-xs' : 'text-sm font-medium'}`}>{p.name_th}</span>
+                    </div>
+                  </div>
                 )
-              ))}
+                return p.website ? (
+                  <a key={p.id} href={p.website} target="_blank" rel="noopener noreferrer">{inner}</a>
+                ) : (
+                  <div key={p.id}>{inner}</div>
+                )
+              })}
             </div>
           </div>
         </div>

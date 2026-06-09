@@ -526,15 +526,6 @@ export default function ContractWizard() {
                 </div>
               </Section>
 
-              <Section title="ค่าใช้จ่ายรายเดือน">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="ค่าน้ำ / หน่วย (บาท)" value={state.water_unit_price} onChange={v => set('water_unit_price', v)} type="number" placeholder="0" />
-                  <Field label="ค่าไฟ / หน่วย (บาท)" value={state.electric_unit_price} onChange={v => set('electric_unit_price', v)} type="number" placeholder="0" />
-                  <Field label="ค่าอินเตอร์เน็ต / เดือน (บาท)" value={state.internet_fee} onChange={v => set('internet_fee', v)} type="number" placeholder="0" />
-                  <Field label="ค่าส่วนกลาง / เดือน (บาท)" value={state.common_fee} onChange={v => set('common_fee', v)} type="number" placeholder="0" />
-                  <Field label="ค่าจอดรถ / เดือน (บาท)" value={state.parking_fee} onChange={v => set('parking_fee', v)} type="number" placeholder="0" />
-                </div>
-              </Section>
 
               <Section title="เงื่อนไขการชำระ">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

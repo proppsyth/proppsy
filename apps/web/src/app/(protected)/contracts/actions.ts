@@ -866,7 +866,9 @@ export async function generateContractDocx(
       }
     }
 
-    const isAgentDoc = ['commission_confirm', 'co_agent'].includes(contract.doc_type)
+    const isCoAgentDoc     = contract.doc_type === 'co_agent'
+    const isCommissionDoc  = contract.doc_type === 'commission_confirm'
+    const isAgentDoc       = isCoAgentDoc || isCommissionDoc
     const ownerFullName = contract.owner
       ? [contract.owner.prefix, contract.owner.first_name_th, contract.owner.last_name_th].filter(Boolean).join(' ') || null
       : undefined
@@ -875,9 +877,9 @@ export async function generateContractDocx(
       : undefined
 
     const signatures = {
-      ownerName:      isAgentDoc ? undefined : ownerFullName,
-      ownerRole:      'ผู้ให้เช่า',
-      ownerSigUrl:    isAgentDoc ? undefined : (contract.owner as { signature_url?: string | null } | null)?.signature_url,
+      ownerName:      isCoAgentDoc ? undefined : ownerFullName,
+      ownerRole:      isCommissionDoc ? 'เจ้าของทรัพย์สิน' : 'ผู้ให้เช่า',
+      ownerSigUrl:    isCoAgentDoc ? undefined : (contract.owner as { signature_url?: string | null } | null)?.signature_url,
       customerName:   isAgentDoc ? undefined : customerFullName,
       customerRole:   'ผู้เช่า',
       customerSigUrl: isAgentDoc ? undefined : (contract.customer as { signature_url?: string | null } | null)?.signature_url,
@@ -1384,7 +1386,7 @@ export async function generateLeaseAttachmentsPdf(
       stockProjectName:   stock?.project_name ?? '',
       stockPhotoUrls:     photoUrls,
       agentName:          profile?.company_name ?? profile?.name ?? '',
-      sections:           ['id-cards', 'inventory', 'photos', 'facilities', 'keys'],
+      sections:           ['id-cards', 'inventory', 'photos', 'keys'],
       furnitureItems: (furnitureRows ?? []) as Parameters<typeof buildAttachmentHtml>[0]['furnitureItems'],
       keyItems: (keyRows ?? []).map(r => ({
         id:             r.id,

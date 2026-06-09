@@ -12,12 +12,12 @@ const CONDITION_BILINGUAL: Record<FurnitureItem['condition'], string> = {
   missing: 'ไม่มี / Missing',
 }
 
-function sigBox(label: string, labelEn: string, subLabel: string, subLabelEn: string, sigDataUrl: string | null, dateText: string): string {
+function sigBox(label: string, labelEn: string, subLabel: string, subLabelEn: string, name: string, sigDataUrl: string | null, dateText: string): string {
   return `<div class="att-sig-box">
     <div class="att-sig-img">${sigDataUrl ? `<img src="${sigDataUrl}" />` : ''}</div>
     <div class="att-sig-line"></div>
     <div class="att-sig-label">${esc(label)} / ${esc(labelEn)}</div>
-    <div class="att-sig-date">${esc(subLabel)} / ${esc(subLabelEn)}<br/>${dateText}</div>
+    <div class="att-sig-date">(${esc(name)})<br/>${esc(subLabel)} / ${esc(subLabelEn)}<br/>${dateText}</div>
   </div>`
 }
 
@@ -89,11 +89,11 @@ export function buildInventorySection(params: {
   </tbody>
 </table>
 <div class="att-sig-row">
-  ${sigBox('ผู้ให้เช่า', 'Landlord', 'ลงนามรับมอบ', 'Move-in', signerData.ownerSignatureDataUrl, dateText)}
-  ${sigBox('ผู้เช่า', 'Tenant', 'ลงนามรับมอบ', 'Move-in', signerData.customerSignatureDataUrl, dateText)}
+  ${sigBox('ผู้ให้เช่า', 'Landlord', 'ลงนามรับมอบ', 'Move-in', signerData.ownerName, signerData.ownerSignatureDataUrl, dateText)}
+  ${sigBox('ผู้เช่า', 'Tenant', 'ลงนามรับมอบ', 'Move-in', signerData.customerName, signerData.customerSignatureDataUrl, dateText)}
 </div>
 <div class="att-sig-row" style="margin-top:12pt">
-  ${sigBox('ผู้ให้เช่า', 'Landlord', 'ลงนามรับคืน', 'Move-out', null, 'วันที่ / Date: ................................')}
-  ${sigBox('ผู้เช่า', 'Tenant', 'ลงนามรับคืน', 'Move-out', null, 'วันที่ / Date: ................................')}
+  ${sigBox('ผู้ให้เช่า', 'Landlord', 'ลงนามรับคืน', 'Move-out', signerData.ownerName, null, 'วันที่ / Date: ................................')}
+  ${sigBox('ผู้เช่า', 'Tenant', 'ลงนามรับคืน', 'Move-out', signerData.customerName, null, 'วันที่ / Date: ................................')}
 </div>`
 }

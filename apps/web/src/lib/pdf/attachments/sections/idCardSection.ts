@@ -25,7 +25,7 @@ function idCardBlock(params: {
 </div>`
 }
 
-function sigBox(label: string, labelEn: string, sigDataUrl: string | null, contractDate: string): string {
+function sigBox(label: string, labelEn: string, name: string, sigDataUrl: string | null, contractDate: string): string {
   const dateText = contractDate
     ? `วันที่ / Date: ${esc(contractDate)}`
     : 'วันที่ / Date: ................................'
@@ -33,6 +33,7 @@ function sigBox(label: string, labelEn: string, sigDataUrl: string | null, contr
     <div class="att-sig-img">${sigDataUrl ? `<img src="${sigDataUrl}" />` : ''}</div>
     <div class="att-sig-line"></div>
     <div class="att-sig-label">${esc(label)} / ${esc(labelEn)} รับรองสำเนาถูกต้อง</div>
+    <div class="att-sig-date">(${esc(name)})</div>
     <div class="att-sig-date">${dateText}</div>
   </div>`
 }
@@ -60,7 +61,7 @@ export function buildIdCardSection(params: {
 ${idCardBlock({ role: 'ผู้ให้เช่า', roleEn: 'Landlord', name: params.ownerName, nationalId: params.ownerNationalId, dataUrl: params.ownerDataUrl })}
 ${idCardBlock({ role: 'ผู้เช่า', roleEn: 'Tenant', name: params.customerName, nationalId: params.customerNationalId, dataUrl: params.customerDataUrl })}
 <div class="att-sig-row">
-  ${sigBox('ผู้ให้เช่า', 'Landlord', signerData.ownerSignatureDataUrl, signerData.contractDate)}
-  ${sigBox('ผู้เช่า', 'Tenant', signerData.customerSignatureDataUrl, signerData.contractDate)}
+  ${sigBox('ผู้ให้เช่า', 'Landlord', signerData.ownerName, signerData.ownerSignatureDataUrl, signerData.contractDate)}
+  ${sigBox('ผู้เช่า', 'Tenant', signerData.customerName, signerData.customerSignatureDataUrl, signerData.contractDate)}
 </div>`
 }

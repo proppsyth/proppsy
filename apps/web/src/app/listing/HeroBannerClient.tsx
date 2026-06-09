@@ -53,7 +53,7 @@ export default function HeroBannerClient({ slides, currentQ }: Props) {
               aria-label={slide.title ?? 'ดูรายละเอียด'}
             />
           )}
-          <div className="absolute inset-0 bg-black/20 flex items-end justify-center pb-8 pointer-events-none">
+          <div className="absolute inset-0 bg-black/10 flex items-end justify-center pb-8 pointer-events-none">
             <div className="pointer-events-auto w-full max-w-xl px-4">
               <Suspense fallback={<div className="h-12" />}>
                 <SearchBar currentQ={currentQ} />

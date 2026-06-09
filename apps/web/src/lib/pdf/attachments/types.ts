@@ -1,4 +1,4 @@
-export type AttachmentSection = 'id-cards' | 'inventory' | 'photos' | 'facilities' | 'keys'
+export type AttachmentSection = 'id-cards' | 'inventory' | 'photos' | 'keys'
 
 /** Matches contract_furniture_items table. */
 export interface FurnitureItem {

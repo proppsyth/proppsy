@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 async function assertAdmin(): Promise<void> {
@@ -28,7 +28,7 @@ export async function createVideo(data: {
 }): Promise<{ error?: string }> {
   try {
     await assertAdmin()
-    const admin = await createAdminClient()
+    const admin = createServiceClient()
     const { error } = await admin.from('website_videos').insert(data)
     if (error) return { error: error.message }
     revalidate()
@@ -52,7 +52,7 @@ export async function updateVideo(
 ): Promise<{ error?: string }> {
   try {
     await assertAdmin()
-    const admin = await createAdminClient()
+    const admin = createServiceClient()
     const { error } = await admin.from('website_videos').update(data).eq('id', id)
     if (error) return { error: error.message }
     revalidate()
@@ -65,7 +65,7 @@ export async function updateVideo(
 export async function toggleVideoActive(id: string, current: boolean): Promise<{ error?: string }> {
   try {
     await assertAdmin()
-    const admin = await createAdminClient()
+    const admin = createServiceClient()
     const { error } = await admin.from('website_videos').update({ is_active: !current }).eq('id', id)
     if (error) return { error: error.message }
     revalidate()
@@ -78,7 +78,7 @@ export async function toggleVideoActive(id: string, current: boolean): Promise<{
 export async function toggleVideoFeatured(id: string, current: boolean): Promise<{ error?: string }> {
   try {
     await assertAdmin()
-    const admin = await createAdminClient()
+    const admin = createServiceClient()
     const { error } = await admin.from('website_videos').update({ featured: !current }).eq('id', id)
     if (error) return { error: error.message }
     revalidate()
@@ -91,7 +91,7 @@ export async function toggleVideoFeatured(id: string, current: boolean): Promise
 export async function deleteVideo(id: string): Promise<{ error?: string }> {
   try {
     await assertAdmin()
-    const admin = await createAdminClient()
+    const admin = createServiceClient()
     const { error } = await admin.from('website_videos').delete().eq('id', id)
     if (error) return { error: error.message }
     revalidate()

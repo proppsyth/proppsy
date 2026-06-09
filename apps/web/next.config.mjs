@@ -29,6 +29,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'otlvjnmmcvqjzbxefbhw.supabase.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'img.youtube.com',
+      },
     ],
   },
 }

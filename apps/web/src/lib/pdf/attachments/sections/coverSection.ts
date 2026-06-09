@@ -8,7 +8,6 @@ const SECTION_LABELS: Record<AttachmentSection, string> = {
   'id-cards':  'สำเนาบัตรประชาชน / ID Card Copies',
   'inventory': 'บัญชีรายการทรัพย์สิน / Inventory Checklist',
   'photos':    'รูปถ่ายสภาพห้อง / Property Photos',
-  'facilities':'สิ่งอำนวยความสะดวก / Project Facilities',
   'keys':      'การส่งมอบกุญแจ / Key Handover Form',
 }
 

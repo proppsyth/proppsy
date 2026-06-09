@@ -308,11 +308,6 @@ export default function EditDraftPanel({ data }: Props) {
             {showFees && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-100">
                 <Field label="จำนวนผู้พักอาศัย" value={form.occupantCount} onChange={v => set('occupantCount', v)} type="number" />
-                <Field label="ค่าน้ำ / หน่วย (บาท)" value={form.waterUnitPrice} onChange={v => set('waterUnitPrice', v)} type="number" />
-                <Field label="ค่าไฟ / หน่วย (บาท)" value={form.electricUnitPrice} onChange={v => set('electricUnitPrice', v)} type="number" />
-                <Field label="ค่าอินเตอร์เน็ต / เดือน (บาท)" value={form.internetFee} onChange={v => set('internetFee', v)} type="number" />
-                <Field label="ค่าส่วนกลาง / เดือน (บาท)" value={form.commonFee} onChange={v => set('commonFee', v)} type="number" />
-                <Field label="ค่าจอดรถ / เดือน (บาท)" value={form.parkingFee} onChange={v => set('parkingFee', v)} type="number" />
                 <Field label="ค่าทำความสะอาด (บาท)" value={form.cleaningFee} onChange={v => set('cleaningFee', v)} type="number" />
                 <Field label="จำนวนแอร์" value={form.acCount} onChange={v => set('acCount', v)} type="number" />
                 <Field label="ค่าล้างแอร์ / เครื่อง (บาท)" value={form.acWashPerUnit} onChange={v => set('acWashPerUnit', v)} type="number" />
