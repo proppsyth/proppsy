@@ -6,11 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLeft, Star } from 'lucide-react'
 import { createVideo } from '../actions'
-
-function extractYouTubeId(url: string): string | null {
-  const match = url.match(/(?:v=|\/embed\/|\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-  return match?.[1] ?? null
-}
+import { extractYouTubeId, youTubeThumbnailUrl } from '@/lib/youtube'
 
 export default function NewVideoPage() {
   const router = useRouter()
@@ -31,7 +27,7 @@ export default function NewVideoPage() {
   }
 
   const videoId  = extractYouTubeId(form.youtube_url)
-  const thumbUrl = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null
+  const thumbUrl = videoId ? youTubeThumbnailUrl(videoId) : null
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { BannerStrip } from '@/components/shared/BannerZone'
+import { PLAN_META, resolvePlan } from '@/types'
 
 export const metadata: Metadata = { title: 'แดชบอร์ด' }
 
@@ -150,10 +151,8 @@ export default async function DashboardPage() {
   const { data: profile } = await supabase
     .from('profiles').select('plan, plan_expires_at').eq('id', user.id).single()
 
-  const PLAN_NAMES: Record<string, string> = {
-    professional: 'Standard', standard: 'Standard', ai_pro: 'AI Pro', business: 'Business',
-  }
-  const planName = PLAN_NAMES[profile?.plan ?? ''] ?? 'ทดลองใช้'
+  const plan     = resolvePlan(profile?.plan)
+  const planName = PLAN_META[plan].label
   const expiresAt = profile?.plan_expires_at ? new Date(profile.plan_expires_at) : null
   const isExpired = expiresAt ? expiresAt < now : false
   const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - now.getTime()) / 86400000) : null

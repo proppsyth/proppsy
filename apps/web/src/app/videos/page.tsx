@@ -5,15 +5,11 @@ import { ArrowLeft, Star, Video } from 'lucide-react'
 import PublicNav from '@/components/shared/PublicNav'
 import PublicFooter from '@/components/shared/PublicFooter'
 import { createServiceClient } from '@/lib/supabase/server'
+import { extractYouTubeId, youTubeThumbnailUrl, youTubeEmbedUrl } from '@/lib/youtube'
 
 export const metadata: Metadata = {
   title: 'วิดีโอ — Proppsy',
   description: 'ดูวิดีโอแนะนำและสาธิตการใช้งาน Proppsy แพลตฟอร์มจัดการอสังหาริมทรัพย์',
-}
-
-function extractYouTubeId(url: string): string | null {
-  const match = url.match(/(?:v=|\/embed\/|\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-  return match?.[1] ?? null
 }
 
 interface WebsiteVideo {
@@ -90,7 +86,7 @@ export default async function VideosPage() {
                         {videoId ? (
                           <div className="relative aspect-video">
                             <iframe
-                              src={`https://www.youtube.com/embed/${videoId}?rel=0`}
+                              src={youTubeEmbedUrl(videoId)}
                               title={video.title}
                               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                               allowFullScreen
@@ -125,7 +121,7 @@ export default async function VideosPage() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   {rest.map(video => {
                     const videoId  = extractYouTubeId(video.youtube_url)
-                    const thumbUrl = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null
+                    const thumbUrl = videoId ? youTubeThumbnailUrl(videoId) : null
                     return (
                       <div key={video.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         {/* Thumbnail */}

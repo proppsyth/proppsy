@@ -12,6 +12,7 @@ import StatsCounter from './listing/StatsCounter'
 import { BannerStrip } from '@/components/shared/BannerZone'
 import PropertyCard from './listing/PropertyCard'
 import type { StockWithProject } from './listing/PropertyCard'
+import { extractYouTubeId, youTubeEmbedUrl } from '@/lib/youtube'
 
 export const metadata: Metadata = {
   title: 'Proppsy — ค้นหาที่พัก เช่า ขาย คอนโด บ้าน',
@@ -26,11 +27,6 @@ export const metadata: Metadata = {
     title: 'Proppsy — ค้นหาที่พัก เช่า ขาย คอนโด บ้าน',
     description: 'ค้นหาคอนโด บ้าน และทรัพย์สินให้เช่า-ขายในประเทศไทย',
   },
-}
-
-function extractYouTubeId(url: string): string | null {
-  const match = url.match(/(?:v=|\/embed\/|\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-  return match?.[1] ?? null
 }
 
 const ARTICLE_CATEGORY_LABELS: Record<string, string> = {
@@ -192,7 +188,7 @@ export default async function HomePage({
             <h2 className="text-center text-white text-xl font-bold mb-6">{heroVideo!.title}</h2>
             <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl">
               <iframe
-                src={`https://www.youtube.com/embed/${heroVideoId}?rel=0`}
+                src={youTubeEmbedUrl(heroVideoId!)}
                 title={heroVideo!.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen

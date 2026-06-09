@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Star } from 'lucide-react'
 import { toggleVideoActive, toggleVideoFeatured, deleteVideo } from './actions'
+import { extractYouTubeId, youTubeThumbnailUrl } from '@/lib/youtube'
 
 export interface WebsiteVideo {
   id: string
@@ -18,11 +19,6 @@ export interface WebsiteVideo {
   created_at: string
 }
 
-function extractYouTubeId(url: string): string | null {
-  const match = url.match(/(?:v=|\/embed\/|\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-  return match?.[1] ?? null
-}
-
 export default function VideoCard({ video }: { video: WebsiteVideo }) {
   const [active, setActive]               = useState(video.is_active)
   const [featured, setFeatured]           = useState(video.featured)
@@ -32,7 +28,7 @@ export default function VideoCard({ video }: { video: WebsiteVideo }) {
   const [deletePending, startDelete]      = useTransition()
 
   const videoId   = extractYouTubeId(video.youtube_url)
-  const thumbUrl  = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null
+  const thumbUrl  = videoId ? youTubeThumbnailUrl(videoId) : null
 
   function handleToggleActive() {
     const prev = active

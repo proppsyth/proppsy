@@ -322,7 +322,7 @@ export default function ListingPageClient({
       {/* ── Main content ── */}
       <div className="flex-1 min-w-0">
         {/* Sub-header: count + sort + view toggle */}
-        <div className="bg-white border-b border-gray-100 sticky top-14 z-10">
+        <div className={`bg-white border-b border-gray-100 sticky top-14 ${drawerOpen ? 'z-0' : 'z-10'}`}>
           <div className="px-4 py-2.5 flex items-center gap-2.5">
             {/* Mobile filter button */}
             <button
