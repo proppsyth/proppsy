@@ -106,25 +106,25 @@
 
 {section:1. EXTENSION OF LEASE TERM|ข้อ 1. การขยายระยะเวลาสัญญา}
 
-| 1.1 | The expiry date of the Lease Agreement dated | <<enสัญญาเช่าฉบับเก่าลงวันที่Long>> |
+| 1.1 | The expiry date of the Lease Agreement dated | <<old_lease_start_date_long_en>> |
 | 0.5: | 5.5 | :4: |
 
-| | shall be extended from | <<enสิ้นสุดสัญญาวันที่Long>> | to | <<enขยายเวลาสิ้นสุดเป็นวันที่Long>> |
+| | shall be extended from | <<old_lease_end_date_long_en>> | to | <<enขยายเวลาสิ้นสุดเป็นวันที่Long>> |
 | 0.5 | 4 | :2.5: | 0.5 | :2.5: |
 
-| | {muted}ขยายวันสิ้นสุดของสัญญาเช่าฉบับลงวันที่{/muted} | {muted}<<สัญญาเช่าฉบับเก่าลงวันที่>>{/muted} |
+| | {muted}ขยายวันสิ้นสุดของสัญญาเช่าฉบับลงวันที่{/muted} | {muted}<<old_lease_start_date>>{/muted} |
 | 0.5 | 4.5 | :5: |
 
-| | {muted}จากเดิมสิ้นสุดวันที่{/muted} | {muted}<<สิ้นสุดสัญญาวันที่>>{/muted} | {muted}เป็น{/muted} | {muted}<<ขยายเวลาสิ้นสุดเป็นวันที่>>{/muted} |
+| | {muted}จากเดิมสิ้นสุดวันที่{/muted} | {muted}<<old_lease_end_date>>{/muted} | {muted}เป็น{/muted} | {muted}<<ขยายเวลาสิ้นสุดเป็นวันที่>>{/muted} |
 | 0.5 | 2 | :3: | 0.5 | :4: |
 {space:8}
 
 {section:2. EXISTING TERMS|ข้อ 2. ข้อกำหนดเดิม}
 
-| 2.1 | All terms and conditions specified in the Lease Agreement dated <<enสัญญาเช่าฉบับเก่าลงวันที่Long>> shall remain in full force and effect in the same manner as the original Lease Agreement, and shall be interpreted and enforced under Thai law. |
+| 2.1 | All terms and conditions specified in the Lease Agreement dated <<old_lease_start_date_long_en>> shall remain in full force and effect in the same manner as the original Lease Agreement, and shall be interpreted and enforced under Thai law. |
 | 0.5: | 9.5 |
 
-| | {muted}ข้อกำหนดและเงื่อนไขอื่นๆ ที่ระบุไว้ในสัญญาฉบับลงวันที่ <<สัญญาเช่าฉบับเก่าลงวันที่>> ยังคงมีผลบังคับใช้เหมือนสัญญาเช่าฉบับเดิมทุกประการ และให้ตีความและบังคับใช้ตามกฎหมายไทย{/muted} |
+| | {muted}ข้อกำหนดและเงื่อนไขอื่นๆ ที่ระบุไว้ในสัญญาฉบับลงวันที่ <<old_lease_start_date>> ยังคงมีผลบังคับใช้เหมือนสัญญาเช่าฉบับเดิมทุกประการ และให้ตีความและบังคับใช้ตามกฎหมายไทย{/muted} |
 | 0.5 | 9.5 |
 {space:8}
 
@@ -133,7 +133,7 @@
 {section:3. RENTAL FEE|ข้อ 3. ค่าเช่า}
 
 | 3.1 | The rental fee shall be | <<ค่าเช่า>> | Baht per month | (<<ค่าเช่าภาษาอังกฤษ>>) |
-| 0.5: | 2 | :1.5: | 1.5 | :4.5: |
+| 0.5: | 2.3 | :1.2: | 1.5 | :4.5: |
 
 | | for a renewal period of | <<ระยะเวลาต่อสัญญา>> | month(s), commencing on | <<enเริ่มต่อสัญญาLong>> |
 | 0.5 | 2.5 | :1: | 2.5 | :3.5: |

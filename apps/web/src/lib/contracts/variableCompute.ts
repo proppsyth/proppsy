@@ -70,6 +70,7 @@ export function computeVariables(
     v['enขยายเวลาสิ้นสุดเป็นวันที่']       = toEnDate(endDate)
     v['enขยายเวลาสิ้นสุดเป็นวันที่Long']  = toEnDateLong(endDate)
     v['enสิ้นสุดสัญญาวันที่']              = toEnDate(endDate)
+    v['enสิ้นสุดสัญญาวันที่Long']          = toEnDateLong(endDate)
     v['ทำสัญญาวันที่สิ้นสุดภาษาไทย']    = toThaiDate(endDate)
     v['ทำสัญญาวันที่สิ้นสุดภาษาอังกฤษ'] = toEnDate(endDate)
     v['ทำสัญญาวันที่สิ้นสุดภาษาอังกฤษLong'] = toEnDateLong(endDate)
@@ -106,9 +107,25 @@ export function computeVariables(
     v['วันหมดอายุการจองภาษาอังกฤษLong']   = toEnDateLong(expDate)
   }
 
-  // Original lease date for renewal (stored in extra_vars)
-  v['สัญญาเช่าฉบับเก่าลงวันที่']   = extra['สัญญาเช่าฉบับเก่าลงวันที่'] ?? '-'
-  v['enสัญญาเช่าฉบับเก่าลงวันที่'] = extra['enสัญญาเช่าฉบับเก่าลงวันที่'] ?? '-'
+  // Canonical renewal variables — original lease dates preserved in extra_vars at renewal creation
+  const origLeaseStart = extra['orig_lease_start'] ? new Date(extra['orig_lease_start']) : null
+  const origLeaseEnd   = extra['orig_lease_end']   ? new Date(extra['orig_lease_end'])   : null
+  const origLeaseNo    = extra['orig_lease_no'] ?? ''
+
+  v['old_lease_no']                 = origLeaseNo || '-'
+  v['old_lease_start_date']         = origLeaseStart ? toThaiDate(origLeaseStart) : '-'
+  v['old_lease_start_date_long_en'] = origLeaseStart ? toEnDateLong(origLeaseStart) : '-'
+  v['old_lease_end_date']           = origLeaseEnd ? toThaiDate(origLeaseEnd) : '-'
+  v['old_lease_end_date_long_en']   = origLeaseEnd ? toEnDateLong(origLeaseEnd) : '-'
+  // Renewal period = contract.move_in_date / end_date (overwritten at renewal creation)
+  v['renewal_start_date']           = moveInDate ? toThaiDate(moveInDate) : '-'
+  v['renewal_start_date_long_en']   = moveInDate ? toEnDateLong(moveInDate) : '-'
+  v['renewal_end_date']             = endDate ? toThaiDate(endDate) : '-'
+  v['renewal_end_date_long_en']     = endDate ? toEnDateLong(endDate) : '-'
+  // Backward-compat aliases for existing templates
+  v['สัญญาเช่าฉบับเก่าลงวันที่']        = v['old_lease_start_date']!
+  v['enสัญญาเช่าฉบับเก่าลงวันที่']      = origLeaseStart ? toEnDate(origLeaseStart) : '-'
+  v['enสัญญาเช่าฉบับเก่าลงวันที่Long']  = v['old_lease_start_date_long_en']!
 
   // ─── Contract period & payment ───────────────────────────────
 

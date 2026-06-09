@@ -476,10 +476,16 @@ export async function createChildDocument(
 
   // Apply doc-type specific overrides
   if (docType === 'renewal') {
-    if (input.newRentPrice != null)     row.rent_price = input.newRentPrice
+    // Snapshot original lease dates before overriding — templates read these from extra_vars
+    row.extra_vars = {
+      orig_lease_start: lease.move_in_date ?? '',
+      orig_lease_end:   lease.end_date ?? '',
+      orig_lease_no:    (lease as { code?: string }).code ?? lease.id ?? '',
+    }
+    if (input.newRentPrice != null)      row.rent_price     = input.newRentPrice
     if (input.newContractMonths != null) row.contract_months = input.newContractMonths
-    if (input.newMoveInDate)            row.move_in_date = input.newMoveInDate
-    if (input.newEndDate)               row.end_date = input.newEndDate
+    if (input.newMoveInDate)             row.move_in_date   = input.newMoveInDate
+    if (input.newEndDate)                row.end_date       = input.newEndDate
   }
 
   if (['invoice_reservation','receipt_reservation','invoice_deposit','receipt_deposit'].includes(docType)) {
@@ -545,7 +551,7 @@ export async function createChildDocument(
     if (input.effectiveEndDate) row.end_date = input.effectiveEndDate
   }
 
-  if (input.extraVars) row.extra_vars = input.extraVars
+  if (input.extraVars) row.extra_vars = { ...(row.extra_vars as Record<string,string> ?? {}), ...input.extraVars }
 
   const { error } = await supabase.from('contracts').insert(row)
   if (error) return { error: 'สร้างเอกสารไม่สำเร็จ: ' + error.message }

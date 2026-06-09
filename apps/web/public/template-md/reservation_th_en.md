@@ -121,7 +121,7 @@
 | 0.5 | :6.5: | 1.5 | :0.5: | 1 |
 
 | | {muted}ผู้ให้เช่าตกลงให้เช่าและผู้เช่าตกลงเช่า ค่าเช่าเดือนละ{/muted} | {muted}<<ค่าเช่าเติมลูกน้ำ>>{/muted} | {muted}บาท{/muted} | {muted}(<<ค่าเช่าตัวอักษร>>){/muted} | {muted}ระยะเวลา{/muted} | {muted}<<ระยะเวลาสัญญา>>{/muted} | {muted}เดือน{/muted} |
-| 0.5 | 4 | :1: | 0.5 | :2: | 1 | :0.5: | 0.5 |
+| 0.5 | 3.9 | :1: | 0.4 | :2.3: | 0.9 | :0.5: | 0.5 |
 {space:8}
 
 {section:3. BOOKING DEPOSIT|ข้อ 3. เงินมัดจำ}
@@ -130,13 +130,13 @@
 | 0.5: | 7 | :1.5: | 1 |
 
 | | (<<เงินจองภาษาอังกฤษ>>) | to the Lessor. The Lessor has received this amount in full. |
-| 0.5 | :3.5: | 6 |
+| 0.5 | :3.7: | 5.8 |
 
 | | Both parties agree that this deposit constitutes part of the security deposit. |
 | 0.5 | 9.5 |
 
 | | {muted}ผู้เช่าตกลงวางเงินมัดจำ{/muted} | {muted}<<เงินจอง>>{/muted} | {muted}บาท{/muted} | {muted}(<<เงินจองตัวอักษร>>){/muted} |
-| 0.5 | 3 | :2: | 0.5 | :4: |
+| 0.5 | 2 | :2: | 0.5 | :5: |
 
 | | {muted}ผู้ให้เช่าได้รับไว้ครบถ้วนแล้ว และถือเป็นเงินค้ำประกันส่วนหนึ่ง{/muted} |
 | 0.5 | 9.5 |
@@ -145,19 +145,19 @@
 {section:4. REMAINING PAYMENT|ข้อ 4. การชำระเงินส่วนที่เหลือ}
 
 | 4.1 | The Lessee agrees to pay the remaining advance rental and security deposit of | <<จำนวนเงินวันทำสัญญา>> | Baht |
-| 0.5: | 8 | :1: | 0.5 |
+| 0.5: | 7.5 | :1.5: | 0.5 |
 
 | | (<<จำนวนเงินวันทำสัญญาภาษาอังกฤษ>>) | on the lease agreement signing date, |
-| 0.5 | :3.5: | 6.5 | 
+| 0.5 | :6: | 3.5 | 
 
 | | scheduled no later than | <<วันนัดทำสัญญาภาษาอังกฤษLong>> | |
-| 0.5 | 3.5 | :2: | 4 |  
+| 0.5 | 2.5 | :2.5: | 4.5 |  
 
 | | {muted}ผู้เช่าตกลงชำระเงินค่าเช่าล่วงหน้าและเงินค้ำประกันส่วนที่เหลือ{/muted} | {muted}<<จำนวนเงินวันทำสัญญา>>{/muted} | {muted}บาท{/muted} |{muted}(<<จำนวนเงินวันทำสัญญาตัวอักษร>>){/muted} |
-| 0.5 | 4 | :2: | :3: | 1 |
+| 0.5 | 4.5 | :1: | 0.5 | :3.5: |
 
-| | {muted}ในวันทำสัญญาเช่า กำหนดภายในวันที่{/muted} | {muted}<<วันนัดทำสัญญาภาษาไทย>>{/muted} |
-| 0.5 | 6.5 | :3: |
+| | {muted}ในวันทำสัญญาเช่า กำหนดภายในวันที่{/muted} | {muted}<<วันนัดทำสัญญาภาษาไทย>>{/muted} | |
+| 0.5 | 2.7 | :1.5: | 5.3 |
 {space:8}
 
 {section:5. DEFAULT|ข้อ 5. การผิดสัญญา}
@@ -184,10 +184,10 @@
 | 0.5 | 9.5 |
 {space:8}
 
-| {muted}หมายเหตุ :{/muted} | {muted}ในกรณีที่ผู้ให้เช่าได้รับเงินมัดจำหรือเงินจ่ายล่วงหน้าจากผู้เช่าแล้ว หากท่านและ/หรือผู้จะเช่าไม่สามารถทำตามสัญญาได้ ตัวแทนฯ จะคิดค่าดำเนินการจำนวน 50% ของเงินที่ท่านได้รับชำระไว้แล้วดังกล่าว แต่ไม่เกินค่านายหน้าที่ระบุไว้ในหนังสือฉบับนี้{/muted} |
+| {muted}Remark:{/muted} | {muted}In the event that the deposit or advance payment has been received and either party is unable to proceed, the Company shall be entitled to charge an administrative fee of 50% of the amount received, not exceeding the agency fee specified herein.{/muted} |
 | 1 | 9 |
 
-| {muted}Remark:{/muted} | {muted}In the event that the deposit or advance payment has been received and either party is unable to proceed, the Company shall be entitled to charge an administrative fee of 50% of the amount received, not exceeding the agency fee specified herein.{/muted} |
+| {muted}หมายเหตุ :{/muted} | {muted}ในกรณีที่ผู้ให้เช่าได้รับเงินมัดจำหรือเงินจ่ายล่วงหน้าจากผู้เช่าแล้ว หากท่านและ/หรือผู้จะเช่าไม่สามารถทำตามสัญญาได้ ตัวแทนฯ จะคิดค่าดำเนินการจำนวน 50% ของเงินที่ท่านได้รับชำระไว้แล้วดังกล่าว แต่ไม่เกินค่านายหน้าที่ระบุไว้ในหนังสือฉบับนี้{/muted} |
 | 1 | 9 |
 {space:12}
 

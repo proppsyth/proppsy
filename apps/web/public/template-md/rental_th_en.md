@@ -221,11 +221,14 @@
 | | {muted}ปฏิบัติตามข้อตกลงที่ระบุไว้ในสัญญาฉบับนี้ตลอดจนข้อกำหนดของนิติบุคคลซึ่งเกี่ยวข้องกับการใช้อาคารและ "ทรัพย์สิน"{/muted} |
 | 0.5: | 9.5 |
 
-| 4.3 | To use the Premises for dwelling purposes only and not more than <<จำนวนผู้พักอาศัย>> persons are permitted to reside in the Premises. |
-| 0.5: | 9.5 |
+| 4.3 | To use the Premises for dwelling purposes only and not more than | <<จำนวนผู้พักอาศัย>> | persons are permitted |
+| 0.5: | 5 | :0.5: | 4 |
 
-| | {muted}ใช้ "ทรัพย์สิน" เพื่อการอยู่อาศัยเท่านั้น และผู้พักอาศัยจำกัดจำนวนไม่เกิน <<จำนวนผู้พักอาศัย>> ท่านเท่านั้น{/muted} |
-| 0.5 | 9.5 |
+| | to reside in the Premises. |
+| 0.5: | 9.5 | |
+
+| | {muted}ใช้ "ทรัพย์สิน" เพื่อการอยู่อาศัยเท่านั้น และผู้พักอาศัยจำกัดจำนวนไม่เกิน{/muted} | {muted}<<จำนวนผู้พักอาศัย>>{/muted} |  {muted}ท่านเท่านั้น{/muted} |
+| 0.5 | 5 | :0.5: | 4 |
 
 | 4.4 | To keep all floors, floor covering, walls, ceilings, windows, window treatment, doors, furniture, domestic appliances, and all fixtures and fittings in or on the Premises in the same condition but allowing for the normal wear and tear for the use during the term of this agreement. |
 | 0.5: | 9.5 |
@@ -462,17 +465,17 @@
 | 9.2 | On the end of the contract, the Lessee agrees to allow the Lessor to deduct the cost of cleaning the room |
 | 0.5: | 9.5 |
 
-| | <<ค่าทำความสะอาดเติมลูกน้ำ>> | Baht | (<<ค่าทำความสะอาดตัวอักษรen>>) | and the cost of cleaning |<<จำนวนแอร์>> | air conditioner(s) |  
-| 0.5: | :1: | 0.5 | :3: | 2.5 | :0.5: | 2 |
+| | <<ค่าทำความสะอาดเติมลูกน้ำ>> | Baht | (<<ค่าทำความสะอาดตัวอักษรen>>) | and the cost of cleaning | 
+| 0.5: | :1.5: | 0.5 | :5: | 2.5 |
 
-| | <<ค่าล้างแอร์เติมลูกน้ำ>> | Baht each | (<<ค่าล้างแอร์ตัวอักษรen>>) |, totaling | <<รวมค่าล้างแอร์เติมลูกน้ำ>> | Baht |
-| 0.5: | :1: | 1.3 | :3.2: | 1.5 | :1.5: | 1 |
+| | <<จำนวนแอร์>> | air conditioner(s) |  <<ค่าล้างแอร์เติมลูกน้ำ>> | Baht each | (<<ค่าล้างแอร์ตัวอักษรen>>) |
+| 0.5: | :0.5: | 1.8 | :1.5: | 1 | :4.7: |
 
-| | (<<รวมค่าล้างแอร์ตัวอักษรen>>), | grand total | <<รวมทำความสะอาดและล้างแอร์เติมลูกน้ำ>> | Baht | (<<รวมทำความสะอาดและล้างแอร์ตัวอักษรen>>) |
-| 0.5: | :3: | 1.5 | :1.5: | 0.5 | :3: |
+| |, totaling | <<รวมค่าล้างแอร์เติมลูกน้ำ>> | Baht | (<<รวมค่าล้างแอร์ตัวอักษรen>>), |  grand total |
+| 0.5: | 1 | :1.5: | 0.5 | :5: | 1.5 |
 
-| | from the security deposit. |
-| 0.5: | 9.5 |
+| | <<รวมทำความสะอาดและล้างแอร์เติมลูกน้ำ>> | Baht | (<<รวมทำความสะอาดและล้างแอร์ตัวอักษรen>>) |from the security deposit. |
+| 0.5: | :1.5: | 0.5 | :5: | 2.5 |
 
 | | {muted}ในวันสิ้นสุดสัญญา "ผู้เช่า" ยินยอมให้ "ผู้ให้เช่า" หักค่าทำความสะอาดห้อง{/muted} | {muted}<<ค่าทำความสะอาดเติมลูกน้ำ>>{/muted} | {muted}บาท{/muted} | {muted}(<<ค่าทำความสะอาดตัวอักษร>>){/muted} |
 | 0.5 | 5 | :1: | 0.5 | :3: |
