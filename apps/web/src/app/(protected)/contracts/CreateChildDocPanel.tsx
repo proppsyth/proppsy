@@ -125,7 +125,6 @@ const LEASE_DOC_GROUPS: Array<{
     label: 'คอมมิชชัน',
     color: 'text-violet-700 border-violet-200 bg-violet-50 hover:bg-violet-100',
     types: [
-      { type: 'commission',         label: 'ใบคอมมิชชัน' },
       { type: 'commission_confirm', label: 'ยืนยันค่านายหน้า' },
     ],
   },
@@ -421,7 +420,7 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
     const isPaymentDoc = ['invoice_reservation','receipt_reservation','invoice_deposit','receipt_deposit'].includes(selectedType)
     const isReceiptRent  = selectedType === 'receipt_rent'
     const isReceiptBook  = selectedType === 'receipt_book'
-    const isCommission   = selectedType === 'commission' || selectedType === 'commission_confirm'
+    const isCommission   = selectedType === 'commission_confirm'
     const isRenewal      = selectedType === 'renewal'
     const isEnding       = ['termination','cancellation','end_contract'].includes(selectedType)
     const isNotification = selectedType === 'notice' || selectedType === 'warning'

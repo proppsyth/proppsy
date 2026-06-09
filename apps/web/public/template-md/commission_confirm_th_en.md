@@ -1,7 +1,7 @@
 {page-number}
 {signature-mini}
 
-# COMMISSION CONFIRMATION / ยืนยันค่านายหน้า
+# COMMISSION CONFIRMATION / หนังสือยืนยันค่านายหน้า
 
 | Date | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |
 | 7: | :3: |
@@ -20,10 +20,10 @@
 | 2 | 8 |
 {space:8}
 
-| We hereby confirm the commission obligation for the following property rental transaction. | |
+| This document confirms the commission payable to the Agent for the rental transaction described below. The commission is payable by the Property Owner only. | |
 | 10 | 0 |
 
-| {muted}เราขอยืนยันภาระผูกพันค่านายหน้าสำหรับธุรกรรมการเช่าอสังหาริมทรัพย์ดังต่อไปนี้{/muted} | |
+| {muted}เอกสารฉบับนี้ยืนยันค่านายหน้าที่ต้องชำระให้แก่ตัวแทนอสังหาริมทรัพย์สำหรับธุรกรรมการเช่าที่ระบุด้านล่าง ค่านายหน้าเป็นภาระผูกพันของเจ้าของทรัพย์สินเท่านั้น{/muted} | |
 | 10 | 0 |
 {space:8}
 
@@ -47,10 +47,10 @@
 | Monthly Rent / {muted}ค่าเช่า/เดือน{/muted} | <<ค่าเช่าเติมลูกน้ำ>> Baht {muted}(<<ค่าเช่าตัวอักษร>>){/muted} |
 | 3 | :7: |
 
-| Start Date / {muted}วันเริ่มสัญญา{/muted} | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |
+| Start Date / {muted}วันเริ่มสัญญา{/muted} | <<วันเข้าอยู่ภาษาอังกฤษLong>> |
 | 3 | :7: |
 
-| | {muted}<<ทำสัญญาวันที่ภาษาไทย>>{/muted} |
+| | {muted}<<วันเข้าอยู่ภาษาไทย>>{/muted} |
 | 3 | ~7~ |
 
 | End Date / {muted}วันสิ้นสุดสัญญา{/muted} | <<ทำสัญญาวันที่สิ้นสุดภาษาอังกฤษLong>> |
@@ -61,27 +61,15 @@
 
 {space:8}
 
-{section:COMMISSION DETAILS|รายละเอียดค่านายหน้า}
+{section:COMMISSION AMOUNT|ค่านายหน้า}
 
 | Commission Rate / {muted}อัตราค่านายหน้า{/muted} | <<คอมมิชชั่น%>> |
 | 3 | :7: |
 
-| Commission from Owner / {muted}ค่านายหน้าจากเจ้าของ{/muted} | **<<commission_from_owner>> THB** {muted}(<<commission_from_owner_text>>){/muted} |
+| **Commission Amount / {muted}จำนวนค่านายหน้า{/muted}** | **<<commission_from_owner>> THB** |
 | 3 | :7: |
 
-| Commission from Tenant / {muted}ค่านายหน้าจากผู้เช่า{/muted} | <<commission_from_customer>> THB |
-| 3 | :7: |
-
-| VAT 7% / {muted}ภาษีมูลค่าเพิ่ม 7%{/muted} | <<commission_vat7>> THB |
-| 3 | :7: |
-
-| WHT 3% Deduction / {muted}หัก ณ ที่จ่าย 3%{/muted} | (<<commission_wht3>>) THB |
-| 3 | :7: |
-
-| **Net Amount Payable** / {muted}ยอดสุทธิที่ต้องชำระ{/muted} | **<<commission_total>> THB** |
-| 3 | :7: |
-
-| | {muted}(<<commission_total_text>>){/muted} |
+| | {muted}(<<commission_from_owner_text>>){/muted} |
 | 3 | ~7~ |
 
 {space:8}
@@ -93,29 +81,29 @@
 
 {section:CONDITIONS|เงื่อนไข}
 
-| 1. | The Owner agrees to pay the commission fee within 1 business day after receiving advance rent and security deposit from the Tenant. |
+| 1. | The Owner agrees to pay the commission to the Agent within 1 business day after the lease agreement has been executed and signed. |
 | 0.5: | 9.5 |
 
-| | {muted}เจ้าของทรัพย์ตกลงชำระค่านายหน้าภายใน 1 วันทำการ หลังจากได้รับค่าเช่าล่วงหน้าและเงินประกันจากผู้เช่าครบถ้วน{/muted} |
+| | {muted}เจ้าของทรัพย์ตกลงชำระค่านายหน้าให้แก่ตัวแทนภายใน 1 วันทำการ หลังจากได้ลงนามในสัญญาเช่าเรียบร้อยแล้ว{/muted} |
 | 0.5 | 9.5 |
 
-| 2. | This commission fee is non-refundable once the lease agreement has been executed and signed by all parties. |
+| 2. | This document constitutes evidence of the commission agreement between the Property Owner and the Real Estate Agent only. The Tenant is not a party to this commission obligation. |
 | 0.5: | 9.5 |
 
-| | {muted}ค่านายหน้านี้ไม่สามารถขอคืนได้ หลังจากที่ได้มีการลงนามในสัญญาเช่าโดยทุกฝ่ายแล้ว{/muted} |
+| | {muted}เอกสารฉบับนี้เป็นหลักฐานยืนยันข้อตกลงค่านายหน้าระหว่างเจ้าของทรัพย์สินและตัวแทนอสังหาริมทรัพย์เท่านั้น ผู้เช่าไม่มีภาระผูกพันค่านายหน้าใดๆ{/muted} |
 | 0.5 | 9.5 |
 
-| 3. | In the event the Owner is unable to fulfill the agreement after a booking deposit has been received, a processing fee of 50% of the amount received, not exceeding the commission stated above, shall apply. |
+| 3. | This commission is non-refundable once the lease agreement has been signed. In the event the Owner is unable to fulfil the agreement after a booking deposit has been received, a processing fee of 50% of the amount received, not exceeding the commission stated above, shall apply. |
 | 0.5: | 9.5 |
 
-| | {muted}ในกรณีที่เจ้าของทรัพย์ไม่สามารถปฏิบัติตามสัญญาได้หลังจากได้รับเงินมัดจำ จะมีการเรียกเก็บค่าดำเนินการ 50% ของจำนวนเงินที่ได้รับ แต่ไม่เกินค่านายหน้าที่ระบุข้างต้น{/muted} |
+| | {muted}ค่านายหน้านี้ไม่สามารถขอคืนได้หลังจากที่ได้มีการลงนามในสัญญาเช่า หากเจ้าของทรัพย์ไม่สามารถปฏิบัติตามสัญญาได้หลังจากได้รับเงินมัดจำ จะมีการเรียกเก็บค่าดำเนินการ 50% ของจำนวนเงินที่ได้รับ แต่ไม่เกินค่านายหน้าที่ระบุข้างต้น{/muted} |
 | 0.5 | 9.5 |
 {space:12}
 
-| By signing below, the Owner confirms and accepts the commission obligation as stated in this document. | |
+| By signing below, the Owner confirms and agrees to pay the commission amount as stated in this document. | |
 | 10 | 0 |
 
-| {muted}โดยการลงนามด้านล่าง เจ้าของทรัพย์ยืนยันและยอมรับภาระผูกพันค่านายหน้าตามที่ระบุในเอกสารฉบับนี้{/muted} | |
+| {muted}โดยการลงนามด้านล่าง เจ้าของทรัพย์ยืนยันและตกลงชำระค่านายหน้าตามจำนวนที่ระบุในเอกสารฉบับนี้{/muted} | |
 | 10 | 0 |
 {space:8}
 
