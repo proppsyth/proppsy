@@ -36,6 +36,11 @@ export default function NotificationBell({ userId }: Props) {
   const [mounted, setMounted] = useState(false)
   const loadedRef = useRef(false)
 
+  // Track open state in a ref so the Realtime callback can read it without
+  // being listed as a dependency (which would cause re-subscribe on every toggle).
+  const openRef = useRef(false)
+  useEffect(() => { openRef.current = open }, [open])
+
   const { permission, subscribed, loading: pushLoading, subscribe, unsubscribe } =
     usePushNotifications()
 
@@ -44,7 +49,7 @@ export default function NotificationBell({ userId }: Props) {
   // Hydration guard for createPortal
   useEffect(() => { setMounted(true) }, [])
 
-  // Fetch on mount for badge count (first 20 is enough for the count)
+  // Fetch on mount for badge count
   useEffect(() => {
     fetchNotifications(20).then(data => setNotifications(data))
   }, [])
@@ -57,12 +62,29 @@ export default function NotificationBell({ userId }: Props) {
     fetchNotifications(50).then(data => { setNotifications(data); setLoading(false) })
   }, [open])
 
-  // Supabase Realtime — listen for new notifications in real-time
+  // ── Supabase Realtime subscription ──────────────────────────────────────
+  // Rules that MUST be followed:
+  //   1. channel.on(...)  BEFORE  channel.subscribe()  — Supabase throws otherwise
+  //   2. Use a unique channel name per mount so that React Strict Mode's
+  //      double-invoke doesn't call .on() on a channel already in 'leaving' state
+  //      (createBrowserClient is a singleton; channel() returns the existing object
+  //       when the name matches, and that object may still be non-closed)
+  //   3. Wrap in try/catch — a failed subscription must NOT block the dashboard
   useEffect(() => {
+    if (!userId) return
+
     const supabase = createClient()
-    const channel = supabase
-      .channel(`notif:${userId}`)
-      .on(
+    // Random suffix guarantees a fresh channel object on every mount,
+    // even if the previous cleanup hasn't finished unsubscribing yet.
+    const channelName = `notif:${userId}:${Math.random().toString(36).slice(2)}`
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
+    try {
+      // Step 1 — create channel (state = closed)
+      channel = supabase.channel(channelName)
+
+      // Step 2 — register listeners (must happen while state = closed)
+      channel.on(
         'postgres_changes',
         {
           event:  'INSERT',
@@ -74,9 +96,9 @@ export default function NotificationBell({ userId }: Props) {
           const notif = payload.new as AppNotification
           setNotifications(prev => [notif, ...prev.slice(0, 49)])
 
-          // Show in-tab Notification API alert when panel is closed
+          // Show browser notification when the panel is closed
           if (
-            !open &&
+            !openRef.current &&
             typeof window !== 'undefined' &&
             'Notification' in window &&
             window.Notification.permission === 'granted'
@@ -84,15 +106,30 @@ export default function NotificationBell({ userId }: Props) {
             new window.Notification(notif.title, {
               body: notif.message || undefined,
               icon: '/logo/logo-icon.jpg',
-              tag:  notif.id,   // dedup same notification
+              tag:  notif.id,
             })
           }
-        },
+        }
       )
-      .subscribe()
 
-    return () => { void supabase.removeChannel(channel) }
-  }, [userId, open])
+      // Step 3 — subscribe (state transitions closed → joining → joined)
+      channel.subscribe((_status, err) => {
+        if (err) {
+          console.error('[NotificationBell] realtime subscribe error:', err)
+        }
+      })
+    } catch (err) {
+      // Realtime failure must never block login or dashboard access
+      console.error('[NotificationBell] failed to set up realtime channel:', err)
+      channel = null
+    }
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {})
+      }
+    }
+  }, [userId]) // `open` intentionally omitted — openRef tracks it without re-subscribing
 
   // Close on Escape
   useEffect(() => {
