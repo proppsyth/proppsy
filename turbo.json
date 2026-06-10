@@ -12,6 +12,7 @@
         "SUPABASE_SERVICE_ROLE_KEY",
         "NEXT_PUBLIC_OMISE_PUBLIC_KEY",
         "OMISE_SECRET_KEY",
+        "OMISE_WEBHOOK_SECRET_KEY",
         "GEMINI_API_KEY"
       ]
     },

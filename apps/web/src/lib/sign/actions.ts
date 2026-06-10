@@ -167,7 +167,7 @@ export async function submitSignature(params: {
   try {
     const headersList = await headers()
     const ipRaw = headersList.get('x-forwarded-for') ?? headersList.get('x-real-ip') ?? null
-    const ipAddress = ipRaw ? ipRaw.split(',')[0].trim() : null
+    const ipAddress = ipRaw ? (ipRaw.split(',')[0]?.trim() ?? null) : null
     const hashInput = [token, signerName, now, signer.contract_id].join('|')
     const signatureHash = createHash('sha256').update(hashInput).digest('hex')
     await supabase.from('esign_consent_logs').insert({
