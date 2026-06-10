@@ -97,12 +97,38 @@ export async function GET(request: NextRequest) {
     profileError: consentErr?.message,
     account_status: profile?.account_status,
     hasConsent: !!profile?.accepted_terms_at,
+    userId: data.user.id,
   })
 
+  // No consent yet → send to consent page
   if (!profile?.accepted_terms_at) {
     const dest = `${origin}/consent?next=${encodeURIComponent(next)}`
     console.log('[auth/callback] → consent required, redirecting to', dest)
     return NextResponse.redirect(dest)
+  }
+
+  // Recovery: consent timestamps exist but account_status is still 'pending'.
+  // This happens when the saveConsent() approval update previously failed silently.
+  // Fix it in-place so the user isn't stuck in a redirect loop.
+  if (profile.account_status === 'pending') {
+    console.warn('[auth/callback] recovery: approving pending user who already consented', {
+      userId: data.user.id,
+    })
+    const { error: approveErr } = await admin
+      .from('profiles')
+      .update({ account_status: 'approved' })
+      .eq('id', data.user.id)
+      .eq('account_status', 'pending')
+    if (approveErr) {
+      console.error('[auth/callback] recovery approval failed:', approveErr.message)
+    } else {
+      console.log('[auth/callback] recovery: account approved successfully')
+    }
+  }
+
+  if (profile.account_status === 'rejected') {
+    console.warn('[auth/callback] → account rejected, redirecting to /login')
+    return NextResponse.redirect(`${origin}/login`)
   }
 
   const dest = `${origin}${next}`

@@ -18,9 +18,16 @@ export default async function ProtectedLayout({
     .eq('id', user.id)
     .single()
 
-  if (!profile || profile.account_status !== 'approved') {
-    redirect('/login')
-  }
+  if (!profile) redirect('/login')
+
+  // Rejected accounts cannot log in
+  if (profile.account_status === 'rejected') redirect('/login')
+
+  // No consent yet → complete the consent flow (which also approves the account)
+  if (!profile.accepted_terms_at) redirect('/consent')
+
+  // Consent done but still pending → recovery page that auto-approves
+  if (profile.account_status !== 'approved') redirect('/pending-approval')
 
   return (
     <div className="flex min-h-screen bg-gray-50 overflow-x-hidden">

@@ -1,14 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { saveConsent } from './actions'
 
 const CHECKBOX_CLS = 'w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0'
 const LINK_CLS = 'text-blue-600 hover:underline'
 
 export default function ConsentForm({ next }: { next: string }) {
-  const router = useRouter()
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false)
   const [agreedToDataController, setAgreedToDataController] = useState(false)
@@ -29,8 +27,9 @@ export default function ConsentForm({ next }: { next: string }) {
       setLoading(false)
       return
     }
-    router.push(next)
-    router.refresh()
+    // Hard redirect ensures Next.js fetches fresh server-component data (account_status)
+    // rather than serving a cached render that still shows 'pending'.
+    window.location.href = next
   }
 
   return (

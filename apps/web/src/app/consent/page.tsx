@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import ConsentForm from './ConsentForm'
 
 export default async function ConsentPage({
@@ -12,14 +12,24 @@ export default async function ConsentPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
+  const admin = await createAdminClient()
+  const { data: profile } = await admin
     .from('profiles')
-    .select('accepted_terms_at')
+    .select('accepted_terms_at, account_status')
     .eq('id', user.id)
     .single()
 
   if (profile?.accepted_terms_at) {
     const params = await searchParams
+    // Recovery: consent timestamps are set but approval update previously failed.
+    // Approve in-place before redirecting so the user doesn't hit /pending-approval.
+    if (profile.account_status === 'pending') {
+      await admin
+        .from('profiles')
+        .update({ account_status: 'approved' })
+        .eq('id', user.id)
+        .eq('account_status', 'pending')
+    }
     redirect(params.next ?? '/dashboard')
   }
 

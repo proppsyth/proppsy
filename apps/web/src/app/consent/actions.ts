@@ -9,25 +9,21 @@ export async function saveConsent(): Promise<{ error?: string }> {
 
   const now = new Date().toISOString()
 
+  // Single atomic update: consent timestamps + account approval together.
+  // Splitting into two queries risks a partial-success state where timestamps are set
+  // but account_status stays 'pending' (if the second query fails silently).
+  // neq('account_status', 'rejected') ensures a rejected account is never auto-approved.
   const { error } = await admin
     .from('profiles')
     .update({
       accepted_terms_at: now,
       accepted_privacy_at: now,
       accepted_data_controller_confirmation_at: now,
+      account_status: 'approved',
     })
     .eq('id', user.id)
+    .neq('account_status', 'rejected')
 
   if (error) return { error: error.message }
-
-  // OAuth users (Google, etc.) complete onboarding here instead of via the email
-  // registration form. Approve any account still in 'pending' state.
-  // The .eq('account_status', 'pending') guard ensures 'rejected' is never overridden.
-  await admin
-    .from('profiles')
-    .update({ account_status: 'approved' })
-    .eq('id', user.id)
-    .eq('account_status', 'pending')
-
   return {}
 }
