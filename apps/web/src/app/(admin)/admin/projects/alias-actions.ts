@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { logActivity } from '@/lib/activity/log'
 
 async function assertAdmin(): Promise<void> {
   const supabase = await createClient()
@@ -57,6 +58,17 @@ export async function addProjectAlias(
       if (error.code === '23505') return { error: 'ชื่อ alias นี้มีอยู่แล้ว' }
       return { error: error.message }
     }
+
+    const { data: { user } } = await admin.auth.getUser()
+    await logActivity({
+      userId: user?.id,
+      entityType: 'project',
+      entityId: projectId,
+      action: 'alias_added',
+      title: `เพิ่ม alias "${trimmed}"`,
+      metadata: { alias_id: data.id, language },
+    })
+
     revalidatePath('/admin/projects/aliases')
     return { id: data.id }
   } catch {

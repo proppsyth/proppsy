@@ -6,6 +6,7 @@ import { headers } from 'next/headers'
 import { createHash } from 'crypto'
 import type { SignerRole, ContractSigner } from '@/types'
 import { handleAllSignedIfComplete } from '@/lib/contracts/signingEngine'
+import { logActivity } from '@/lib/activity/log'
 
 // ─── Public: fetch signer + contract for sign page ────────────────────────
 
@@ -63,6 +64,14 @@ export async function recordSignerViewed(
     signer_id: signer.id,
     event_type: 'link_opened',
     user_agent: userAgent,
+  })
+
+  await logActivity({
+    entityType: 'esign',
+    entityId: signer.contract_id,
+    action: 'opened',
+    title: `เปิดลิงก์ลงนาม ${signer.contract_id}`,
+    metadata: { signer_id: signer.id },
   })
 }
 
@@ -144,6 +153,14 @@ export async function submitSignature(params: {
     event_type: 'signed',
     actor_name: signerName,
     user_agent: userAgent,
+  })
+
+  await logActivity({
+    entityType: 'esign',
+    entityId: signer.contract_id,
+    action: 'signed',
+    title: `${signerName || 'ผู้ลงนาม'} ลงนามสัญญา ${signer.contract_id}`,
+    metadata: { signer_id: signer.id, signer_role: signer.signer_role },
   })
 
   // E-Sign Consent Log — wrapped in try/catch so it never blocks signing

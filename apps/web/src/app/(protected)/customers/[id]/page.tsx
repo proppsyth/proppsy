@@ -11,6 +11,7 @@ import { LEAD_STATUS_CONFIG } from '../CustomerList'
 import ArchiveCustomerButton from './ArchiveCustomerButton'
 import CustomerContractHistory from './ContractHistory'
 import type { ContractRow } from './ContractHistory'
+import ActivityPanel from '@/components/shared/ActivityPanel'
 
 export const metadata: Metadata = { title: 'รายละเอียดลูกค้า' }
 
@@ -329,6 +330,11 @@ export default async function CustomerDetailPage({
 
           <div className="mt-4">
             <ArchiveCustomerButton customerId={c.id} isArchived={c.is_archived ?? false} />
+          </div>
+
+          {/* กิจกรรม */}
+          <div className="mt-4">
+            <ActivityPanel entityType="tenant" entityId={c.id} />
           </div>
         </div>
       </div>

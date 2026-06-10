@@ -7,6 +7,7 @@ import StorageImage from '@/components/shared/StorageImage'
 import { ownerDisplayName } from '@/types'
 import type { Owner } from '@/types'
 import ArchiveOwnerButton from './ArchiveOwnerButton'
+import ActivityPanel from '@/components/shared/ActivityPanel'
 
 export const metadata: Metadata = { title: 'รายละเอียดเจ้าของทรัพย์' }
 
@@ -240,6 +241,9 @@ export default async function OwnerDetailPage({
               </div>
             )}
           </Section>
+
+          {/* กิจกรรม */}
+          <ActivityPanel entityType="owner" entityId={o.id} />
         </div>
       </div>
     </div>

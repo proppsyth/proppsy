@@ -15,6 +15,7 @@ import CreateLeasePanel from '../CreateLeasePanel'
 import EditDraftPanel from '../EditDraftPanel'
 import DeleteContractButton from './DeleteContractButton'
 import { TEMPLATE_SUPPORTED_TYPES } from '@/lib/contracts/templateRegistry'
+import ActivityPanel from '@/components/shared/ActivityPanel'
 
 const DELETABLE_STATUSES = new Set(['draft', 'cancelled', 'terminated'])
 
@@ -616,6 +617,12 @@ export default async function ContractDetailPage({
             templateSlug={contract.template_slug ?? null}
             isFinalized={isFinalized}
             finalizedAt={(contract as { finalized_at?: string }).finalized_at ?? null}
+          />
+
+          {/* กิจกรรม (booking/lease/esign events for this contract) */}
+          <ActivityPanel
+            entityType={['booking', 'lease', 'esign']}
+            entityId={contract.id}
           />
         </div>
       </div>

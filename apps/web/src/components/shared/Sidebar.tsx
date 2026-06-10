@@ -20,6 +20,7 @@ interface SidebarProps {
 
 const NAV_ITEMS = [
   { href: '/dashboard', icon: '📊', label: 'แดชบอร์ด', permission: null },
+  { href: '/dashboard/activity', icon: '🔔', label: 'กิจกรรม', permission: null },
   { href: '/stock', icon: '🏠', label: 'ทรัพย์', permission: 'stock' },
   { href: '/owners', icon: '👤', label: 'เจ้าของทรัพย์', permission: 'owner' },
   { href: '/customers', icon: '👥', label: 'ลูกค้า', permission: 'customer' },

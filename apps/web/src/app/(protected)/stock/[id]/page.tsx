@@ -10,6 +10,7 @@ import DeleteStockButton from './DeleteStockButton'
 import PublishActions from './PublishActions'
 import StockShareButtons from './StockShareButtons'
 import ContractHistory from './ContractHistory'
+import ActivityPanel from '@/components/shared/ActivityPanel'
 
 export const metadata: Metadata = { title: 'รายละเอียดทรัพย์' }
 
@@ -332,6 +333,9 @@ export default async function StockDetailPage({
               <InfoItem label="บันทึกเมื่อ" value={createdDate} />
             </div>
           </Section>
+
+          {/* กิจกรรม */}
+          <ActivityPanel entityType="stock" entityId={s.id} />
         </div>
       </div>
     </div>

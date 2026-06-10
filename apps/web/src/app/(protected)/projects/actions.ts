@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { identifyAndEnrichProject } from '@/lib/ai/projectIdentity'
+import { logActivity } from '@/lib/activity/log'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -148,6 +149,15 @@ export async function createProject(
   })
 
   if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
+
+  await logActivity({
+    userId: user.id,
+    entityType: 'project',
+    entityId: id,
+    action: 'created',
+    title: `เพิ่มโครงการ ${input.name_th}`,
+    description: input.name_en ?? undefined,
+  })
 
   revalidatePath('/projects')
   return { id }

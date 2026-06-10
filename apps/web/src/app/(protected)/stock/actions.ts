@@ -6,6 +6,7 @@ import { resolvePlan } from '@/types'
 import { getPlanLimitsByUserPlan } from '@/lib/planLimits'
 import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
 import { identifyAndEnrichProject } from '@/lib/ai/projectIdentity'
+import { logActivity } from '@/lib/activity/log'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -99,6 +100,16 @@ export async function createStock(
 
   if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
 
+  await logActivity({
+    userId: user.id,
+    entityType: 'stock',
+    entityId: id,
+    action: 'created',
+    title: `เพิ่มทรัพย์ใหม่ ${id}`,
+    description: input.project_name ? `โครงการ: ${input.project_name}` : undefined,
+    metadata: { unit_no: input.unit_no, listing_type: input.listing_type },
+  })
+
   revalidatePath('/stock')
   return { id }
 }
@@ -127,6 +138,15 @@ export async function updateStock(
     .eq('agent_uid', user.id)
 
   if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
+
+  await logActivity({
+    userId: user.id,
+    entityType: 'stock',
+    entityId: stockId,
+    action: 'updated',
+    title: `แก้ไขทรัพย์ ${stockId}`,
+    metadata: { status: input.status, ...(autoUnpublish ? { auto_unpublished: true } : {}) },
+  })
 
   revalidatePath('/stock')
   revalidatePath(`/stock/${stockId}`)

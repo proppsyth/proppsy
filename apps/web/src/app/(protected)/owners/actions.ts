@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
 import { geminiParseDocument, geminiParseBankBook } from '@/lib/ocr'
 import type { OcrDocumentResult, BankBookOcrResult } from '@/lib/ocr'
+import { logActivity } from '@/lib/activity/log'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -70,6 +71,15 @@ export async function createOwner(
 
   if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
 
+  await logActivity({
+    userId: user.id,
+    entityType: 'owner',
+    entityId: id,
+    action: 'created',
+    title: `เพิ่มเจ้าของทรัพย์ ${id}`,
+    description: [input.first_name_th, input.last_name_th].filter(Boolean).join(' ') || undefined,
+  })
+
   revalidatePath('/owners')
   return { id }
 }
@@ -91,6 +101,14 @@ export async function updateOwner(
     .eq('agent_uid', user.id)
 
   if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
+
+  await logActivity({
+    userId: user.id,
+    entityType: 'owner',
+    entityId: ownerId,
+    action: 'updated',
+    title: `แก้ไขข้อมูลเจ้าของ ${ownerId}`,
+  })
 
   revalidatePath('/owners')
   revalidatePath(`/owners/${ownerId}`)

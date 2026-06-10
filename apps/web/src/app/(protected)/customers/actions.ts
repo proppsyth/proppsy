@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
 import { geminiParseDocument } from '@/lib/ocr'
 import type { OcrDocumentResult } from '@/lib/ocr'
+import { logActivity } from '@/lib/activity/log'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -70,6 +71,15 @@ export async function createCustomer(
 
   if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
 
+  await logActivity({
+    userId: user.id,
+    entityType: 'tenant',
+    entityId: id,
+    action: 'created',
+    title: `เพิ่มลูกค้า ${id}`,
+    description: [input.first_name_th, input.last_name_th].filter(Boolean).join(' ') || undefined,
+  })
+
   revalidatePath('/customers')
   return { id }
 }
@@ -91,6 +101,14 @@ export async function updateCustomer(
     .eq('agent_uid', user.id)
 
   if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
+
+  await logActivity({
+    userId: user.id,
+    entityType: 'tenant',
+    entityId: customerId,
+    action: 'updated',
+    title: `แก้ไขข้อมูลลูกค้า ${customerId}`,
+  })
 
   revalidatePath('/customers')
   revalidatePath(`/customers/${customerId}`)

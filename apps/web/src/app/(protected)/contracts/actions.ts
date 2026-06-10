@@ -8,6 +8,7 @@ import {
   setStockReserved, setStockPendingMoveIn, setStockRented, setStockAvailable,
   captureFinalizationSnapshot, appendTimelineEvent, docTypeToCategory,
 } from '@/lib/contracts/lifecycleEngine'
+import { logActivity } from '@/lib/activity/log'
 import { createLeasePackage } from '@/lib/contracts/documentEngine'
 import { computeLeaseEndDate } from '@/lib/contracts/leaseFromReservation'
 
@@ -177,6 +178,15 @@ export async function createContract(
     await appendTimelineEvent(supabase, id, null, user.id, 'reservation_created', 'สร้างใบจอง')
   }
 
+  await logActivity({
+    userId: user.id,
+    entityType: 'booking',
+    entityId: id,
+    action: 'created',
+    title: `สร้างใบจอง ${id}`,
+    metadata: { doc_type: input.doc_type, stock_id: input.stock_id ?? undefined },
+  })
+
   revalidatePath('/contracts')
   return { id }
 }
@@ -310,6 +320,16 @@ export async function createLeaseFromReservation(
 
   await appendTimelineEvent(supabase, id, id, user.id, 'lease_created',
     `สัญญาเช่าสร้างจากใบจอง ${reservationId}`, reservationId)
+
+  await logActivity({
+    userId: user.id,
+    entityType: 'lease',
+    entityId: id,
+    action: 'created',
+    title: `สร้างสัญญาเช่า ${id}`,
+    description: `จากใบจอง ${reservationId}`,
+    metadata: { reservation_id: reservationId, stock_id: reservation.stock_id ?? undefined },
+  })
 
   revalidatePath('/contracts')
   revalidatePath(`/contracts/${reservationId}`)
