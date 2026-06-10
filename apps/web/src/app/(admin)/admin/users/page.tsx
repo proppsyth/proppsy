@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import type { Metadata } from 'next'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types'
@@ -64,6 +65,31 @@ export default async function AdminUsersPage({
     pending: pendingCount ?? 0,
     approved: approvedCount ?? 0,
     rejected: rejectedCount ?? 0,
+  }
+
+  // ── Find duplicate national_ids across ALL profiles ────────────
+  const nationalIds = (users ?? [])
+    .map(u => u.national_id)
+    .filter((id): id is string => !!id && id !== '')
+
+  let duplicateNationalIds = new Set<string>()
+  if (nationalIds.length > 0) {
+    const { data: allWithSameId } = await admin
+      .from('profiles')
+      .select('national_id')
+      .in('national_id', nationalIds)
+
+    const counts2 = new Map<string, number>()
+    for (const p of (allWithSameId ?? [])) {
+      if (p.national_id) {
+        counts2.set(p.national_id, (counts2.get(p.national_id) ?? 0) + 1)
+      }
+    }
+    duplicateNationalIds = new Set(
+      [...counts2.entries()]
+        .filter(([, c]) => c > 1)
+        .map(([id]) => id)
+    )
   }
 
   return (
@@ -139,7 +165,12 @@ export default async function AdminUsersPage({
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {users.map(u => (
-            <UserCard key={u.id} user={u as Profile} tab={tab} />
+            <UserCard
+              key={u.id}
+              user={u as Profile}
+              tab={tab}
+              isDuplicateId={!!(u.national_id && duplicateNationalIds.has(u.national_id))}
+            />
           ))}
         </div>
       )}
@@ -147,27 +178,62 @@ export default async function AdminUsersPage({
   )
 }
 
-function UserCard({ user, tab }: { user: Profile; tab: Tab }) {
-  const initials = ((user.nickname || user.name || user.email || 'U').charAt(0)).toUpperCase()
+function UserCard({ user, tab, isDuplicateId }: { user: Profile; tab: Tab; isDuplicateId: boolean }) {
   const planMeta = PLAN_META[resolvePlan(user.plan)]
   const createdDate = new Date(user.created_at).toLocaleDateString('th-TH', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   })
+  const isGoogle = user.auth_provider === 'google'
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col gap-3">
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-semibold text-sm flex-shrink-0">
-          {initials}
+      {/* Duplicate national ID warning */}
+      {isDuplicateId && (
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <span className="text-amber-500 text-sm flex-shrink-0">⚠️</span>
+          <p className="text-xs text-amber-700 font-medium">เลขบัตรประชาชนซ้ำกับบัญชีอื่นในระบบ</p>
         </div>
+      )}
+
+      <div className="flex items-start gap-3">
+        {/* Avatar */}
+        <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm">
+          {user.avatar_url ? (
+            <Image
+              src={user.avatar_url}
+              alt={user.name ?? ''}
+              width={40}
+              height={40}
+              className="w-full h-full object-cover"
+              unoptimized
+            />
+          ) : (
+            ((user.nickname || user.name || user.email || 'U').charAt(0)).toUpperCase()
+          )}
+        </div>
+
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-gray-900 truncate">{user.name || '—'}</p>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="font-medium text-gray-900 truncate">{user.name || '—'}</p>
+            {isGoogle && (
+              <span className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 border border-blue-100 rounded-full text-[10px] font-medium text-blue-600 flex-shrink-0">
+                <svg width="10" height="10" viewBox="0 0 18 18" fill="none">
+                  <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                  <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+                  <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.548 0 9s.348 2.825.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+                  <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                </svg>
+                Google
+              </span>
+            )}
+          </div>
           {user.nickname && (
             <p className="text-xs text-gray-400 truncate">"{user.nickname}"</p>
           )}
         </div>
+
         {tab !== 'pending' && (
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${STATUS_COLORS[user.account_status]}`}>
             {STATUS_LABELS[user.account_status]}
@@ -180,6 +246,14 @@ function UserCard({ user, tab }: { user: Profile; tab: Tab }) {
         <InfoRow icon="📱" value={user.phone} />
         {user.company_name && <InfoRow icon="🏢" value={user.company_name} />}
         {user.position && <InfoRow icon="💼" value={user.position} />}
+        {user.national_id && (
+          <div className="flex items-center gap-2 text-gray-600">
+            <span>🪪</span>
+            <span className="text-sm font-mono tracking-wide">
+              {user.national_id.replace(/(\d{1})(\d{4})(\d{5})(\d{2})(\d{1})/, '$1-$2-$3-$4-$5')}
+            </span>
+          </div>
+        )}
         <InfoRow icon="📅" value={`สมัคร ${createdDate}`} />
       </div>
 

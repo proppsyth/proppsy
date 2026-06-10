@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { ChevronRight, RefreshCw, X, FileImage } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import AddressSelector from '@/components/shared/AddressSelector'
-import { updateRegisterProfile } from './actions'
+import { updateRegisterProfile, checkNationalIdExists } from './actions'
 import { TERMS_SECTIONS } from '@/lib/legal/terms-content'
 import { PRIVACY_SECTIONS } from '@/lib/legal/privacy-content'
 import type { LegalSection } from '@/lib/legal/terms-content'
@@ -89,6 +89,7 @@ export default function RegisterPage() {
     line_id: '',
     position: '',
     company_name: '',
+    national_id: '',
     address_no: '',
     address_road: '',
     province: '',
@@ -140,6 +141,8 @@ export default function RegisterPage() {
     if (!form.first_name_th.trim()) { setError('กรุณากรอกชื่อ'); return }
     if (!form.last_name_th.trim()) { setError('กรุณากรอกนามสกุล'); return }
     if (!form.phone.trim()) { setError('กรุณากรอกเบอร์โทร'); return }
+    if (!form.national_id.trim()) { setError('กรุณากรอกเลขบัตรประชาชน'); return }
+    if (!/^\d{13}$/.test(form.national_id.trim())) { setError('เลขบัตรประชาชนต้องมี 13 หลัก (ตัวเลขเท่านั้น)'); return }
     if (!idCardFile) { setError('กรุณาแนบสำเนาบัตรประชาชน'); return }
     if (!form.agreedToTerms) { setError('กรุณายอมรับข้อกำหนดการใช้งาน'); return }
     if (!form.agreedToPrivacy) { setError('กรุณายอมรับนโยบายความเป็นส่วนตัว'); return }
@@ -148,6 +151,14 @@ export default function RegisterPage() {
     if (form.password.length < 8) { setError('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'); return }
 
     setLoading(true)
+
+    // Pre-check national ID uniqueness before creating auth account
+    const isDuplicate = await checkNationalIdExists(form.national_id.trim())
+    if (isDuplicate) {
+      setError('บัญชีนี้เคยลงทะเบียนแล้ว กรุณาติดต่อผู้ดูแลระบบ')
+      setLoading(false)
+      return
+    }
     const supabase = createClient()
 
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
@@ -232,6 +243,7 @@ export default function RegisterPage() {
         subdistrict: form.subdistrict || null,
         zip: form.zip || null,
         id_card_url: idCardUrl,
+        national_id: form.national_id.trim() || null,
       })
 
       if (result.error) {
@@ -367,6 +379,24 @@ export default function RegisterPage() {
                   subdistrict={form.subdistrict} zip={form.zip}
                   onChange={(field, value) => setForm(f => ({ ...f, [field]: value }))}
                 />
+              </section>
+
+              {/* เลขบัตรประชาชน */}
+              <section className="space-y-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">บัตรประชาชน *</p>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">เลขบัตรประชาชน 13 หลัก *</label>
+                  <input
+                    type="text"
+                    value={form.national_id}
+                    onChange={e => setForm(f => ({ ...f, national_id: e.target.value.replace(/\D/g, '').slice(0, 13) }))}
+                    placeholder="0000000000000"
+                    inputMode="numeric"
+                    maxLength={13}
+                    className={INPUT_CLS}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">ใช้ตรวจสอบตัวตนและป้องกันการสมัครซ้ำ</p>
+                </div>
               </section>
 
               {/* สำเนาบัตรประชาชน */}

@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 
 type RegisterProfileData = {
   name: string
@@ -16,15 +16,43 @@ type RegisterProfileData = {
   subdistrict?: string | null
   zip?: string | null
   id_card_url?: string | null
+  national_id?: string | null
+}
+
+/** Pre-check called before signUp to prevent orphan auth accounts. */
+export async function checkNationalIdExists(nationalId: string): Promise<boolean> {
+  if (!nationalId.trim()) return false
+  const admin = await createAdminClient()
+  const { data } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('national_id', nationalId.trim())
+    .limit(1)
+    .maybeSingle()
+  return !!data
 }
 
 export async function updateRegisterProfile(data: RegisterProfileData): Promise<{ error?: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const admin = await createAdminClient()
+  const { data: { user } } = await admin.auth.getUser()
   if (!user) return { error: 'ไม่พบผู้ใช้' }
 
+  // Definitive uniqueness check (guards against race conditions)
+  if (data.national_id?.trim()) {
+    const { data: existing } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('national_id', data.national_id.trim())
+      .neq('id', user.id)
+      .limit(1)
+      .maybeSingle()
+    if (existing) {
+      return { error: 'บัญชีนี้เคยลงทะเบียนแล้ว กรุณาติดต่อผู้ดูแลระบบ' }
+    }
+  }
+
   const now = new Date().toISOString()
-  const { error } = await supabase
+  const { error } = await admin
     .from('profiles')
     .update({
       name: data.name,
@@ -40,6 +68,7 @@ export async function updateRegisterProfile(data: RegisterProfileData): Promise<
       subdistrict: data.subdistrict || null,
       zip: data.zip || null,
       id_card_url: data.id_card_url || null,
+      national_id: data.national_id?.trim() || null,
       account_status: 'approved',
       accepted_terms_at: now,
       accepted_privacy_at: now,
@@ -47,6 +76,11 @@ export async function updateRegisterProfile(data: RegisterProfileData): Promise<
     })
     .eq('id', user.id)
 
-  if (error) return { error: error.message }
+  if (error) {
+    if (error.code === '23505') {
+      return { error: 'บัญชีนี้เคยลงทะเบียนแล้ว กรุณาติดต่อผู้ดูแลระบบ' }
+    }
+    return { error: error.message }
+  }
   return {}
 }

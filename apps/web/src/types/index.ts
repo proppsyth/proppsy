@@ -98,6 +98,7 @@ export interface Profile {
   avatar_url?: string
   show_phone?: boolean
   social_links?: Record<string, string>
+  auth_provider?: string
   created_at: string
   updated_at: string
 }

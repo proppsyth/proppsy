@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createAdminClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -30,8 +31,34 @@ export async function GET(request: NextRequest) {
     )
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error && data.user) {
-      // Check if this user has already accepted terms (e.g. returning Google auth user)
-      const { data: profile } = await supabase
+      const admin = await createAdminClient()
+
+      // ── Google profile sync ────────────────────────────────────
+      if (data.user.app_metadata?.provider === 'google') {
+        const meta = data.user.user_metadata ?? {}
+        const { data: profile } = await admin
+          .from('profiles')
+          .select('name, auth_provider')
+          .eq('id', data.user.id)
+          .single()
+
+        const updates: Record<string, string | null> = {
+          auth_provider: 'google',
+          // Always refresh avatar from Google
+          avatar_url: (meta.picture as string) || (meta.avatar_url as string) || null,
+        }
+
+        // First sync only: populate name from Google if not already set
+        if (profile?.auth_provider !== 'google' && !profile?.name) {
+          const googleName = (meta.full_name || meta.name) as string | undefined
+          if (googleName) updates.name = googleName
+        }
+
+        await admin.from('profiles').update(updates).eq('id', data.user.id)
+      }
+
+      // ── Consent check ──────────────────────────────────────────
+      const { data: profile } = await admin
         .from('profiles')
         .select('accepted_terms_at')
         .eq('id', data.user.id)
