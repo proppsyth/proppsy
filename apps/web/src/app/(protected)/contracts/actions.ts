@@ -178,6 +178,25 @@ export async function createContract(
     await appendTimelineEvent(supabase, id, null, user.id, 'reservation_created', 'สร้างใบจอง')
   }
 
+  // ── Commission pipeline record ────────────────────────────────
+  if (contract_category === 'reservation' && input.commission_net && input.commission_net > 0) {
+    await supabase.from('commission_records').insert({
+      agent_uid: user.id,
+      reservation_id: id,
+      amount: input.commission_net,
+      commission_type: 'new_lease',
+      status: 'pipeline',
+    })
+    await logActivity({
+      userId: user.id,
+      entityType: 'commission',
+      entityId: id,
+      action: 'pipeline_created',
+      title: `Commission Pipeline ฿${Math.round(input.commission_net).toLocaleString('th-TH')}`,
+      metadata: { amount: input.commission_net },
+    })
+  }
+
   await logActivity({
     userId: user.id,
     entityType: 'booking',
@@ -320,6 +339,41 @@ export async function createLeaseFromReservation(
 
   await appendTimelineEvent(supabase, id, id, user.id, 'lease_created',
     `สัญญาเช่าสร้างจากใบจอง ${reservationId}`, reservationId)
+
+  // ── Commission: pipeline → earned ────────────────────────────
+  const commissionAmount = reservation.commission_net as number | null
+  if (commissionAmount && commissionAmount > 0) {
+    const now = new Date().toISOString()
+    const { data: updated } = await supabase
+      .from('commission_records')
+      .update({ status: 'earned', lease_id: id, earned_at: now, updated_at: now })
+      .eq('reservation_id', reservationId)
+      .eq('agent_uid', user.id)
+      .eq('status', 'pipeline')
+      .select('id')
+
+    if (!updated || updated.length === 0) {
+      // No pipeline record (reservation was created before this feature); create earned record
+      await supabase.from('commission_records').insert({
+        agent_uid: user.id,
+        reservation_id: reservationId,
+        lease_id: id,
+        amount: commissionAmount,
+        commission_type: 'new_lease',
+        status: 'earned',
+        earned_at: now,
+      })
+    }
+
+    await logActivity({
+      userId: user.id,
+      entityType: 'commission',
+      entityId: id,
+      action: 'earned',
+      title: `Commission Earned ฿${Math.round(commissionAmount).toLocaleString('th-TH')}`,
+      metadata: { amount: commissionAmount, reservation_id: reservationId },
+    })
+  }
 
   await logActivity({
     userId: user.id,
@@ -575,6 +629,31 @@ export async function createChildDocument(
 
   const { error } = await supabase.from('contracts').insert(row)
   if (error) return { error: 'สร้างเอกสารไม่สำเร็จ: ' + error.message }
+
+  // ── Renewal commission (0.5 month rent) ──────────────────────
+  if (docType === 'renewal') {
+    const renewalRent = (row.rent_price as number | null | undefined) ?? 0
+    if (renewalRent > 0) {
+      const renewalCommission = Math.round(renewalRent * 0.5)
+      const now = new Date().toISOString()
+      await supabase.from('commission_records').insert({
+        agent_uid: user.id,
+        lease_id: id,
+        amount: renewalCommission,
+        commission_type: 'renewal',
+        status: 'earned',
+        earned_at: now,
+      })
+      await logActivity({
+        userId: user.id,
+        entityType: 'commission',
+        entityId: id,
+        action: 'renewal_earned',
+        title: `Renewal Commission ฿${renewalCommission.toLocaleString('th-TH')}`,
+        metadata: { amount: renewalCommission, rent_price: renewalRent, lease_id: leaseId },
+      })
+    }
+  }
 
   // Ending docs: update master lease status + stock
   const endingTypes = ['termination', 'cancellation', 'end_contract']

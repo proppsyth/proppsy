@@ -1,226 +1,140 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { TrendingUp, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Metadata } from 'next'
+import { TrendingUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import CommissionList from './CommissionList'
+import type { CommissionRow } from './CommissionList'
 
 export const metadata: Metadata = { title: 'คอมมิชชัน' }
 
-function fmt(n: number) {
-  return new Intl.NumberFormat('th-TH').format(Math.round(n))
+// ─── Helpers ─────────────────────────────────────────────────
+
+function displayName(row: {
+  nickname?: string | null
+  first_name_th?: string | null
+  last_name_th?: string | null
+} | null | undefined): string | null {
+  if (!row) return null
+  return row.nickname || [row.first_name_th, row.last_name_th].filter(Boolean).join(' ') || null
 }
 
-function monthLabel(ym: string) {
-  const [y, m] = ym.split('-').map(Number)
-  return new Date(y!, m! - 1, 1).toLocaleDateString('th-TH', { year: 'numeric', month: 'long' })
-}
+// ─── Page ─────────────────────────────────────────────────────
 
-type MonthEntry = { ym: string; total: number; count: number }
-
-export default async function CommissionPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ year?: string }>
-}) {
+export default async function CommissionPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const currentYear = new Date().getFullYear()
-  const { year: yearStr } = await searchParams
-  const selectedYear = yearStr ? parseInt(yearStr) : currentYear
-
-  const { data: contracts } = await supabase
-    .from('contracts')
-    .select('id, commission_net, created_at, move_in_date, doc_type')
+  // Step 1: commission records
+  const { data: rawRecords } = await supabase
+    .from('commission_records')
+    .select('*')
     .eq('agent_uid', user.id)
-    .eq('status', 'signed')
-    .not('commission_net', 'is', null)
-    .order('move_in_date', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
 
-  // Commission date = move_in_date (lease signing date), fallback to created_at
-  function commissionDate(c: { created_at: string; move_in_date?: string | null }): string {
-    return c.move_in_date ?? c.created_at
-  }
+  const records = (rawRecords ?? []) as {
+    id: string
+    reservation_id: string | null
+    lease_id: string | null
+    amount: number
+    commission_type: 'new_lease' | 'renewal'
+    status: 'pipeline' | 'earned' | 'received'
+    earned_at: string | null
+    received_at: string | null
+    created_at: string
+  }[]
 
-  // All years available
-  const allYears = [...new Set((contracts ?? []).map(c => parseInt(commissionDate(c).slice(0, 4))))].sort((a, b) => b - a)
-  if (allYears.length === 0) allYears.push(currentYear)
+  // Step 2: collect all contract IDs we need to resolve
+  const contractIds = [...new Set([
+    ...records.map(r => r.reservation_id).filter((x): x is string => !!x),
+    ...records.map(r => r.lease_id).filter((x): x is string => !!x),
+  ])]
 
-  // Filter by selected year
-  const filtered = (contracts ?? []).filter(c => parseInt(commissionDate(c).slice(0, 4)) === selectedYear)
+  const { data: contractRows } = contractIds.length > 0
+    ? await supabase
+        .from('contracts')
+        .select('id, status, stock_id, customer_id')
+        .in('id', contractIds)
+    : { data: [] }
 
-  // Group by year-month using commission date (move-in = signing = commission received)
-  const byMonth = new Map<string, MonthEntry>()
-  let grandTotal = 0
-  let grandAllTotal = 0
-  for (const c of contracts ?? []) {
-    if (!c.commission_net) continue
-    grandAllTotal += c.commission_net
-  }
-  for (const c of filtered) {
-    if (!c.commission_net) continue
-    const ym = commissionDate(c).slice(0, 7)
-    const entry = byMonth.get(ym) ?? { ym, total: 0, count: 0 }
-    entry.total += c.commission_net
-    entry.count += 1
-    byMonth.set(ym, entry)
-    grandTotal += c.commission_net
-  }
+  // Step 3: collect stock + customer IDs
+  const stockIds = [...new Set(
+    (contractRows ?? []).map(c => c.stock_id).filter((x): x is string => !!x)
+  )]
+  const customerIds = [...new Set(
+    (contractRows ?? []).map(c => c.customer_id).filter((x): x is string => !!x)
+  )]
 
-  const months = [...byMonth.values()].sort((a, b) => a.ym.localeCompare(b.ym))
-  const maxTotal = months.reduce((m, e) => Math.max(m, e.total), 0) || 1
+  const [{ data: stockRows }, { data: customerRows }] = await Promise.all([
+    stockIds.length > 0
+      ? supabase.from('stock').select('id, unit_no, project_name').in('id', stockIds)
+      : { data: [] },
+    customerIds.length > 0
+      ? supabase.from('customers').select('id, nickname, first_name_th, last_name_th').in('id', customerIds)
+      : { data: [] },
+  ])
 
-  const thisYm = new Date().toISOString().slice(0, 7)
-  const thisMonth = byMonth.get(thisYm)
-  const prevYm = months.length > 1 ? months[months.length - 2] : undefined
+  // Build lookup maps
+  const contractMap = new Map((contractRows ?? []).map(c => [c.id, c]))
+  const stockMap    = new Map((stockRows ?? []).map(s => [s.id, s]))
+  const customerMap = new Map((customerRows ?? []).map(c => [c.id, c]))
 
-  const prevYear = selectedYear - 1
-  const nextYear = selectedYear + 1
-  const hasNext = nextYear <= currentYear
+  // Enrich commission records
+  const enriched: CommissionRow[] = records.map(r => {
+    const reservationContract = r.reservation_id ? contractMap.get(r.reservation_id) : null
+    const leaseContract       = r.lease_id       ? contractMap.get(r.lease_id)       : null
+
+    // Stock comes from the reservation contract first, then lease
+    const sourceContract = reservationContract ?? leaseContract
+    const stock    = sourceContract?.stock_id    ? stockMap.get(sourceContract.stock_id)    : null
+    const customer = sourceContract?.customer_id ? customerMap.get(sourceContract.customer_id) : null
+
+    return {
+      id:                 r.id,
+      reservation_id:     r.reservation_id,
+      lease_id:           r.lease_id,
+      amount:             r.amount,
+      commission_type:    r.commission_type,
+      status:             r.status,
+      earned_at:          r.earned_at,
+      received_at:        r.received_at,
+      created_at:         r.created_at,
+      stock_unit:         stock?.unit_no ?? null,
+      project_name:       stock?.project_name ?? null,
+      tenant_name:        displayName(customer),
+      lease_status:       leaseContract?.status ?? null,
+      reservation_status: reservationContract?.status ?? null,
+    }
+  })
+
+  // Summary stats
+  const pipeline    = enriched.filter(r => r.status === 'pipeline').reduce((s, r) => s + r.amount, 0)
+  const earned      = enriched.filter(r => r.status !== 'pipeline').reduce((s, r) => s + r.amount, 0)
+  const received    = enriched.filter(r => r.status === 'received').reduce((s, r) => s + r.amount, 0)
+  const outstanding = earned - received
 
   return (
-    <div className="p-4 lg:p-8 pt-6 max-w-3xl">
+    <div className="p-4 lg:p-8 pt-6 max-w-2xl">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
+        <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center flex-shrink-0">
           <TrendingUp className="w-5 h-5 text-emerald-600" />
         </div>
         <div>
           <h1 className="text-xl font-bold text-gray-900">คอมมิชชัน</h1>
-          <p className="text-xs text-gray-400">รายได้จากสัญญาที่ลงนามแล้ว · วันรับค่าคอม = วันลงนามสัญญาเช่า</p>
-        </div>
-      </div>
-
-      {/* Year Selector */}
-      <div className="flex items-center justify-between bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 mb-6">
-        <Link
-          href={`/commission?year=${prevYear}`}
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-500"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </Link>
-        <div className="text-center">
-          <p className="text-lg font-bold text-gray-900">
-            {new Date(selectedYear, 0, 1).toLocaleDateString('th-TH', { year: 'numeric' })}
+          <p className="text-xs text-gray-400">
+            Pipeline → Earned (เมื่อสร้างสัญญาเช่า) → Received (เมื่อรับเงินแล้ว)
           </p>
-          {selectedYear === currentYear && <p className="text-xs text-emerald-600">ปีปัจจุบัน</p>}
         </div>
-        <Link
-          href={hasNext ? `/commission?year=${nextYear}` : '#'}
-          className={`w-8 h-8 flex items-center justify-center rounded-full transition ${hasNext ? 'hover:bg-gray-100 text-gray-500' : 'text-gray-200 cursor-default'}`}
-        >
-          <ChevronRight className="w-5 h-5" />
-        </Link>
       </div>
 
-      {/* Year selector pills (all available years) */}
-      {allYears.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 mb-6 scrollbar-none">
-          {allYears.map(y => (
-            <Link
-              key={y}
-              href={`/commission?year=${y}`}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition flex-shrink-0 ${
-                y === selectedYear ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {new Date(y, 0, 1).toLocaleDateString('th-TH', { year: 'numeric' })}
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
-        <div className="bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm p-4">
-          <p className="text-xs text-emerald-600 mb-1">รวมปีนี้</p>
-          <p className="text-2xl font-bold text-emerald-700">฿{fmt(grandTotal)}</p>
-          <p className="text-xs text-emerald-500 mt-0.5">{filtered.length} สัญญา</p>
-        </div>
-        {selectedYear === currentYear && (
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-            <p className="text-xs text-gray-400 mb-1">เดือนนี้</p>
-            <p className="text-2xl font-bold text-gray-900">฿{fmt(thisMonth?.total ?? 0)}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{thisMonth?.count ?? 0} สัญญา</p>
-          </div>
-        )}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-          <p className="text-xs text-gray-400 mb-1">รวมทุกปี</p>
-          <p className="text-2xl font-bold text-gray-700">฿{fmt(grandAllTotal)}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{contracts?.length ?? 0} สัญญา</p>
-        </div>
-        {prevYm && selectedYear === currentYear && (
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-            <p className="text-xs text-gray-400 mb-1">เดือนก่อน</p>
-            <p className="text-2xl font-bold text-gray-700">฿{fmt(prevYm.total)}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{prevYm.count} สัญญา</p>
-          </div>
-        )}
-      </div>
-
-      {/* Bar chart */}
-      {months.length > 0 ? (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-6">
-          <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/70">
-            <h2 className="text-sm font-semibold text-gray-700">รายได้รายเดือน</h2>
-          </div>
-          <div className="p-5 space-y-3">
-            {months.map(entry => (
-              <div key={entry.ym} className="flex items-center gap-3">
-                <span className="text-xs text-gray-500 w-32 flex-shrink-0">{monthLabel(entry.ym)}</span>
-                <div className="flex-1 bg-gray-100 rounded-full h-6 relative overflow-hidden">
-                  <div
-                    className="absolute left-0 top-0 h-full bg-emerald-500 rounded-full transition-all duration-500"
-                    style={{ width: `${(entry.total / maxTotal) * 100}%` }}
-                  />
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-600">
-                    ฿{fmt(entry.total)}
-                  </span>
-                </div>
-                <span className="text-xs text-gray-400 w-12 text-right flex-shrink-0">
-                  {entry.count} รายการ
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="text-center py-16 text-gray-400">
-          <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-25" />
-          <p className="text-sm">ไม่มีข้อมูลคอมมิชชันในปีนี้</p>
-          <p className="text-xs mt-1">ข้อมูลจะแสดงเมื่อสัญญามีสถานะ "ลงนามแล้ว"</p>
-        </div>
-      )}
-
-      {/* Contract list */}
-      {filtered.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/70">
-            <h2 className="text-sm font-semibold text-gray-700">รายการสัญญา</h2>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {filtered.map(c => (
-              <Link
-                key={c.id}
-                href={`/contracts/${c.id}`}
-                className="flex items-center justify-between p-4 hover:bg-gray-50 transition"
-              >
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{c.id}</p>
-                  <p className="text-xs text-gray-400">
-                    {new Date(commissionDate(c)).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <p className="text-sm font-semibold text-emerald-700">฿{fmt(c.commission_net!)}</p>
-                  <ArrowRight className="w-4 h-4 text-gray-300" />
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+      <CommissionList
+        records={enriched}
+        pipeline={pipeline}
+        earned={earned}
+        received={received}
+        outstanding={outstanding}
+      />
     </div>
   )
 }
