@@ -81,26 +81,61 @@ async function nextProjectId(): Promise<string> {
 export async function createProject(
   input: ProjectInput,
   force = false,
-): Promise<{ error?: string; id?: string; existingId?: string; existingName?: string; existingNameEn?: string | null }> {
+): Promise<{
+  error?: string
+  id?: string
+  existingId?: string
+  existingName?: string
+  existingNameEn?: string | null
+  matchType?: 'exact' | 'alias' | 'fuzzy'
+}> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
 
-  // Duplicate guard: exact case-insensitive match on Thai OR English name
   if (!force) {
+    const nameTh = input.name_th.trim()
+    const nameEn = input.name_en?.trim() ?? null
+
+    // Step 1: Exact case-insensitive match on Thai OR English name
     const [{ data: byTh }, { data: byEn }] = await Promise.all([
-      supabase.from('projects').select('id, name_th, name_en').ilike('name_th', input.name_th.trim()).limit(1).maybeSingle(),
-      input.name_en?.trim()
-        ? supabase.from('projects').select('id, name_th, name_en').ilike('name_en', input.name_en.trim()).limit(1).maybeSingle()
+      supabase.from('projects').select('id, name_th, name_en').ilike('name_th', nameTh).limit(1).maybeSingle(),
+      nameEn
+        ? supabase.from('projects').select('id, name_th, name_en').ilike('name_en', nameEn).limit(1).maybeSingle()
         : Promise.resolve({ data: null }),
     ])
-    const existing = byTh ?? byEn
-    if (existing) {
-      return {
-        existingId:     existing.id,
-        existingName:   existing.name_th,
-        existingNameEn: existing.name_en ?? null,
+    const exact = byTh ?? byEn
+    if (exact) {
+      return { existingId: exact.id, existingName: exact.name_th, existingNameEn: exact.name_en ?? null, matchType: 'exact' }
+    }
+
+    // Step 2: Alias match
+    const { data: aliasRow } = await supabase
+      .from('project_aliases')
+      .select('project_id')
+      .ilike('alias_name', nameTh)
+      .limit(1)
+      .maybeSingle()
+    if (aliasRow?.project_id) {
+      const { data: aliasProj } = await supabase
+        .from('projects')
+        .select('id, name_th, name_en')
+        .eq('id', aliasRow.project_id)
+        .maybeSingle()
+      if (aliasProj) {
+        return { existingId: aliasProj.id, existingName: aliasProj.name_th, existingNameEn: aliasProj.name_en ?? null, matchType: 'alias' }
       }
+    }
+
+    // Step 3: Fuzzy pg_trgm match (threshold 0.5; score ≥ 0.62 triggers suggestion)
+    const { data: fuzzyRows } = await supabase.rpc('find_project_fuzzy', {
+      query_name: nameTh,
+      sim_threshold: 0.5,
+    })
+    type FuzzyRow = { project_id: string; project_name_th: string; project_name_en: string | null; score: number }
+    const best = (fuzzyRows as FuzzyRow[] | null)?.[0]
+    if (best && best.score >= 0.62) {
+      return { existingId: best.project_id, existingName: best.project_name_th, existingNameEn: best.project_name_en, matchType: 'fuzzy' }
     }
   }
 
@@ -177,14 +212,36 @@ export async function searchProjects(
 
   const q = query.trim()
 
-  // Search name_th OR name_en with ilike, sort by name_en NULLS LAST then name_th
-  const { data } = await supabase
-    .from('projects')
-    .select('id, name_th, name_en')
-    .or(`name_th.ilike.%${q}%,name_en.ilike.%${q}%`)
-    .order('name_en', { ascending: true, nullsFirst: false })
-    .order('name_th', { ascending: true })
-    .limit(20)
+  // Search projects directly AND via alias names in parallel
+  const [{ data: directMatches }, { data: aliasMatchRows }] = await Promise.all([
+    supabase
+      .from('projects')
+      .select('id, name_th, name_en')
+      .or(`name_th.ilike.%${q}%,name_en.ilike.%${q}%`)
+      .order('name_en', { ascending: true, nullsFirst: false })
+      .order('name_th', { ascending: true })
+      .limit(20),
+    supabase
+      .from('project_aliases')
+      .select('project_id')
+      .ilike('alias_name', `%${q}%`)
+      .limit(10),
+  ])
 
-  return (data ?? []) as ProjectSearchResult[]
+  // Fetch projects for any alias hits (batch)
+  const aliasIds = [...new Set((aliasMatchRows ?? []).map(r => r.project_id))]
+  const { data: aliasProjects } = aliasIds.length > 0
+    ? await supabase.from('projects').select('id, name_th, name_en').in('id', aliasIds)
+    : { data: [] as ProjectSearchResult[] }
+
+  // Merge, deduplicate by project ID (direct matches take priority)
+  const seen = new Set<string>()
+  const results: ProjectSearchResult[] = []
+  for (const p of directMatches ?? []) {
+    if (!seen.has(p.id)) { seen.add(p.id); results.push(p as ProjectSearchResult) }
+  }
+  for (const p of aliasProjects ?? []) {
+    if (!seen.has(p.id)) { seen.add(p.id); results.push(p as ProjectSearchResult) }
+  }
+  return results.slice(0, 20)
 }

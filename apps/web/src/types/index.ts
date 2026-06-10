@@ -102,6 +102,14 @@ export interface Profile {
   updated_at: string
 }
 
+export interface ProjectAlias {
+  id: string
+  project_id: string
+  alias_name: string
+  language: 'th' | 'en' | 'other'
+  created_at: string
+}
+
 export interface Project {
   id: string  // PRJ-XXXX
   name_th: string

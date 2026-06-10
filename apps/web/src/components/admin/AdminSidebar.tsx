@@ -8,6 +8,7 @@ import {
   LayoutDashboard, Users, Building2, Coins, Package, Receipt,
   FileText, FileCode, MapPin, Newspaper, BookOpen, Image as GalleryIcon,
   HelpCircle, BarChart3, ScrollText, Settings, LogOut, Menu, X, ArrowLeft, Handshake, Video, Variable,
+  Tags, GitMerge,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
@@ -46,6 +47,8 @@ const NAV_SECTIONS = [
       { href: '/admin/templates', icon: FileCode, label: 'เทมเพลต' },
       { href: '/admin/document-variables', icon: Variable, label: 'ตัวแปรเอกสาร' },
       { href: '/admin/projects', icon: MapPin, label: 'โครงการ' },
+      { href: '/admin/projects/aliases', icon: Tags, label: 'Project Aliases' },
+      { href: '/admin/projects/duplicates', icon: GitMerge, label: 'โปรเจคซ้ำ' },
     ],
   },
   {
