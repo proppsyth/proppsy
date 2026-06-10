@@ -210,15 +210,24 @@ export default function AddressSelector({ province, district, subdistrict, zip, 
   useEffect(() => {
     if (isValidPlaces(globalPlaces)) { setPlaces(globalPlaces); return }
     globalPlaces = null
-    fetch(API_URL)
-      .then(r => r.json())
-      .then((data: unknown) => {
-        if (isValidPlaces(data)) {
-          globalPlaces = data
-          setPlaces(data)
-        }
-      })
-      .catch(err => console.error('[AddressSelector] fetch failed:', err))
+
+    async function loadPlaces() {
+      const res = await fetch(API_URL)
+      const ct = res.headers.get('content-type') ?? ''
+      if (!ct.includes('application/json')) {
+        const preview = (await res.text()).slice(0, 120).replace(/\s+/g, ' ')
+        throw new Error(
+          `[places] Expected application/json but got "${ct}" (HTTP ${res.status}). Body: ${preview}`
+        )
+      }
+      const data: unknown = await res.json()
+      if (isValidPlaces(data)) {
+        globalPlaces = data
+        setPlaces(data)
+      }
+    }
+
+    loadPlaces().catch(err => console.error('[AddressSelector]', err instanceof Error ? err.message : err))
   }, [])
 
   const provinces: PlaceRecord[] = places?.provinces ?? []

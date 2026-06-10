@@ -72,7 +72,7 @@ export default async function ContractDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: contract }, { data: furnitureItems }, { data: keyItems }, { data: signers }, { data: relatedDocs }, { data: coAgents }] = await Promise.all([
+  const [{ data: contract }, { data: furnitureItems }, { data: keyItems }, { data: signers }, { data: relatedDocs }, { data: coAgents }, { data: consentLogs }] = await Promise.all([
     supabase
       .from('contracts')
       .select('*, stock:stock(*), owner:owners(*), customer:customers(*)')
@@ -105,6 +105,11 @@ export default async function ContractDetailPage({
       .select('id,prefix_th,prefix_en,first_name_th,last_name_th,first_name_en,last_name_en,address_no,moo,soi,road,subdistrict,district,province,zip,bank_name,bank_account_name,bank_account_no,national_id,tax_id')
       .eq('agent_uid', user.id)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('esign_consent_logs')
+      .select('id, signer_name, signer_role, signed_at, ip_address, user_agent')
+      .eq('contract_id', id)
+      .order('signed_at', { ascending: false }),
   ])
 
   if (!contract) notFound()
@@ -472,6 +477,44 @@ export default async function ContractDetailPage({
                 paymentGraceDays:     (contract as { payment_grace_days?: number | null }).payment_grace_days ?? null,
               }}
             />
+          )}
+
+          {/* ── E-Sign Consent Log ── */}
+          {(consentLogs ?? []).length > 0 && (
+            <Section title={`E-Sign Consent Log (${consentLogs!.length})`}>
+              <div className="space-y-3">
+                {consentLogs!.map((log) => {
+                  const roleLabel: Record<string, string> = {
+                    tenant: 'ผู้เช่า', owner: 'เจ้าของ', co_agent: 'Co-Agent',
+                    witness: 'พยาน', agent: 'เอเจนต์',
+                  }
+                  const ua = (log.user_agent as string | null) ?? ''
+                  const uaShort = ua.length > 90 ? ua.slice(0, 90) + '…' : ua
+                  return (
+                    <div key={log.id as string} className="border border-gray-100 rounded-lg px-3 py-2.5 space-y-1">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-gray-900">{(log.signer_name as string | null) ?? '–'}</span>
+                        <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full font-medium">
+                          {roleLabel[(log.signer_role as string) ?? ''] ?? (log.signer_role as string | null) ?? '–'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {new Date(log.signed_at as string).toLocaleDateString('th-TH', {
+                          year: 'numeric', month: 'long', day: 'numeric',
+                          hour: '2-digit', minute: '2-digit',
+                        })}
+                      </p>
+                      {(log.ip_address as string | null) && (
+                        <p className="text-xs text-gray-400 font-mono">IP: {log.ip_address as string}</p>
+                      )}
+                      {uaShort && (
+                        <p className="text-xs text-gray-400 break-all">{uaShort}</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </Section>
           )}
 
           {/* ── Related Documents Timeline ── */}

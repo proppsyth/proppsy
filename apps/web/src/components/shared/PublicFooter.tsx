@@ -17,6 +17,8 @@ export default function PublicFooter() {
           <Link href="/news" className="hover:text-gray-600 transition">ข่าวสาร</Link>
           <Link href="/about" className="hover:text-gray-600 transition">เกี่ยวกับเรา</Link>
           <Link href="/contact" className="hover:text-gray-600 transition">ติดต่อเรา</Link>
+          <Link href="/terms" className="hover:text-gray-600 transition">ข้อกำหนด</Link>
+          <Link href="/privacy" className="hover:text-gray-600 transition">ความเป็นส่วนตัว</Link>
         </div>
       </div>
     </footer>

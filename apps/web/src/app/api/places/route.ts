@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server'
-import fs from 'fs'
-import path from 'path'
+import fs from 'node:fs'
+import path from 'node:path'
 import type { PlacesData, PlaceRecord, SubdistrictRecord } from '@/lib/address/types'
-
-// Re-export for consumers that import the type from this file
-export type { PlacesData }
 
 let cached: PlacesData | null = null
 
@@ -44,7 +41,9 @@ function build(): PlacesData {
   return cached
 }
 
-export function GET() {
+export const dynamic = 'force-dynamic'
+
+export async function GET() {
   try {
     const data = build()
     return NextResponse.json(data, {
@@ -52,6 +51,9 @@ export function GET() {
     })
   } catch (err) {
     console.error('[places] CSV build failed:', err)
-    return NextResponse.json({ provinces: [], districts: {}, subdistricts: {} }, { status: 500 })
+    return NextResponse.json(
+      { error: String(err), provinces: [], districts: {}, subdistricts: {} },
+      { status: 500 },
+    )
   }
 }

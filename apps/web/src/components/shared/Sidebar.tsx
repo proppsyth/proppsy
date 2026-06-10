@@ -12,6 +12,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
 import MobileBottomNav from './MobileBottomNav'
+import NotificationBell from './NotificationBell'
 
 interface SidebarProps {
   profile: Profile
@@ -126,10 +127,11 @@ export default function Sidebar({ profile }: SidebarProps) {
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <ProfileAvatar profile={profile} className="w-9 h-9" textClassName="text-sm" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-gray-800 truncate">{profile.nickname || profile.name}</p>
               <p className="text-xs text-gray-400 truncate">{profile.position || profile.company_name || profile.email}</p>
             </div>
+            <NotificationBell userId={profile.id} />
           </div>
         </div>
 
@@ -201,11 +203,14 @@ export default function Sidebar({ profile }: SidebarProps) {
           <span className="font-bold text-base text-gray-900 tracking-tight">Proppsy</span>
         </Link>
 
+        {/* Notification bell */}
+        <NotificationBell userId={profile.id} />
+
         {/* Avatar — opens bottom sheet */}
         <button
           onClick={() => setSheetOpen(true)}
           aria-label="เปิดโปรไฟล์"
-          className="ml-auto active:opacity-70 transition flex-shrink-0"
+          className="ml-2 active:opacity-70 transition flex-shrink-0"
         >
           <ProfileAvatar profile={profile} className="w-8 h-8" textClassName="text-sm" />
         </button>

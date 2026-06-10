@@ -23,6 +23,7 @@ export async function updateRegisterProfile(data: RegisterProfileData): Promise<
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ไม่พบผู้ใช้' }
 
+  const now = new Date().toISOString()
   const { error } = await supabase
     .from('profiles')
     .update({
@@ -40,6 +41,9 @@ export async function updateRegisterProfile(data: RegisterProfileData): Promise<
       zip: data.zip || null,
       id_card_url: data.id_card_url || null,
       account_status: 'approved',
+      accepted_terms_at: now,
+      accepted_privacy_at: now,
+      accepted_data_controller_confirmation_at: now,
     })
     .eq('id', user.id)
 

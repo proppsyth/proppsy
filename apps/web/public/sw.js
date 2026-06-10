@@ -42,3 +42,46 @@ self.addEventListener('fetch', e => {
     )
   }
 })
+
+// ─── Web Push ────────────────────────────────────────────────
+
+self.addEventListener('push', e => {
+  let data = {}
+  try { data = e.data?.json() ?? {} } catch { data = { title: 'Proppsy' } }
+
+  const title   = data.title   || 'Proppsy'
+  const body    = data.message || data.body || ''
+  const url     = data.url     || '/'
+  const icon    = '/logo/logo-icon.jpg'
+
+  e.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon,
+      badge: icon,
+      data:  { url },
+      vibrate: [100, 50, 100],
+    })
+  )
+})
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close()
+  const url = e.notification.data?.url || '/'
+
+  e.waitUntil(
+    clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then(windowClients => {
+        // Focus an existing tab pointing to this origin
+        for (const client of windowClients) {
+          if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+            client.focus()
+            return client.navigate(url)
+          }
+        }
+        // No open tab — open a new one
+        if (clients.openWindow) return clients.openWindow(url)
+      })
+  )
+})

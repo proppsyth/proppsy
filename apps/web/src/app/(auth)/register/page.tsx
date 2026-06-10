@@ -1,91 +1,69 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ChevronRight, RefreshCw, Upload, X, FileImage } from 'lucide-react'
+import { ChevronRight, RefreshCw, X, FileImage } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import AddressSelector from '@/components/shared/AddressSelector'
 import { updateRegisterProfile } from './actions'
+import { TERMS_SECTIONS } from '@/lib/legal/terms-content'
+import { PRIVACY_SECTIONS } from '@/lib/legal/privacy-content'
+import type { LegalSection } from '@/lib/legal/terms-content'
+
+function LegalModal({ title, sections, onClose }: {
+  title: string
+  sections: LegalSection[]
+  onClose: () => void
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-[900px] max-h-[80vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+          <button type="button" onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
+          {sections.map((s) => (
+            <div key={s.title}>
+              <h3 className="text-sm font-semibold text-gray-800 mb-2">{s.title}</h3>
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{s.body}</p>
+            </div>
+          ))}
+        </div>
+        <div className="flex-shrink-0 px-6 py-4 border-t border-gray-100 flex justify-end">
+          <button type="button" onClick={onClose}
+            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
+            ปิด
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
+}
 
 type Step = 1 | 2 | 3
 
 const PREFIX_OPTIONS = ['นาย', 'นาง', 'นางสาว']
 const INPUT_CLS = 'w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-
-const TERMS_CONTENT = `ข้อกำหนดการใช้งาน Proppsy
-
-1. การยอมรับข้อกำหนด
-การลงทะเบียนและใช้งาน Proppsy ถือว่าคุณยอมรับข้อกำหนดและเงื่อนไขการใช้งานทั้งหมด
-
-2. การใช้งานระบบ
-ระบบ Proppsy ให้บริการเฉพาะสำหรับเอเจนต์และนายหน้าอสังหาริมทรัพย์ที่ได้รับการอนุมัติจากผู้ดูแลระบบเท่านั้น ผู้ใช้ต้องให้ข้อมูลที่ถูกต้องและเป็นความจริงในการลงทะเบียน
-
-3. ความรับผิดชอบของผู้ใช้
-ผู้ใช้รับผิดชอบต่อข้อมูลทรัพย์สิน เอกสาร และข้อมูลลูกค้าที่บันทึกในระบบทั้งหมด Proppsy ไม่รับผิดชอบต่อความเสียหายที่เกิดจากการใช้งานที่ไม่ถูกต้อง
-
-4. ข้อมูลส่วนตัว
-Proppsy เก็บรวบรวมข้อมูลส่วนตัวเพื่อการให้บริการและตรวจสอบตัวตนเท่านั้น ไม่มีการขายหรือแชร์ข้อมูลให้บุคคลที่สาม
-
-5. การระงับบัญชี
-Proppsy มีสิทธิ์ระงับหรือยกเลิกบัญชีหากพบการใช้งานที่ผิดข้อกำหนด หรือให้ข้อมูลเท็จในการลงทะเบียน
-
-6. การเปลี่ยนแปลงข้อกำหนด
-Proppsy อาจปรับปรุงข้อกำหนดการใช้งานได้โดยแจ้งให้ทราบล่วงหน้าผ่านอีเมลหรือแจ้งเตือนในระบบ
-
-มีผลบังคับใช้ตั้งแต่ วันที่ 1 มกราคม 2568`
-
-const PRIVACY_CONTENT = `นโยบายความเป็นส่วนตัว Proppsy
-
-1. ข้อมูลที่เก็บรวบรวม
-- ข้อมูลส่วนตัว: ชื่อ นามสกุล เบอร์โทร อีเมล LINE ID ที่อยู่
-- สำเนาบัตรประชาชน: เก็บเพื่อยืนยันตัวตนสำหรับผู้ดูแลระบบ
-- ข้อมูลการทำงาน: ทรัพย์สิน สัญญา ลูกค้า และบันทึกต่างๆ ที่ผู้ใช้บันทึกเข้าระบบ
-
-2. วัตถุประสงค์การใช้ข้อมูล
-- ยืนยันตัวตนและอนุมัติการใช้งาน
-- ให้บริการจัดการอสังหาริมทรัพย์
-- ปรับปรุงและพัฒนาระบบ
-- ติดต่อสื่อสารเกี่ยวกับการใช้งาน
-
-3. การเปิดเผยข้อมูล
-Proppsy ไม่ขายหรือเปิดเผยข้อมูลส่วนตัวให้แก่บุคคลภายนอก ยกเว้นกรณีที่กฎหมายกำหนดหรือได้รับความยินยอมจากผู้ใช้
-
-4. ความปลอดภัยของข้อมูล
-ข้อมูลทั้งหมดถูกจัดเก็บบนเซิร์ฟเวอร์ที่มีระบบรักษาความปลอดภัยระดับสูง (Supabase PostgreSQL + Row Level Security) แต่ละบัญชีเข้าถึงได้เฉพาะข้อมูลของตนเองเท่านั้น
-
-5. สิทธิ์ของผู้ใช้
-ผู้ใช้มีสิทธิ์ขอดู แก้ไข หรือลบข้อมูลส่วนตัวได้โดยติดต่อ proppsyth@gmail.com
-
-6. การเก็บรักษาข้อมูล
-ข้อมูลจะถูกเก็บรักษาตลอดระยะเวลาที่ใช้งาน และ 1 ปีหลังจากยกเลิกบัญชี เว้นแต่กฎหมายกำหนดเป็นอย่างอื่น
-
-มีผลบังคับใช้ตั้งแต่ วันที่ 1 มกราคม 2568`
-
-function PolicyModal({ title, content, onClose }: { title: string; content: string; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[85vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900">{title}</h3>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1 px-5 py-4">
-          <pre className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap font-sans">{content}</pre>
-        </div>
-        <div className="px-5 py-4 border-t border-gray-100">
-          <button onClick={onClose}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2.5 rounded-xl transition">
-            ปิด
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function RegisterPage() {
   const [step, setStep] = useState<Step>(1)
@@ -121,6 +99,8 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
     agreedToTerms: false,
+    agreedToPrivacy: false,
+    agreedToDataController: false,
   })
 
   function set(field: keyof typeof form) {
@@ -161,7 +141,9 @@ export default function RegisterPage() {
     if (!form.last_name_th.trim()) { setError('กรุณากรอกนามสกุล'); return }
     if (!form.phone.trim()) { setError('กรุณากรอกเบอร์โทร'); return }
     if (!idCardFile) { setError('กรุณาแนบสำเนาบัตรประชาชน'); return }
-    if (!form.agreedToTerms) { setError('กรุณายอมรับข้อกำหนดและนโยบายความเป็นส่วนตัว'); return }
+    if (!form.agreedToTerms) { setError('กรุณายอมรับข้อกำหนดการใช้งาน'); return }
+    if (!form.agreedToPrivacy) { setError('กรุณายอมรับนโยบายความเป็นส่วนตัว'); return }
+    if (!form.agreedToDataController) { setError('กรุณายืนยันการยินยอมเกี่ยวกับข้อมูลส่วนบุคคล'); return }
     if (form.password !== form.confirmPassword) { setError('รหัสผ่านไม่ตรงกัน'); return }
     if (form.password.length < 8) { setError('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'); return }
 
@@ -277,9 +259,8 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
-      {showTerms && <PolicyModal title="ข้อกำหนดการใช้งาน" content={TERMS_CONTENT} onClose={() => setShowTerms(false)} />}
-      {showPrivacy && <PolicyModal title="นโยบายความเป็นส่วนตัว" content={PRIVACY_CONTENT} onClose={() => setShowPrivacy(false)} />}
-
+      {showTerms && <LegalModal title="ข้อกำหนดการใช้งาน" sections={TERMS_SECTIONS} onClose={() => setShowTerms(false)} />}
+      {showPrivacy && <LegalModal title="นโยบายความเป็นส่วนตัว" sections={PRIVACY_SECTIONS} onClose={() => setShowPrivacy(false)} />}
       <div className="w-full max-w-lg">
         <div className="flex justify-center mb-6">
           <Image src="/logo/logo.png" alt="Proppsy" width={140} height={50} priority className="object-contain" />
@@ -433,23 +414,39 @@ export default function RegisterPage() {
                 </div>
               </section>
 
-              {/* Terms */}
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" checked={form.agreedToTerms}
-                  onChange={e => setForm(f => ({ ...f, agreedToTerms: e.target.checked }))}
-                  className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0" />
-                <span className="text-xs text-gray-500 leading-relaxed">
-                  ฉันยอมรับ{' '}
-                  <button type="button" onClick={() => setShowTerms(true)} className="text-blue-600 hover:underline">
-                    ข้อกำหนดการใช้งาน
-                  </button>
-                  {' '}และ{' '}
-                  <button type="button" onClick={() => setShowPrivacy(true)} className="text-blue-600 hover:underline">
-                    นโยบายความเป็นส่วนตัว
-                  </button>
-                  {' '}รวมถึงยินยอมให้ Proppsy เก็บข้อมูลส่วนบุคคลเพื่อใช้ในระบบ
-                </span>
-              </label>
+              {/* การยินยอม */}
+              <section className="space-y-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">การยินยอม *</p>
+
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.agreedToTerms}
+                    onChange={e => setForm(f => ({ ...f, agreedToTerms: e.target.checked }))}
+                    className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0" />
+                  <span className="text-xs text-gray-500 leading-relaxed">
+                    ฉันยอมรับ{' '}
+                    <button type="button" onClick={() => setShowTerms(true)} className="text-blue-600 hover:underline font-medium">ข้อกำหนดการใช้งาน</button>
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.agreedToPrivacy}
+                    onChange={e => setForm(f => ({ ...f, agreedToPrivacy: e.target.checked }))}
+                    className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0" />
+                  <span className="text-xs text-gray-500 leading-relaxed">
+                    ฉันยอมรับ{' '}
+                    <button type="button" onClick={() => setShowPrivacy(true)} className="text-blue-600 hover:underline font-medium">นโยบายความเป็นส่วนตัว</button>
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.agreedToDataController}
+                    onChange={e => setForm(f => ({ ...f, agreedToDataController: e.target.checked }))}
+                    className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0" />
+                  <span className="text-xs text-gray-500 leading-relaxed">
+                    ฉันยืนยันว่าได้รับความยินยอมจากลูกค้าเพื่อจัดเก็บข้อมูลบน Proppsy แล้ว
+                  </span>
+                </label>
+              </section>
 
               {error && (
                 <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>

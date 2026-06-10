@@ -2,6 +2,8 @@
 
 import { createServiceClient, createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
+import { createHash } from 'crypto'
 import type { SignerRole, ContractSigner } from '@/types'
 import { handleAllSignedIfComplete } from '@/lib/contracts/signingEngine'
 
@@ -117,20 +119,19 @@ export async function submitSignature(params: {
     })
     .eq('id', signer.id)
 
-  // Auto-save signature to owner/customer profile
-  if (signatureUrl && signer.signer_role) {
-    const { data: contract } = await supabase
-      .from('contracts')
-      .select('owner_id, customer_id')
-      .eq('id', signer.contract_id)
-      .single()
+  // Fetch contract for profile auto-save + consent log
+  const { data: contract } = await supabase
+    .from('contracts')
+    .select('id, doc_type, owner_id, customer_id')
+    .eq('id', signer.contract_id)
+    .single()
 
-    if (contract) {
-      if (signer.signer_role === 'owner' && contract.owner_id) {
-        await supabase.from('owners').update({ signature_url: signatureUrl }).eq('id', contract.owner_id)
-      } else if (signer.signer_role === 'tenant' && contract.customer_id) {
-        await supabase.from('customers').update({ signature_url: signatureUrl }).eq('id', contract.customer_id)
-      }
+  // Auto-save signature to owner/customer profile
+  if (signatureUrl && signer.signer_role && contract) {
+    if (signer.signer_role === 'owner' && contract.owner_id) {
+      await supabase.from('owners').update({ signature_url: signatureUrl }).eq('id', contract.owner_id)
+    } else if (signer.signer_role === 'tenant' && contract.customer_id) {
+      await supabase.from('customers').update({ signature_url: signatureUrl }).eq('id', contract.customer_id)
     }
   }
 
@@ -144,6 +145,30 @@ export async function submitSignature(params: {
     actor_name: signerName,
     user_agent: userAgent,
   })
+
+  // E-Sign Consent Log — wrapped in try/catch so it never blocks signing
+  try {
+    const headersList = await headers()
+    const ipRaw = headersList.get('x-forwarded-for') ?? headersList.get('x-real-ip') ?? null
+    const ipAddress = ipRaw ? ipRaw.split(',')[0].trim() : null
+    const hashInput = [token, signerName, now, signer.contract_id].join('|')
+    const signatureHash = createHash('sha256').update(hashInput).digest('hex')
+    await supabase.from('esign_consent_logs').insert({
+      contract_id: signer.contract_id,
+      document_id: signer.contract_id,
+      document_type: contract?.doc_type ?? null,
+      document_no: signer.contract_id,
+      signer_role: signer.signer_role ?? null,
+      signer_name: signerName || null,
+      signed_at: now,
+      ip_address: ipAddress,
+      user_agent: userAgent || null,
+      signature_hash: signatureHash,
+      consent_text_version: 'v1',
+    })
+  } catch {
+    // Log failure must never block the signing flow
+  }
 
   return { success: true }
 }

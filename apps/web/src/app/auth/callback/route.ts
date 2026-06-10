@@ -28,8 +28,19 @@ export async function GET(request: NextRequest) {
         },
       }
     )
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error && data.user) {
+      // Check if this user has already accepted terms (e.g. returning Google auth user)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('accepted_terms_at')
+        .eq('id', data.user.id)
+        .single()
+
+      if (!profile?.accepted_terms_at) {
+        return NextResponse.redirect(`${origin}/consent?next=${encodeURIComponent(next)}`)
+      }
+
       return NextResponse.redirect(`${origin}${next}`)
     }
   }

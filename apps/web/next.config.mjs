@@ -14,6 +14,7 @@ const nextConfig = {
     '@sparticuz/chromium-min',
     '@sparticuz/chromium',
     'pdf-lib',
+    'web-push',
   ],
   experimental: {
     serverActions: {
