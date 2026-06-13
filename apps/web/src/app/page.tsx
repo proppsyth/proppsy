@@ -6,6 +6,7 @@ import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/server'
 import PublicNav from '@/components/shared/PublicNav'
 import PublicFooter from '@/components/shared/PublicFooter'
+import CompareBar from '@/components/shared/CompareBar'
 import FilterBar from './listing/FilterBar'
 import HeroBanner from './listing/HeroBanner'
 import StatsCounter from './listing/StatsCounter'
@@ -299,6 +300,7 @@ export default async function HomePage({
       )}
 
       <PublicFooter />
+      <CompareBar />
     </div>
   )
 }

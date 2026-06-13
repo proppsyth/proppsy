@@ -7,6 +7,7 @@ import { SlidersHorizontal, X, Grid3X3, List, Table2, ChevronLeft, ChevronRight,
 import PropertyCard, { type StockWithProject } from './PropertyCard'
 import PropertyListItem from './PropertyListItem'
 import PropertyTableView from './PropertyTableView'
+import CompareBar from '@/components/shared/CompareBar'
 
 type ViewMode = 'grid' | 'list' | 'table'
 
@@ -456,6 +457,7 @@ export default function ListingPageClient({
           </div>
         </>
       )}
+      <CompareBar />
     </div>
   )
 }

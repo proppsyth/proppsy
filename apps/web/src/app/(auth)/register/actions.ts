@@ -1,6 +1,8 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/server'
+import { getRequireApproval } from '@/lib/settings'
+import { grantStarterCredits } from '@/lib/credits/actions'
 
 type RegisterProfileData = {
   name: string
@@ -33,7 +35,7 @@ export async function checkNationalIdExists(nationalId: string): Promise<boolean
 }
 
 export async function updateRegisterProfile(data: RegisterProfileData): Promise<{ error?: string }> {
-  const admin = await createAdminClient()
+  const [admin, requireApproval] = await Promise.all([createAdminClient(), getRequireApproval()])
   const { data: { user } } = await admin.auth.getUser()
   if (!user) return { error: 'ไม่พบผู้ใช้' }
 
@@ -69,12 +71,13 @@ export async function updateRegisterProfile(data: RegisterProfileData): Promise<
       zip: data.zip || null,
       id_card_url: data.id_card_url || null,
       national_id: data.national_id?.trim() || null,
-      account_status: 'approved',
+      account_status: requireApproval ? 'pending' : 'approved',
       accepted_terms_at: now,
       accepted_privacy_at: now,
       accepted_data_controller_confirmation_at: now,
     })
     .eq('id', user.id)
+    .neq('account_status', 'rejected')
 
   if (error) {
     if (error.code === '23505') {
@@ -82,5 +85,10 @@ export async function updateRegisterProfile(data: RegisterProfileData): Promise<
     }
     return { error: error.message }
   }
+
+  if (!requireApproval) {
+    await grantStarterCredits(user.id)
+  }
+
   return {}
 }

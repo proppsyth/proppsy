@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import StorageImage from '@/components/shared/StorageImage'
 import SaveButton from '@/components/shared/SaveButton'
+import CompareButton from '@/components/shared/CompareButton'
 import { Building2, Maximize, Layers, MapPin, Train } from 'lucide-react'
 import type { Stock } from '@/types'
 import { formatRoomType } from '@/types'
@@ -53,7 +54,8 @@ export default function PropertyCard({ stock }: { stock: StockWithProject }) {
             HOT
           </span>
         )}
-        <div className="absolute bottom-2 right-2 z-10">
+        <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1.5">
+          <CompareButton stock={stock} />
           <SaveButton stockId={stock.id} variant="card" />
         </div>
       </div>

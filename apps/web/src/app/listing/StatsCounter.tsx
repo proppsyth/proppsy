@@ -1,19 +1,21 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { FileText, User, Home, ClipboardList } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 export interface StatItem {
   value: number
   label: string
   unit: string
-  icon: string
+  icon: LucideIcon
 }
 
 const DEFAULT_STATS: StatItem[] = [
-  { value: 1240, label: 'สัญญาที่ออกแล้ว', unit: 'ฉบับ', icon: '📄' },
-  { value: 68,   label: 'เอเจนต์ที่ใช้งาน', unit: 'คน',   icon: '👤' },
-  { value: 530,  label: 'ทรัพย์ในระบบ',    unit: 'รายการ', icon: '🏠' },
-  { value: 9,    label: 'ประเภทสัญญา',     unit: 'ประเภท', icon: '📋' },
+  { value: 1240, label: 'สัญญาที่ออกแล้ว', unit: 'ฉบับ', icon: FileText },
+  { value: 68,   label: 'เอเจนต์ที่ใช้งาน', unit: 'คน',   icon: User },
+  { value: 530,  label: 'ทรัพย์ในระบบ',    unit: 'รายการ', icon: Home },
+  { value: 9,    label: 'ประเภทสัญญา',     unit: 'ประเภท', icon: ClipboardList },
 ]
 
 function CountUp({ target, active }: { target: number; active: boolean }) {
@@ -58,7 +60,7 @@ export default function StatsCounter({ stats }: { stats?: StatItem[] }) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center text-white">
           {displayStats.map(s => (
             <div key={s.label}>
-              <p className="text-3xl mb-2">{s.icon}</p>
+              <div className="flex justify-center mb-2"><s.icon className="w-8 h-8 text-blue-200" /></div>
               <p className="text-3xl sm:text-4xl font-bold tabular-nums">
                 <CountUp target={s.value} active={visible} />+
               </p>

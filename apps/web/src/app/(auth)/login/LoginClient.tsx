@@ -34,16 +34,17 @@ export default function LoginClient({ redirectTo }: { redirectTo: string }) {
 
     if (data.user) {
       const { data: profile } = await supabase
-        .from('profiles').select('account_status').eq('id', data.user.id).single()
+        .from('profiles').select('account_status, deleted_at').eq('id', data.user.id).single()
 
-      if (profile?.account_status === 'pending') {
-        setError('บัญชีของคุณอยู่ระหว่างรอการอนุมัติแพ็กเกจ Business กรุณารอการติดต่อจากทีมงาน')
+      if (profile?.deleted_at) {
+        setError('บัญชีนี้ถูกปิดการใช้งาน กรุณาติดต่อผู้ดูแลระบบ')
         await supabase.auth.signOut()
         setLoading(false)
         return
       }
+
       if (profile?.account_status === 'rejected') {
-        setError('บัญชีของคุณถูกปฏิเสธ กรุณาติดต่อแอดมิน')
+        setError('บัญชีของคุณถูกปฏิเสธ กรุณาติดต่อผู้ดูแลระบบ')
         await supabase.auth.signOut()
         setLoading(false)
         return
@@ -60,7 +61,10 @@ export default function LoginClient({ redirectTo }: { redirectTo: string }) {
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: { prompt: 'select_account' },
+      },
     })
     if (error) {
       setError('ไม่สามารถเข้าสู่ระบบด้วย Google ได้')

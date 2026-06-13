@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase/server'
+import { getRequireApproval } from '@/lib/settings'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
   // ── Consent + approval check ─────────────────────────────────────
   const { data: profile, error: consentErr } = await admin
     .from('profiles')
-    .select('accepted_terms_at, account_status')
+    .select('accepted_terms_at, account_status, deleted_at')
     .eq('id', data.user.id)
     .single()
 
@@ -100,6 +101,12 @@ export async function GET(request: NextRequest) {
     userId: data.user.id,
   })
 
+  // Deactivated accounts are blocked at the gate — regardless of consent or approval status
+  if (profile?.deleted_at) {
+    console.warn('[auth/callback] → account deactivated, redirecting to /login', { userId: data.user.id })
+    return NextResponse.redirect(`${origin}/login`)
+  }
+
   // No consent yet → send to consent page
   if (!profile?.accepted_terms_at) {
     const dest = `${origin}/consent?next=${encodeURIComponent(next)}`
@@ -107,13 +114,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(dest)
   }
 
-  // Recovery: consent timestamps exist but account_status is still 'pending'.
-  // This happens when the saveConsent() approval update previously failed silently.
-  // Fix it in-place so the user isn't stuck in a redirect loop.
+  // Consent done but still pending.
   if (profile.account_status === 'pending') {
-    console.warn('[auth/callback] recovery: approving pending user who already consented', {
-      userId: data.user.id,
-    })
+    const requireApproval = await getRequireApproval()
+    if (requireApproval) {
+      // Normal pending state under admin-approval flow — send to waiting page.
+      console.log('[auth/callback] require_approval on — redirecting pending user to /pending-approval', { userId: data.user.id })
+      return NextResponse.redirect(`${origin}/pending-approval`)
+    }
+    // Recovery: auto-approve when require_approval is off (saveConsent approval update failed silently).
+    console.warn('[auth/callback] recovery: approving pending user who already consented', { userId: data.user.id })
     const { error: approveErr } = await admin
       .from('profiles')
       .update({ account_status: 'approved' })

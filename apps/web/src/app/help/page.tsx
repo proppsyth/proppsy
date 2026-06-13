@@ -1,6 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ChevronDown, ArrowLeft } from 'lucide-react'
+import {
+  ChevronDown, ArrowLeft, BookOpen, HelpCircle,
+  Home, Bot, CreditCard, FileText, PenLine, Calendar, DollarSign,
+  ClipboardList, User,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import PublicNav from '@/components/shared/PublicNav'
 import PublicFooter from '@/components/shared/PublicFooter'
 
@@ -20,12 +25,14 @@ function Faq({ q, children }: { q: string; children: React.ReactNode }) {
 }
 
 /* ─── Guide Item ─── */
-function Guide({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
+function Guide({ title, icon: Icon, children }: { title: string; icon: LucideIcon; children: React.ReactNode }) {
   return (
     <details className="group bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <summary className="flex items-center justify-between gap-3 p-5 cursor-pointer list-none select-none">
         <div className="flex items-center gap-3">
-          <span className="text-xl">{icon}</span>
+          <div className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Icon className="w-4 h-4 text-gray-500" />
+          </div>
           <span className="text-sm font-semibold text-gray-900">{title}</span>
         </div>
         <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 group-open:rotate-180" />
@@ -79,17 +86,17 @@ export default function HelpPage() {
           <p className="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-3">เริ่มต้นใช้งาน 4 ขั้นตอน</p>
           <div className="grid sm:grid-cols-4 gap-3">
             {[
-              { n: 1, icon: '📝', text: 'สมัครสมาชิก รอแอดมินอนุมัติ' },
-              { n: 2, icon: '🏠', text: 'เพิ่มทรัพย์ด้วย AI หรือกรอกเอง' },
-              { n: 3, icon: '👤', text: 'เพิ่มเจ้าของและลูกค้า' },
-              { n: 4, icon: '📄', text: 'ออกสัญญา PDF ภาษาไทย' },
+              { n: 1, icon: ClipboardList, text: 'สมัครสมาชิก รอแอดมินอนุมัติ' },
+              { n: 2, icon: Home,          text: 'เพิ่มทรัพย์ด้วย AI หรือกรอกเอง' },
+              { n: 3, icon: User,          text: 'เพิ่มเจ้าของและลูกค้า' },
+              { n: 4, icon: FileText,      text: 'ออกสัญญา PDF ภาษาไทย' },
             ].map(s => (
               <div key={s.n} className="flex sm:flex-col items-center sm:items-start gap-3 bg-white/10 rounded-xl p-3">
                 <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
                   {s.n}
                 </div>
                 <div className="flex items-center gap-2 sm:flex-col sm:items-start sm:gap-1">
-                  <span className="text-lg">{s.icon}</span>
+                  <s.icon className="w-4 h-4 text-blue-200 flex-shrink-0" />
                   <p className="text-xs text-blue-100 leading-snug">{s.text}</p>
                 </div>
               </div>
@@ -99,11 +106,11 @@ export default function HelpPage() {
 
         {/* ─── คู่มือการใช้งาน ─── */}
         <h2 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
-          <span>📖</span> คู่มือการใช้งาน
+          <BookOpen className="w-4 h-4 text-gray-500" /> คู่มือการใช้งาน
         </h2>
         <div className="space-y-2 mb-10">
 
-          <Guide title="การเพิ่มและจัดการทรัพย์" icon="🏠">
+          <Guide title="การเพิ่มและจัดการทรัพย์" icon={Home}>
             <Step n={1} text="ไปที่เมนู ทรัพย์ → กดปุ่ม เพิ่มทรัพย์ใหม่" />
             <Step n={2} text="เลือกระหว่าง AI Smart Paste (วางข้อความจาก Line) หรือกรอกข้อมูลเอง" />
             <Step n={3} text="กรอกรายละเอียด: ประเภทประกาศ (เช่า/ขาย/ทั้งคู่), ประเภทห้อง, ราคา, ชั้น, ขนาด" />
@@ -115,7 +122,7 @@ export default function HelpPage() {
             </div>
           </Guide>
 
-          <Guide title="AI Smart Paste — เพิ่มทรัพย์ใน 10 วินาที" icon="🤖">
+          <Guide title="AI Smart Paste — เพิ่มทรัพย์ใน 10 วินาที" icon={Bot}>
             <Step n={1} text="คัดลอกข้อความประกาศทรัพย์จาก Line, Facebook หรือที่ใดก็ได้" />
             <Step n={2} text="ไปที่ ทรัพย์ → เพิ่มทรัพย์ใหม่ → วางข้อความในช่อง AI Smart Paste" />
             <Step n={3} text="กด วิเคราะห์ด้วย AI — ระบบจะประมวลผลภายใน 2-3 วินาที" />
@@ -127,7 +134,7 @@ export default function HelpPage() {
             <p className="text-xs text-gray-400">⚠️ ฟีเจอร์นี้ใช้ได้เฉพาะแพ็กเกจ Professional และ Business</p>
           </Guide>
 
-          <Guide title="AI OCR บัตรประชาชน — สแกนข้อมูลอัตโนมัติ" icon="🪪">
+          <Guide title="AI OCR บัตรประชาชน — สแกนข้อมูลอัตโนมัติ" icon={CreditCard}>
             <Step n={1} text="ไปที่ เจ้าของทรัพย์ หรือ ลูกค้า → เพิ่มใหม่" />
             <Step n={2} text="กดปุ่ม สแกน AI ที่หัวฟอร์ม" />
             <Step n={3} text="ถ่ายรูปบัตรประชาชน หรืออัปโหลดรูปจากเครื่อง (ให้บัตรชัดเจน ไม่เบลอ)" />
@@ -138,7 +145,7 @@ export default function HelpPage() {
             </div>
           </Guide>
 
-          <Guide title="การออกสัญญา PDF ภาษาไทย" icon="📄">
+          <Guide title="การออกสัญญา PDF ภาษาไทย" icon={FileText}>
             <Step n={1} text="ไปที่เมนู สัญญา → กด สร้างสัญญาใหม่" />
             <Step n={2} text="ขั้นตอนที่ 1: เลือกประเภทสัญญา (9 ประเภท)" />
             <Step n={3} text="ขั้นตอนที่ 2: เลือกทรัพย์, เจ้าของทรัพย์, ลูกค้า" />
@@ -151,7 +158,7 @@ export default function HelpPage() {
             </div>
           </Guide>
 
-          <Guide title="ลายเซ็นอิเล็กทรอนิกส์" icon="✍️">
+          <Guide title="ลายเซ็นอิเล็กทรอนิกส์" icon={PenLine}>
             <div className="font-medium text-gray-700 text-sm mb-1">ลายเซ็นของคุณ (เอเจนต์)</div>
             <Step n={1} text="ไปที่ โปรไฟล์ของฉัน (⚙️) → ส่วน ลายเซ็น" />
             <Step n={2} text="เลือก วาดออนไลน์ (ลากนิ้วบนหน้าจอ) หรือ อัปโหลดไฟล์ (PNG/JPG)" />
@@ -161,7 +168,7 @@ export default function HelpPage() {
             <Step n={2} text="เลื่อนลงหาส่วน ลายเซ็น → วาดหรืออัปโหลด" />
           </Guide>
 
-          <Guide title="ปฏิทินและนัดหมาย" icon="📅">
+          <Guide title="ปฏิทินและนัดหมาย" icon={Calendar}>
             <Step n={1} text="ไปที่เมนู นัดหมาย & ปฏิทิน" />
             <Step n={2} text="สลับมุมมอง: รายเดือน หรือ รายสัปดาห์ (ปุ่มสลับด้านบนขวา)" />
             <Step n={3} text="กด + เพิ่มนัดหมาย → กรอกประเภท, ทรัพย์, ลูกค้า, วันเวลา, หมายเหตุ" />
@@ -181,7 +188,7 @@ export default function HelpPage() {
             </div>
           </Guide>
 
-          <Guide title="ติดตามคอมมิชชัน" icon="💰">
+          <Guide title="ติดตามคอมมิชชัน" icon={DollarSign}>
             <Step n={1} text="ไปที่เมนู คอมมิชชัน" />
             <Step n={2} text="เลือกปีที่ต้องการดู (ค่าเริ่มต้น = ปีปัจจุบัน)" />
             <Step n={3} text="กราฟแท่งแสดงยอดรายเดือน ยอดรวมแสดงที่ด้านบน" />
@@ -192,7 +199,7 @@ export default function HelpPage() {
 
         {/* ─── คำถามที่พบบ่อย ─── */}
         <h2 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
-          <span>❓</span> คำถามที่พบบ่อย
+          <HelpCircle className="w-4 h-4 text-gray-500" /> คำถามที่พบบ่อย
         </h2>
 
         {/* บัญชีและการเข้าสู่ระบบ */}

@@ -7,8 +7,9 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Home as HomeIcon, FileText, UserCheck, Users, Building2,
   Calendar, TrendingUp, Zap, CreditCard, Settings, LogOut, ShieldAlert,
-  Menu, ChevronRight,
+  Menu, ChevronRight, Bell, Handshake,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
 import MobileBottomNav from './MobileBottomNav'
@@ -18,18 +19,18 @@ interface SidebarProps {
   profile: Profile
 }
 
-const NAV_ITEMS = [
-  { href: '/dashboard', icon: '📊', label: 'แดชบอร์ด', permission: null },
-  { href: '/dashboard/activity', icon: '🔔', label: 'กิจกรรม', permission: null },
-  { href: '/stock', icon: '🏠', label: 'ทรัพย์', permission: 'stock' },
-  { href: '/owners', icon: '👤', label: 'เจ้าของทรัพย์', permission: 'owner' },
-  { href: '/customers', icon: '👥', label: 'ลูกค้า', permission: 'customer' },
-  { href: '/projects', icon: '🏢', label: 'โครงการ', permission: 'project' },
-  { href: '/contracts', icon: '📄', label: 'สัญญา', permission: 'contract' },
-  { href: '/co-agents', icon: '🤝', label: 'Co-Agent', permission: null },
-  { href: '/calendar', icon: '📅', label: 'นัดหมาย & ปฏิทิน', permission: null },
-  { href: '/commission', icon: '💰', label: 'คอมมิชชัน', permission: null },
-  { href: '/credits', icon: '⚡', label: 'เครดิต', permission: null },
+const NAV_ITEMS: { href: string; icon: LucideIcon; label: string; permission: string | null }[] = [
+  { href: '/dashboard',          icon: LayoutDashboard, label: 'แดชบอร์ด',        permission: null },
+  { href: '/dashboard/activity', icon: Bell,            label: 'กิจกรรม',          permission: null },
+  { href: '/stock',              icon: HomeIcon,        label: 'ทรัพย์',            permission: 'stock' },
+  { href: '/owners',             icon: UserCheck,       label: 'เจ้าของทรัพย์',    permission: 'owner' },
+  { href: '/customers',          icon: Users,           label: 'ลูกค้า',            permission: 'customer' },
+  { href: '/projects',           icon: Building2,       label: 'โครงการ',           permission: 'project' },
+  { href: '/contracts',          icon: FileText,        label: 'สัญญา',             permission: 'contract' },
+  { href: '/co-agents',          icon: Handshake,       label: 'Co-Agent',          permission: null },
+  { href: '/calendar',           icon: Calendar,        label: 'นัดหมาย & ปฏิทิน', permission: null },
+  { href: '/commission',         icon: TrendingUp,      label: 'คอมมิชชัน',         permission: null },
+  { href: '/credits',            icon: Zap,             label: 'เครดิต',            permission: null },
 ]
 
 // Public nav items for the hamburger dropdown
@@ -42,16 +43,17 @@ const DROPDOWN_NAV = [
 ]
 
 // Quick action grid for the mobile bottom sheet
+// (หน้าหลัก, ทรัพย์, สัญญา, นัดหมาย อยู่ใน bottom tab bar แล้ว ไม่ซ้ำที่นี่)
 const SHEET_GRID = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'หน้าหลัก', permission: null },
-  { href: '/stock',     icon: HomeIcon,        label: 'ทรัพย์',   permission: 'stock' },
-  { href: '/contracts', icon: FileText,         label: 'สัญญา',   permission: 'contract' },
-  { href: '/owners',    icon: UserCheck,        label: 'เจ้าของ',  permission: 'owner' },
-  { href: '/customers', icon: Users,            label: 'ลูกค้า',   permission: 'customer' },
-  { href: '/projects',  icon: Building2,        label: 'โครงการ',  permission: 'project' },
-  { href: '/calendar',  icon: Calendar,         label: 'นัดหมาย', permission: null },
-  { href: '/commission',icon: TrendingUp,       label: 'คอมมิชชัน', permission: null },
-  { href: '/credits',   icon: Zap,             label: 'เครดิต',   permission: null },
+  { href: '/owners',             icon: UserCheck,  label: 'เจ้าของ',    permission: 'owner' },
+  { href: '/customers',          icon: Users,       label: 'ลูกค้า',     permission: 'customer' },
+  { href: '/projects',           icon: Building2,   label: 'โครงการ',    permission: 'project' },
+  { href: '/co-agents',          icon: Handshake,   label: 'Co-Agent',   permission: null },
+  { href: '/dashboard/activity', icon: Bell,        label: 'กิจกรรม',    permission: null },
+  { href: '/commission',         icon: TrendingUp,  label: 'คอมมิชชัน',  permission: null },
+  { href: '/credits',            icon: Zap,         label: 'เครดิต',     permission: null },
+  { href: '/billing',            icon: CreditCard,  label: 'ชำระเงิน',   permission: null },
+  { href: '/profile',            icon: Settings,    label: 'ตั้งค่า',     permission: null },
 ]
 
 // Reusable avatar: shows actual image if available, else initials
@@ -147,7 +149,7 @@ export default function Sidebar({ profile }: SidebarProps) {
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               }`}
             >
-              <span className="w-5 shrink-0 text-center leading-none">{item.icon}</span>
+              <item.icon className="w-4 h-4 flex-shrink-0" />
               {item.label}
             </Link>
           ))}
@@ -176,7 +178,7 @@ export default function Sidebar({ profile }: SidebarProps) {
           </Link>
           <button onClick={handleSignOut}
             className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-50 transition">
-            <span>🚪</span> ออกจากระบบ
+            <LogOut className="w-4 h-4 flex-shrink-0" /> ออกจากระบบ
           </button>
         </div>
       </aside>
@@ -334,30 +336,6 @@ export default function Sidebar({ profile }: SidebarProps) {
                 )
               })}
             </div>
-          </div>
-
-          {/* ── Account shortcuts (2 columns) ── */}
-          <div className="px-4 mb-3 grid grid-cols-2 gap-2">
-            <Link
-              href="/billing"
-              onClick={() => setSheetOpen(false)}
-              className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl transition active:scale-95 ${
-                isActive('/billing') ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-700 active:bg-gray-100'
-              }`}
-            >
-              <CreditCard className="w-4 h-4 flex-shrink-0 text-gray-400" />
-              <span className="text-sm font-medium">ชำระเงิน</span>
-            </Link>
-            <Link
-              href="/profile"
-              onClick={() => setSheetOpen(false)}
-              className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl transition active:scale-95 ${
-                isActive('/profile') ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-700 active:bg-gray-100'
-              }`}
-            >
-              <Settings className="w-4 h-4 flex-shrink-0 text-gray-400" />
-              <span className="text-sm font-medium">ตั้งค่า</span>
-            </Link>
           </div>
 
           {/* ── Admin Panel link (admin only) ── */}

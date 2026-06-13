@@ -35,7 +35,7 @@ export default function HeroBannerClient({ slides, currentQ }: Props) {
     >
       {slide.type === 'image' ? (
         /* ── DB image banner ── */
-        <div className="relative w-full" style={{ aspectRatio: '16/9', maxHeight: '250px' }}>
+        <div className="relative w-full aspect-[16/9] max-h-[520px]">
           <Image
             src={slide.imageUrl!}
             alt={slide.title ?? 'แบนเนอร์'}
@@ -53,7 +53,7 @@ export default function HeroBannerClient({ slides, currentQ }: Props) {
               aria-label={slide.title ?? 'ดูรายละเอียด'}
             />
           )}
-          <div className="absolute inset-0 bg-black/10 flex items-end justify-center pb-8 pointer-events-none">
+          <div className="absolute inset-0 bg-black/5 flex items-end justify-center pb-8 pointer-events-none">
             <div className="pointer-events-auto w-full max-w-xl px-4">
               <Suspense fallback={<div className="h-12" />}>
                 <SearchBar currentQ={currentQ} />

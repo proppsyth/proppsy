@@ -4,6 +4,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next'
 import '@workspace/ui/globals.css'
 import './globals.css'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
+import { CompareProvider } from '@/contexts/compare'
 
 const ibmPlexSansThai = IBM_Plex_Sans_Thai({
   subsets: ['thai', 'latin'],
@@ -67,9 +68,11 @@ export default function RootLayout({
   return (
     <html lang="th" suppressHydrationWarning>
       <body className={`${ibmPlexSansThai.variable} ${ibmPlexSans.variable} font-thai antialiased`}>
-        <ServiceWorkerRegister />
-        {children}
-        <SpeedInsights />
+        <CompareProvider>
+          <ServiceWorkerRegister />
+          {children}
+          <SpeedInsights />
+        </CompareProvider>
       </body>
     </html>
   )

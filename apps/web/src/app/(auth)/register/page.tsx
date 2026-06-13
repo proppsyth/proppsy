@@ -267,7 +267,10 @@ export default function RegisterPage() {
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: { prompt: 'select_account' },
+      },
     })
     if (error) {
       setError('ไม่สามารถลงทะเบียนด้วย Google ได้')
