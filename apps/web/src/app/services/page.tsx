@@ -26,25 +26,25 @@ const FEATURES = [
 export default async function ServicesPage() {
   const allLimits = await getAllPlanLimits()
 
+  const str = allLimits.starter
   const pro = allLimits.professional
   const biz = allLimits.business
+
+  // Business CTA: show checkout if price is set, otherwise contact
+  const bizHasPrice = (biz?.price_monthly_thb ?? 0) > 0
 
   const PLANS = [
     {
       plan: 'starter',
       name: 'Starter',
-      nameEn: 'ทดลองใช้',
+      nameEn: 'ใช้งานฟรี',
       monthly: 0, yearly: 0,
       highlight: false, badge: '',
-      features: [
-        '10 ทรัพย์',
-        '5 สัญญา / เดือน',
-        '1 บัญชีเอเจนต์',
-        'Photo Gallery',
-        'ปฏิทินนัดหมาย',
-      ],
-      missing: ['AI Smart Paste', 'AI OCR บัตรประชาชน', 'AI วิเคราะห์ทรัพย์', 'ลายเซ็นอิเล็กทรอนิกส์', 'รายงานคอมมิชชัน'],
-      cta: 'ทดลองใช้ฟรี',
+      features: str?.feature_list?.length
+        ? str.feature_list
+        : ['10 ทรัพย์', 'AI 10 ครั้ง/เดือน'],
+      missing: ['ออกสัญญา PDF', 'AI Smart Paste', 'AI OCR บัตรประชาชน', 'ลายเซ็นอิเล็กทรอนิกส์', 'รายงานคอมมิชชัน'],
+      cta: 'สมัครฟรี',
       ctaHref: '/register',
       ctaStyle: 'border border-gray-200 text-gray-700 hover:bg-gray-50',
     },
@@ -58,13 +58,12 @@ export default async function ServicesPage() {
       features: pro?.feature_list?.length
         ? pro.feature_list
         : [
-            '100 ทรัพย์',
-            '200 สัญญา / เดือน',
-            '1 บัญชีเอเจนต์',
+            'ทรัพย์ไม่จำกัด',
+            'สัญญาไม่จำกัด',
             'AI Smart Paste',
             'AI OCR บัตรประชาชน',
             'PDF สัญญาภาษาไทยครบชุด (9 ประเภท)',
-            'Public Marketplace Listing',
+            'Marketplace listing',
             'ลายเซ็นอิเล็กทรอนิกส์',
             'รายงานคอมมิชชัน',
           ],
@@ -91,9 +90,11 @@ export default async function ServicesPage() {
             'Priority Support',
           ],
       missing: [],
-      cta: 'ติดต่อเรา',
-      ctaHref: '/contact',
-      ctaStyle: 'border border-gray-200 text-gray-700 hover:bg-gray-50',
+      cta: bizHasPrice ? 'ซื้อแพ็กเกจ' : 'ติดต่อเรา',
+      ctaHref: bizHasPrice ? '/checkout?plan=business&billing=monthly' : '/contact',
+      ctaStyle: bizHasPrice
+        ? 'bg-gray-900 hover:bg-gray-800 text-white'
+        : 'border border-gray-200 text-gray-700 hover:bg-gray-50',
     },
   ]
 
@@ -150,7 +151,7 @@ export default async function ServicesPage() {
                   ) : plan.monthly === 0 ? (
                     <div className="mb-4">
                       <span className="text-2xl font-bold text-gray-900">ฟรี</span>
-                      <p className="text-xs text-gray-400 mt-1">ทดลองใช้ 30 วัน</p>
+                      <p className="text-xs text-gray-400 mt-1">ไม่มีค่าใช้จ่าย ใช้ได้ทันที</p>
                     </div>
                   ) : (
                     <div className="mb-4">
@@ -237,7 +238,7 @@ export default async function ServicesPage() {
           <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">เริ่มใช้งานใน 3 ขั้นตอน</h2>
           <div className="grid sm:grid-cols-3 gap-6">
             {[
-              { step: '1', title: 'ลงทะเบียน', desc: 'กรอกข้อมูลและยืนยัน OTP ทางอีเมล รอแอดมินอนุมัติภายใน 1 วันทำการ' },
+              { step: '1', title: 'ลงทะเบียน', desc: 'กรอกข้อมูลและยืนยัน OTP ทางอีเมล เข้าใช้งานได้ทันทีโดยไม่ต้องรออนุมัติ' },
               { step: '2', title: 'เพิ่มทรัพย์', desc: 'บันทึกทรัพย์ด้วย AI Smart Paste หรือกรอกเอง อัปโหลดรูปได้ไม่จำกัด' },
               { step: '3', title: 'ออกสัญญา', desc: 'เลือกประเภทสัญญา ระบบสร้าง PDF ภาษาไทยพร้อมลายเซ็นให้ทันที' },
             ].map(s => (
@@ -255,7 +256,7 @@ export default async function ServicesPage() {
         {/* CTA */}
         <div className="text-center">
           <h2 className="text-xl font-bold text-gray-900 mb-2">พร้อมเริ่มใช้งาน?</h2>
-          <p className="text-sm text-gray-500 mb-6">ลงทะเบียนวันนี้ ทดลองใช้ฟรี 30 วัน ไม่ต้องใช้บัตรเครดิต</p>
+          <p className="text-sm text-gray-500 mb-6">ลงทะเบียนวันนี้ ใช้งานได้ทันที ฟรีไม่มีค่าใช้จ่าย ไม่ต้องใช้บัตรเครดิต</p>
           <div className="flex gap-3 justify-center flex-wrap">
             <Link href="/register" className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition text-sm">
               ลงทะเบียนฟรี
