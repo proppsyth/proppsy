@@ -1,6 +1,6 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { getRequireApproval } from '@/lib/settings'
 import { grantStarterCredits } from '@/lib/credits/actions'
 
@@ -24,7 +24,7 @@ type RegisterProfileData = {
 /** Pre-check called before signUp to prevent orphan auth accounts. */
 export async function checkNationalIdExists(nationalId: string): Promise<boolean> {
   if (!nationalId.trim()) return false
-  const admin = await createAdminClient()
+  const admin = createServiceClient()
   const { data } = await admin
     .from('profiles')
     .select('id')
@@ -35,9 +35,10 @@ export async function checkNationalIdExists(nationalId: string): Promise<boolean
 }
 
 export async function updateRegisterProfile(data: RegisterProfileData): Promise<{ error?: string }> {
-  const [admin, requireApproval] = await Promise.all([createAdminClient(), getRequireApproval()])
-  const { data: { user } } = await admin.auth.getUser()
+  const [supabase, requireApproval] = await Promise.all([createClient(), getRequireApproval()])
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ไม่พบผู้ใช้' }
+  const admin = createServiceClient()
 
   // Definitive uniqueness check (guards against race conditions)
   if (data.national_id?.trim()) {

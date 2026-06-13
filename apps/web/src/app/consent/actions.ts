@@ -1,15 +1,21 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { getRequireApproval } from '@/lib/settings'
 import { grantStarterCredits } from '@/lib/credits/actions'
 
 export async function saveConsent(): Promise<{ error?: string; needsProfileSetup?: boolean }> {
-  const [admin, requireApproval] = await Promise.all([createAdminClient(), getRequireApproval()])
-  const { data: { user } } = await admin.auth.getUser()
-  if (!user) return { error: 'ไม่พบผู้ใช้' }
+  // Use createClient (anon key + cookies) for auth.getUser() — service-role key
+  // does not reliably resolve the current user from cookies in all contexts.
+  const [supabase, requireApproval] = await Promise.all([createClient(), getRequireApproval()])
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) return { error: 'ไม่พบผู้ใช้ กรุณาเข้าสู่ระบบใหม่' }
 
   const now = new Date().toISOString()
+
+  // Use service-role client (no RLS) for the profile update.
+  // createServiceClient() is sync and doesn't need cookies for DB writes.
+  const admin = createServiceClient()
 
   // When require_approval is on, set consent timestamps only — do not approve.
   // When off, consent + approval are atomic to prevent partial-success state.
