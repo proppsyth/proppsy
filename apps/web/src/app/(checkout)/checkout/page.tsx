@@ -50,10 +50,31 @@ export default async function CheckoutPage({
       {/* Body */}
       <div className="flex-1 flex items-start justify-center p-4 pt-8">
         <div className="w-full max-w-md">
-          <h1 className="text-xl font-bold text-gray-900 mb-1">สั่งซื้อแพ็กเกจ</h1>
-          <p className="text-sm text-gray-400 mb-6">
-            {planName} · {billing === 'yearly' ? 'ชำระรายปี' : 'ชำระรายเดือน'}
-          </p>
+          <h1 className="text-xl font-bold text-gray-900 mb-4">สั่งซื้อแพ็กเกจ</h1>
+
+          {/* Plan switcher */}
+          <div className="flex gap-2 mb-4">
+            {(['professional', 'business'] as const).map(p => {
+              const label = p === 'professional' ? 'Professional' : 'Business'
+              const price = p === 'professional'
+                ? (allLimits.professional?.price_monthly_thb ?? 990)
+                : (allLimits.business?.price_monthly_thb ?? 1990)
+              return (
+                <Link
+                  key={p}
+                  href={`/checkout?plan=${p}&billing=${billing}`}
+                  className={`flex-1 py-2.5 text-center text-sm rounded-xl border transition font-medium ${
+                    planKey === p
+                      ? 'bg-gray-900 text-white border-gray-900'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                  }`}
+                >
+                  {label}
+                  <span className="block text-xs font-normal opacity-75">฿{price.toLocaleString('th-TH')}/เดือน</span>
+                </Link>
+              )
+            })}
+          </div>
 
           {/* Billing toggle */}
           <div className="flex gap-2 mb-5">

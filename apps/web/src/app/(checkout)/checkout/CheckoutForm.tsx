@@ -24,10 +24,24 @@ declare global {
 }
 
 const PLAN_FEATURES: Record<string, string[]> = {
-  standard:      ['100 ทรัพย์', '200 สัญญา', 'PDF สัญญา 9 ประเภท', 'ลายเซ็นอิเล็กทรอนิกส์', 'รายงานคอมมิชชัน', 'Public Marketplace'],
-  ai_pro:        ['100 ทรัพย์', '200 สัญญา', 'AI Smart Paste', 'AI OCR บัตรประชาชน', 'AI วิเคราะห์ทรัพย์', 'PDF สัญญา 9 ประเภท', 'ลายเซ็นอิเล็กทรอนิกส์'],
-  professional:  ['100 ทรัพย์', '200 สัญญา', 'AI Smart Paste', 'AI OCR บัตรประชาชน', 'PDF สัญญา 9 ประเภท', 'ลายเซ็นอิเล็กทรอนิกส์', 'รายงานคอมมิชชัน'],
-  business:      ['ทุกอย่างใน Professional', 'สูงสุด 5 เอเจนต์', 'ผู้จัดการทีม', 'รายงานภาพรวมทีม', 'Priority Support'],
+  professional: [
+    'ทรัพย์ไม่จำกัด',
+    'สัญญาไม่จำกัด',
+    'AI Smart Paste',
+    'AI OCR บัตรประชาชน',
+    'PDF สัญญาภาษาไทยครบชุด (9 ประเภท)',
+    'Marketplace listing',
+    'ลายเซ็นอิเล็กทรอนิกส์',
+    'รายงานคอมมิชชัน',
+  ],
+  business: [
+    'ทุกอย่างใน Professional',
+    'สูงสุด 5 บัญชีเอเจนต์',
+    'บัญชีผู้จัดการทีม (Manager)',
+    'รายงานภาพรวมทีม',
+    'คอมมิชชันแยกรายเอเจนต์',
+    'Priority Support',
+  ],
 }
 
 interface Props {
@@ -148,8 +162,9 @@ export default function CheckoutForm({ plan, billing, amount, planName, savedCar
     )
   }
 
+  const monthlyEquiv = plan === 'business' ? 1990 : 990
   const savings = billing === 'yearly'
-    ? Math.round((1 - amount / ((plan === 'ai_pro' ? 1290 : 990) * 12)) * 100)
+    ? Math.round((1 - amount / (monthlyEquiv * 12)) * 100)
     : 0
 
   const features = PLAN_FEATURES[plan] ?? []

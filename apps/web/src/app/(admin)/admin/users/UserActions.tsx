@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { approveUser, rejectUser, updateUser, deleteUser } from './actions'
+import { approveUser, rejectUser, updateUser, deactivateUser, restoreUser } from './actions'
 import type { Profile, Role, AccountStatus, Plan } from '@/types'
 import { PLAN_META, resolvePlan } from '@/types'
 
@@ -30,7 +30,8 @@ const PLAN_OPTS: { value: Plan; label: string; desc: string }[] = [
 export default function UserActions({ user }: Props) {
   const [approvePending, startApprove] = useTransition()
   const [rejectPending, startReject] = useTransition()
-  const [deletePending, startDelete] = useTransition()
+  const [deactivatePending, startDeactivate] = useTransition()
+  const [restorePending, startRestore] = useTransition()
   const [editPending, startEdit] = useTransition()
   const [editing, setEditing] = useState(false)
   const [error, setError] = useState('')
@@ -44,7 +45,7 @@ export default function UserActions({ user }: Props) {
     plan: resolvePlan(user.plan),
   })
 
-  const busy = approvePending || rejectPending || deletePending || editPending
+  const busy = approvePending || rejectPending || deactivatePending || restorePending || editPending
 
   if (editing) {
     return (
@@ -137,7 +138,7 @@ export default function UserActions({ user }: Props) {
 
   return (
     <div className="pt-3 border-t border-gray-100 space-y-2">
-      {user.account_status === 'pending' && (
+      {user.account_status === 'pending' && !user.deleted_at && (
         <div className="flex gap-2">
           <button
             onClick={() => startApprove(async () => { await approveUser(user.id) })}
@@ -161,18 +162,33 @@ export default function UserActions({ user }: Props) {
           className="flex-1 py-2 border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition disabled:opacity-50">
           ✏️ แก้ไข
         </button>
-        <button
-          onClick={() => {
-            if (!confirm(`ลบบัญชี "${user.name || user.email}" ออกจากระบบถาวร?\nการกระทำนี้ไม่สามารถย้อนกลับได้`)) return
-            startDelete(async () => {
-              const res = await deleteUser(user.id)
-              if (res.error) setError(res.error)
-            })
-          }}
-          disabled={busy}
-          className="py-2 px-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-sm rounded-lg transition disabled:opacity-50">
-          {deletePending ? '...' : '🗑️'}
-        </button>
+        {user.deleted_at ? (
+          <button
+            onClick={() => {
+              if (!confirm(`กู้คืนบัญชี "${user.name || user.email}"?\nผู้ใช้จะสามารถเข้าสู่ระบบได้อีกครั้ง`)) return
+              startRestore(async () => {
+                const res = await restoreUser(user.id)
+                if (res.error) setError(res.error)
+              })
+            }}
+            disabled={busy}
+            className="py-2 px-3 border border-green-200 bg-green-50 hover:bg-green-100 text-green-700 text-sm font-medium rounded-lg transition disabled:opacity-50">
+            {restorePending ? '...' : 'กู้คืนบัญชี'}
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              if (!confirm(`ปิดการใช้งานบัญชี "${user.name || user.email}"?\nผู้ใช้จะไม่สามารถเข้าสู่ระบบได้\nข้อมูลทั้งหมดยังถูกเก็บไว้และสามารถกู้คืนได้`)) return
+              startDeactivate(async () => {
+                const res = await deactivateUser(user.id)
+                if (res.error) setError(res.error)
+              })
+            }}
+            disabled={busy}
+            className="py-2 px-3 border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-600 text-sm font-medium rounded-lg transition disabled:opacity-50">
+            {deactivatePending ? '...' : 'ปิดบัญชี'}
+          </button>
+        )}
       </div>
       {error && <p className="text-xs text-red-500">{error}</p>}
     </div>

@@ -123,6 +123,23 @@ export async function updateAvatarUrl(
   return {}
 }
 
+export async function updateBankBookUrl(
+  url: string | null
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ bank_book_url: url || null })
+    .eq('id', user.id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/profile')
+  return {}
+}
+
 export async function updateIdCardUrl(
   url: string | null
 ): Promise<{ error?: string }> {

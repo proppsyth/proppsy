@@ -40,6 +40,17 @@ export async function updateUser(userId: string, data: {
   name?: string
   nickname?: string
   phone?: string
+  line_id?: string
+  position?: string
+  company_name?: string
+  tax_id?: string
+  national_id?: string
+  address_no?: string
+  address_road?: string
+  province?: string
+  district?: string
+  subdistrict?: string
+  zip?: string
   role?: Role
   account_status?: AccountStatus
   plan?: Plan

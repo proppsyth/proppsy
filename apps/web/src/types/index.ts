@@ -85,6 +85,7 @@ export interface Profile {
   bank_name?: string
   bank_account_no?: string
   bank_account_name?: string
+  bank_book_url?: string
   plan?: Plan
   plan_expires_at?: string
   ai_calls_this_month?: number
@@ -99,6 +100,8 @@ export interface Profile {
   show_phone?: boolean
   social_links?: Record<string, string>
   auth_provider?: string
+  deleted_at?: string | null
+  deletion_reason?: string | null
   created_at: string
   updated_at: string
 }

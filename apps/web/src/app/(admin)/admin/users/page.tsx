@@ -9,23 +9,26 @@ import UserActions from './UserActions'
 
 export const metadata: Metadata = { title: 'จัดการผู้ใช้ — Admin' }
 
-type Tab = 'pending' | 'approved' | 'rejected'
+type Tab = 'pending' | 'approved' | 'rejected' | 'deactivated'
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'pending', label: 'รอการอนุมัติ' },
   { key: 'approved', label: 'อนุมัติแล้ว' },
   { key: 'rejected', label: 'ปฏิเสธแล้ว' },
+  { key: 'deactivated', label: 'ปิดการใช้งาน' },
 ]
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-700',
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-600',
+  deactivated: 'bg-gray-100 text-gray-500',
 }
 const STATUS_LABELS: Record<string, string> = {
   pending: 'รอการอนุมัติ',
   approved: 'อนุมัติแล้ว',
   rejected: 'ปฏิเสธแล้ว',
+  deactivated: 'ปิดการใช้งาน',
 }
 
 export default async function AdminUsersPage({
@@ -38,33 +41,45 @@ export default async function AdminUsersPage({
   if (!user) redirect('/login')
 
   const { tab: rawTab = 'pending', q = '' } = await searchParams
-  const tab = (['pending', 'approved', 'rejected'].includes(rawTab) ? rawTab : 'pending') as Tab
+  const tab = (['pending', 'approved', 'rejected', 'deactivated'].includes(rawTab) ? rawTab : 'pending') as Tab
 
   const admin = await createAdminClient()
 
   let query = admin
     .from('profiles')
     .select('*')
-    .eq('account_status', tab)
     .neq('id', user.id)
     .order('created_at', { ascending: false })
 
-  if (q.trim()) {
-    query = query.or(`name.ilike.%${q}%,email.ilike.%${q}%,nickname.ilike.%${q}%,phone.ilike.%${q}%`)
+  if (tab === 'deactivated') {
+    query = query.not('deleted_at', 'is', null)
+  } else {
+    query = query.eq('account_status', tab).is('deleted_at', null)
   }
 
-  const [{ data: users }, { count: pendingCount }, { count: approvedCount }, { count: rejectedCount }] =
-    await Promise.all([
-      query,
-      admin.from('profiles').select('*', { count: 'exact', head: true }).eq('account_status', 'pending').neq('id', user.id),
-      admin.from('profiles').select('*', { count: 'exact', head: true }).eq('account_status', 'approved').neq('id', user.id),
-      admin.from('profiles').select('*', { count: 'exact', head: true }).eq('account_status', 'rejected').neq('id', user.id),
-    ])
+  if (q.trim()) {
+    query = query.or(`name.ilike.%${q}%,email.ilike.%${q}%,nickname.ilike.%${q}%,phone.ilike.%${q}%,company_name.ilike.%${q}%,national_id.ilike.%${q}%`)
+  }
+
+  const [
+    { data: users },
+    { count: pendingCount },
+    { count: approvedCount },
+    { count: rejectedCount },
+    { count: deactivatedCount },
+  ] = await Promise.all([
+    query,
+    admin.from('profiles').select('*', { count: 'exact', head: true }).eq('account_status', 'pending').is('deleted_at', null).neq('id', user.id),
+    admin.from('profiles').select('*', { count: 'exact', head: true }).eq('account_status', 'approved').is('deleted_at', null).neq('id', user.id),
+    admin.from('profiles').select('*', { count: 'exact', head: true }).eq('account_status', 'rejected').is('deleted_at', null).neq('id', user.id),
+    admin.from('profiles').select('*', { count: 'exact', head: true }).not('deleted_at', 'is', null).neq('id', user.id),
+  ])
 
   const counts: Record<Tab, number> = {
     pending: pendingCount ?? 0,
     approved: approvedCount ?? 0,
     rejected: rejectedCount ?? 0,
+    deactivated: deactivatedCount ?? 0,
   }
 
   // ── Find duplicate national_ids across ALL profiles ────────────
@@ -101,7 +116,7 @@ export default async function AdminUsersPage({
       </div>
 
       {/* Summary row */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-4 gap-3 mb-6">
         {TABS.map(t => (
           <Link
             key={t.key}
@@ -122,7 +137,7 @@ export default async function AdminUsersPage({
 
       {/* Tabs + Search */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit flex-wrap">
           {TABS.map(t => (
             <Link
               key={t.key}
@@ -136,7 +151,9 @@ export default async function AdminUsersPage({
               {t.label}
               {counts[t.key] > 0 && (
                 <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-                  t.key === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-600'
+                  t.key === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                  t.key === 'deactivated' ? 'bg-gray-200 text-gray-600' :
+                  'bg-gray-200 text-gray-600'
                 }`}>
                   {counts[t.key]}
                 </span>
@@ -186,14 +203,30 @@ function UserCard({ user, tab, isDuplicateId }: { user: Profile; tab: Tab; isDup
     day: 'numeric',
   })
   const isGoogle = user.auth_provider === 'google'
+  const isDeactivated = !!user.deleted_at
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col gap-3">
+    <div className={`bg-white rounded-xl border shadow-sm p-5 flex flex-col gap-3 ${
+      isDeactivated ? 'border-gray-200 opacity-75' : 'border-gray-100'
+    }`}>
       {/* Duplicate national ID warning */}
       {isDuplicateId && (
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
           <span className="text-amber-500 text-sm flex-shrink-0">⚠️</span>
           <p className="text-xs text-amber-700 font-medium">เลขบัตรประชาชนซ้ำกับบัญชีอื่นในระบบ</p>
+        </div>
+      )}
+
+      {/* Deactivated notice */}
+      {isDeactivated && (
+        <div className="flex items-start gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+          <span className="text-gray-400 text-sm flex-shrink-0">🚫</span>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-500 font-medium">ปิดการใช้งานแล้ว</p>
+            {user.deletion_reason && (
+              <p className="text-xs text-gray-400 truncate">{user.deletion_reason}</p>
+            )}
+          </div>
         </div>
       )}
 
@@ -235,8 +268,10 @@ function UserCard({ user, tab, isDuplicateId }: { user: Profile; tab: Tab; isDup
         </div>
 
         {tab !== 'pending' && (
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${STATUS_COLORS[user.account_status]}`}>
-            {STATUS_LABELS[user.account_status]}
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+            isDeactivated ? STATUS_COLORS.deactivated : STATUS_COLORS[user.account_status]
+          }`}>
+            {isDeactivated ? STATUS_LABELS.deactivated : STATUS_LABELS[user.account_status]}
           </span>
         )}
       </div>
@@ -264,6 +299,14 @@ function UserCard({ user, tab, isDuplicateId }: { user: Profile; tab: Tab; isDup
         </span>
       </div>
 
+      <div className="pt-2">
+        <Link
+          href={`/admin/users/${user.id}`}
+          className="block w-full text-center py-2 text-sm text-blue-600 border border-blue-100 bg-blue-50 hover:bg-blue-100 rounded-lg transition font-medium"
+        >
+          🔍 ดูรายละเอียดและแก้ไข
+        </Link>
+      </div>
       <UserActions user={user} />
     </div>
   )

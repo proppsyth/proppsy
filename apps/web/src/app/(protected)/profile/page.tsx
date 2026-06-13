@@ -21,7 +21,13 @@ export default async function ProfilePage() {
 
   if (!profile) redirect('/login')
 
-  const profileWithEmail = { ...profile, email: profile.email ?? user.email }
+  // Fall back to Google/OAuth avatar when no custom avatar has been uploaded yet
+  const googleAvatarUrl = (user.user_metadata?.avatar_url ?? user.user_metadata?.picture) as string | undefined
+  const profileWithEmail = {
+    ...profile,
+    email: profile.email ?? user.email,
+    avatar_url: profile.avatar_url ?? googleAvatarUrl ?? null,
+  }
   const plan = resolvePlan(profile.plan)
   const planMeta = PLAN_META[plan]
   const limits = await getPlanLimitsByUserPlan(profile.plan)

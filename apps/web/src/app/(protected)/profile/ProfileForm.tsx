@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react'
 import { Upload, Loader2, PenLine, ScanLine, BookOpen, Globe } from 'lucide-react'
-import { updateProfile, updateSignatureUrl, updateIdCardUrl, parseDocument, parseBankBook, updatePublicProfile, updateAvatarUrl } from './actions'
+import { updateProfile, updateSignatureUrl, updateIdCardUrl, parseDocument, parseBankBook, updatePublicProfile, updateAvatarUrl, updateBankBookUrl } from './actions'
 import type { Profile } from '@/types'
 import SignaturePad from '@/components/shared/SignaturePad'
 import AddressSelector from '@/components/shared/AddressSelector'
@@ -16,9 +16,9 @@ import { createClient } from '@/lib/supabase/client'
 
 // ─── Constants ───────────────────────────────────────────────
 
-const PREFIX_SYNC: Record<string, string> = { นาย: 'Mr.', นาง: 'Mrs.', นางสาว: 'Ms.' }
+const PREFIX_SYNC: Record<string, string> = { นาย: 'Mr.', นาง: 'Mrs.', นางสาว: 'Miss' }
 const PREFIXES_TH = ['นาย', 'นาง', 'นางสาว']
-const PREFIXES_EN = ['Mr.', 'Mrs.', 'Ms.']
+const PREFIXES_EN = ['Mr.', 'Mrs.', 'Miss']
 const BANK_OPTIONS = [
   'ธนาคารกรุงเทพ', 'ธนาคารกสิกรไทย', 'ธนาคารไทยพาณิชย์',
   'ธนาคารกรุงไทย', 'ธนาคารกรุงศรีอยุธยา', 'ธนาคารทหารไทยธนชาต',
@@ -110,8 +110,13 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
 
   const ocrInputRef = useRef<HTMLInputElement>(null)
   const bankOcrInputRef = useRef<HTMLInputElement>(null)
+  const bankBookManualRef = useRef<HTMLInputElement>(null)
 
   // ── Public profile state ──
+  // ── Bank book image state ──
+  const [bankBookUrl, setBankBookUrl] = useState(profile.bank_book_url ?? '')
+  const [bankBookUploading, setBankBookUploading] = useState(false)
+
   const [publicSlug, setPublicSlug] = useState(profile.public_slug ?? '')
   const [bio, setBio] = useState(profile.bio ?? '')
   const [showPhone, setShowPhone] = useState(profile.show_phone ?? false)
@@ -156,6 +161,14 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
       updateIdCardUrl(idCardState.url || null)
     }
   }, [idCardState.url])
+
+  // Auto-fill tax_id from national_id when tax_id is empty
+  useEffect(() => {
+    if (form.national_id && !form.tax_id) {
+      setForm(f => ({ ...f, tax_id: form.national_id }))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.national_id])
 
   // ─── OCR Document ─────────────────────────────────────────
 
@@ -214,12 +227,55 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
       if (result.bank_account_name) { set('bank_account_name', result.bank_account_name); fields.push('ชื่อบัญชี') }
       if (result.bank_account_no) { set('bank_account_no', result.bank_account_no); fields.push('เลขบัญชี') }
 
+      // Upload bank book image to storage and save URL
+      try {
+        setBankBookUploading(true)
+        const blob = await compressImageToWebP(file, 1280)
+        const supabase = createClient()
+        const path = `bank-books/${profile.id}/${Date.now()}.webp`
+        const { error: upErr } = await supabase.storage
+          .from('documents')
+          .upload(path, blob, { upsert: true, contentType: 'image/webp' })
+        if (!upErr) {
+          const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
+          const url = `${publicUrl}?v=${Date.now()}`
+          setBankBookUrl(url)
+          await updateBankBookUrl(url)
+        }
+      } catch { /* non-fatal — bank data still filled */ } finally {
+        setBankBookUploading(false)
+      }
+
       refreshQuota()
       setBankOcrMessage(fields.length
         ? `กรอกข้อมูลธนาคาร: ${fields.join(', ')}`
         : 'ไม่พบข้อมูลธนาคาร กรุณากรอกเอง')
       if (!editing) setEditing(true)
     })
+  }
+
+  // ─── Manual bank book upload (no OCR) ───────────────────
+  async function handleBankBookManualUpload(file: File) {
+    setBankBookUploading(true)
+    setBankOcrMessage('')
+    try {
+      const blob = await compressImageToWebP(file, 1280)
+      const supabase = createClient()
+      const path = `bank-books/${profile.id}/${Date.now()}.webp`
+      const { error: upErr } = await supabase.storage
+        .from('documents')
+        .upload(path, blob, { upsert: true, contentType: 'image/webp' })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
+      const url = `${publicUrl}?v=${Date.now()}`
+      setBankBookUrl(url)
+      await updateBankBookUrl(url)
+      setBankOcrMessage('อัพโหลดสมุดบัญชีแล้ว ✓')
+    } catch {
+      setBankOcrMessage('อัพโหลดไม่สำเร็จ กรุณาลองใหม่')
+    } finally {
+      setBankBookUploading(false)
+    }
   }
 
   // ─── Submit ──────────────────────────────────────────────
@@ -598,14 +654,58 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
                   : <ScanLine className="w-3.5 h-3.5" />}
                 {isBankOcrPending ? 'กำลังอ่าน...' : 'สแกนสมุดบัญชี'}
               </button>
-              {bankOcrMessage && (
-                <p className={`text-xs font-medium mt-2 ${bankOcrMessage.startsWith('กรอก') ? 'text-blue-700' : 'text-red-600'}`}>
-                  {bankOcrMessage}
+              {bankBookUploading && (
+                <p className="text-xs text-blue-500 flex items-center gap-1 mt-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  กำลังบันทึกรูปสมุดบัญชี...
                 </p>
               )}
             </div>
           </div>
         )}
+        {/* Bank book image — always visible */}
+        <div className="mb-4">
+          <Label>รูปสมุดบัญชี</Label>
+          <div className="flex items-start gap-3 flex-wrap">
+            {bankBookUrl ? (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={bankBookUrl} alt="สมุดบัญชี" className="h-20 rounded-xl border border-gray-200 object-cover" />
+              </div>
+            ) : (
+              <div className="text-xs text-gray-400">ยังไม่มีรูปสมุดบัญชี</div>
+            )}
+            <div>
+              <input
+                ref={bankBookManualRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0]
+                  if (file) handleBankBookManualUpload(file)
+                  e.target.value = ''
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => bankBookManualRef.current?.click()}
+                disabled={bankBookUploading}
+                className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                {bankBookUploading ? 'กำลังอัพโหลด...' : bankBookUrl ? 'เปลี่ยนรูป' : 'อัพโหลดสมุดบัญชี'}
+              </button>
+              <p className="text-xs text-gray-400 mt-1">JPG, PNG หรือ WebP</p>
+              {bankOcrMessage && (
+                <p className={`text-xs font-medium mt-1 ${bankOcrMessage.includes('✓') || bankOcrMessage.startsWith('กรอก') ? 'text-blue-700' : 'text-red-600'}`}>
+                  {bankOcrMessage}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {editing ? (
             <div>
