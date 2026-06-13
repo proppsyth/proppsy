@@ -64,7 +64,7 @@ export default function ProfileSetupForm({ name, avatarUrl }: Props) {
       // Upload ID card
       const webpBlob = await processToWebp(idCardFile, 1280)
       const path = `id-cards/${Date.now()}.webp`
-      const idCardUrl = await uploadPublic(webpBlob, path, 'image/webp')
+      const idCardUrl = await uploadPublic('documents', path, webpBlob)
 
       const result = await updateRegisterProfile({
         name: form.name.trim(),
