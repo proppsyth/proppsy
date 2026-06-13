@@ -46,7 +46,7 @@ export async function BannerStrip({ position }: { position: string }) {
     <div className="w-full">
       {banners.map(b => {
         if (!b.image_url) return null
-        const img = <BannerImage src={b.image_url} alt={b.title ?? undefined} sizes="100vw" maxHeight={200} />
+        const img = <BannerImage src={b.image_url} alt={b.title ?? undefined} sizes="100vw" />
         return b.link_url ? (
           <Link key={b.id} href={b.link_url} target="_blank" rel="noopener noreferrer" className="block">
             {img}
@@ -69,7 +69,7 @@ export async function BannerSidebar({ position }: { position: string }) {
     <div className="space-y-3">
       {banners.map(b => {
         if (!b.image_url) return null
-        const img = <BannerImage src={b.image_url} alt={b.title ?? undefined} sizes="300px" className="rounded-xl" maxHeight={160} />
+        const img = <BannerImage src={b.image_url} alt={b.title ?? undefined} sizes="300px" className="rounded-xl" />
         return b.link_url ? (
           <Link key={b.id} href={b.link_url} target="_blank" rel="noopener noreferrer" className="block hover:opacity-90 transition">
             {img}

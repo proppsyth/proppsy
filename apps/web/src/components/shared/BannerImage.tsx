@@ -7,7 +7,10 @@ interface BannerImageProps {
   priority?: boolean
   /** Extra classes on the wrapper div (e.g. rounded-xl) */
   className?: string
-  /** Cap the rendered height in px. Image stays 16:9 internally via object-cover. */
+  /**
+   * @deprecated maxHeight is no longer used — BannerImage maintains 16:9 aspect ratio
+   * uniformly across all viewports. Passing this prop has no effect.
+   */
   maxHeight?: number
   /** Overlays positioned absolutely on top of the image */
   children?: React.ReactNode
@@ -15,8 +18,9 @@ interface BannerImageProps {
 
 /**
  * Standard banner image renderer.
- * Always 16:9, object-cover object-center — identical crop everywhere.
- * maxHeight caps display height without changing the crop anchor.
+ * Always 16:9 aspect-ratio, object-cover object-center.
+ * Capped at 520px on large screens so it doesn't dominate the page.
+ * Looks identical on all viewport widths — the same center crop every time.
  */
 export default function BannerImage({
   src,
@@ -24,14 +28,10 @@ export default function BannerImage({
   sizes = '100vw',
   priority = false,
   className = '',
-  maxHeight,
   children,
 }: BannerImageProps) {
   return (
-    <div
-      className={`relative w-full overflow-hidden ${className}`}
-      style={{ aspectRatio: '16/9', maxHeight: maxHeight ? `${maxHeight}px` : undefined }}
-    >
+    <div className={`relative w-full aspect-[16/9] max-h-[520px] overflow-hidden ${className}`}>
       <Image
         src={src}
         alt={alt}
