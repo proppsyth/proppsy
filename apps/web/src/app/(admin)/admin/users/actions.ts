@@ -16,9 +16,14 @@ async function assertAdmin(): Promise<void> {
 export async function approveUser(userId: string): Promise<void> {
   await assertAdmin()
   const admin = await createAdminClient()
-  const { data: profile } = await admin.from('profiles').select('account_status').eq('id', userId).single()
+  const [{ data: profile }, { data: credits }] = await Promise.all([
+    admin.from('profiles').select('account_status').eq('id', userId).single(),
+    admin.from('credits').select('total_earned').eq('user_id', userId).maybeSingle(),
+  ])
   await admin.from('profiles').update({ account_status: 'approved' }).eq('id', userId)
-  if (profile?.account_status !== 'approved') {
+  // Only grant starter credits if the user hasn't received any yet
+  // (credits are granted at registration — this prevents double-granting)
+  if (profile?.account_status !== 'approved' && !(credits && credits.total_earned > 0)) {
     await grantStarterCredits(userId)
   }
   revalidatePath('/admin/users')
@@ -52,12 +57,35 @@ export async function updateUser(userId: string, data: {
   }
 }
 
-export async function deleteUser(userId: string): Promise<{ error?: string }> {
+export async function deactivateUser(userId: string, reason?: string): Promise<{ error?: string }> {
   try {
     await assertAdmin()
     const admin = await createAdminClient()
-    await admin.from('profiles').delete().eq('id', userId)
-    const { error } = await admin.auth.admin.deleteUser(userId)
+    const { error } = await admin
+      .from('profiles')
+      .update({
+        deleted_at: new Date().toISOString(),
+        deletion_reason: reason ?? 'ปิดการใช้งานโดยแอดมิน',
+      })
+      .eq('id', userId)
+    if (error) return { error: error.message }
+    // Kill active sessions — non-fatal, Supabase client returns {error} rather than throwing
+    await admin.rpc('kill_user_sessions', { p_user_id: userId })
+    revalidatePath('/admin/users')
+    return {}
+  } catch {
+    return { error: 'ไม่มีสิทธิ์' }
+  }
+}
+
+export async function restoreUser(userId: string): Promise<{ error?: string }> {
+  try {
+    await assertAdmin()
+    const admin = await createAdminClient()
+    const { error } = await admin
+      .from('profiles')
+      .update({ deleted_at: null, deletion_reason: null })
+      .eq('id', userId)
     if (error) return { error: error.message }
     revalidatePath('/admin/users')
     return {}

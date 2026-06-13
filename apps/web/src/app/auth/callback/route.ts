@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase/server'
-import { getRequireApproval } from '@/lib/settings'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -116,24 +115,24 @@ export async function GET(request: NextRequest) {
 
   // Consent done but still pending.
   if (profile.account_status === 'pending') {
-    const requireApproval = await getRequireApproval()
-    if (requireApproval) {
-      // Normal pending state under admin-approval flow — send to waiting page.
-      console.log('[auth/callback] require_approval on — redirecting pending user to /pending-approval', { userId: data.user.id })
-      return NextResponse.redirect(`${origin}/pending-approval`)
-    }
-    // Recovery: auto-approve when require_approval is off (saveConsent approval update failed silently).
-    console.warn('[auth/callback] recovery: approving pending user who already consented', { userId: data.user.id })
-    const { error: approveErr } = await admin
+    // Pending users CAN access the dashboard — they just can't publish listings or
+    // create contracts until admin approves. Check if profile info is missing first.
+    const { data: fullProfile } = await admin
       .from('profiles')
-      .update({ account_status: 'approved' })
+      .select('auth_provider, phone, national_id')
       .eq('id', data.user.id)
-      .eq('account_status', 'pending')
-    if (approveErr) {
-      console.error('[auth/callback] recovery approval failed:', approveErr.message)
-    } else {
-      console.log('[auth/callback] recovery: account approved successfully')
+      .single()
+
+    if (
+      fullProfile?.auth_provider === 'google' &&
+      (!fullProfile?.phone || !fullProfile?.national_id)
+    ) {
+      // Google user hasn't filled in required profile info yet — send to setup page.
+      console.log('[auth/callback] → Google pending user missing profile, redirecting to /profile/setup')
+      return NextResponse.redirect(`${origin}/profile/setup`)
     }
+    // Profile complete — let them into the dashboard.
+    console.log('[auth/callback] → pending user with complete profile, redirecting to dashboard')
   }
 
   if (profile.account_status === 'rejected') {

@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import ContractList from './ContractList'
+import PendingApprovalBanner from '@/components/shared/PendingApprovalBanner'
 
 export const metadata: Metadata = { title: 'สัญญา' }
 
@@ -56,11 +57,18 @@ export default async function ContractsPage({
   if (status !== 'all') query = query.eq('status', status)
   if (category !== 'all') query = query.eq('contract_category', category)
 
-  const { data: contracts } = await query
+  const [{ data: contracts }, { data: agentProfile }] = await Promise.all([
+    query,
+    supabase.from('profiles').select('account_status').eq('id', user.id).single(),
+  ])
   const list = contracts ?? []
 
   return (
     <div className="p-4 lg:p-8 pt-6">
+      {agentProfile?.account_status === 'pending' && (
+        <PendingApprovalBanner message="บัญชีของคุณยังอยู่ระหว่างรอการอนุมัติ — ยังไม่สามารถออกเอกสารสัญญาได้" />
+      )}
+
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-gray-900">สัญญา</h1>

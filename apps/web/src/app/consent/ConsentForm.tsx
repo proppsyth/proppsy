@@ -27,6 +27,11 @@ export default function ConsentForm({ next }: { next: string }) {
       setLoading(false)
       return
     }
+    // Google users who haven't filled in phone/national_id yet → profile setup first
+    if (result.needsProfileSetup) {
+      window.location.href = '/profile/setup'
+      return
+    }
     // Hard redirect ensures Next.js fetches fresh server-component data (account_status)
     // rather than serving a cached render that still shows 'pending'.
     window.location.href = next

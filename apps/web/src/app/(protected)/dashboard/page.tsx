@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { BannerStrip } from '@/components/shared/BannerZone'
+import PendingApprovalBanner from '@/components/shared/PendingApprovalBanner'
 import { PLAN_META, resolvePlan } from '@/types'
 
 export const metadata: Metadata = { title: 'แดชบอร์ด' }
@@ -149,7 +150,7 @@ export default async function DashboardPage() {
   const commissionSum = (commissionThisMonth ?? []).reduce((s, c) => s + (c.commission_net ?? 0), 0)
 
   const { data: profile } = await supabase
-    .from('profiles').select('plan, plan_expires_at').eq('id', user.id).single()
+    .from('profiles').select('plan, plan_expires_at, account_status').eq('id', user.id).single()
 
   const plan     = resolvePlan(profile?.plan)
   const planName = PLAN_META[plan].label
@@ -204,6 +205,9 @@ export default async function DashboardPage() {
     <div className="p-4 lg:p-8 pt-6">
       {/* Dashboard top banner */}
       <BannerStrip position="dashboard_top" />
+
+      {/* Pending approval notice */}
+      {profile?.account_status === 'pending' && <PendingApprovalBanner />}
 
       <div className="mb-4 mt-4">
         <h1 className="text-2xl font-bold text-gray-900">แดชบอร์ด</h1>

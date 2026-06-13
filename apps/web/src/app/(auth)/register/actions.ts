@@ -86,9 +86,9 @@ export async function updateRegisterProfile(data: RegisterProfileData): Promise<
     return { error: error.message }
   }
 
-  if (!requireApproval) {
-    await grantStarterCredits(user.id)
-  }
+  // Always grant starter credits immediately — pending users can use AI/features
+  // while waiting for approval. approveUser() checks total_earned to avoid double-grant.
+  await grantStarterCredits(user.id)
 
   return {}
 }

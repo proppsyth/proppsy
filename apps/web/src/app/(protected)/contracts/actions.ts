@@ -51,6 +51,7 @@ export type ContractInput = {
   commission_from_owner?: number | null
   commission_from_customer?: number | null
   security_deposit?: number | null
+  co_agent_id?: string | null
   co_agent_info?: Record<string, string> | null
   co_agent_split_pct?: number | null
   co_agent_commission?: number | null
@@ -108,9 +109,15 @@ export async function createContract(
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   const [{ data: profile }, { count: contractsThisMonth }] = await Promise.all([
-    supabase.from('profiles').select('plan').eq('id', user.id).single(),
+    supabase.from('profiles').select('plan, account_status').eq('id', user.id).single(),
     supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).gte('created_at', startOfMonth),
   ])
+
+  // Block contract creation for pending users — must be approved first
+  if (profile?.account_status === 'pending') {
+    return { error: 'บัญชีของคุณยังอยู่ระหว่างรอการอนุมัติจากแอดมิน ยังไม่สามารถออกเอกสารสัญญาได้' }
+  }
+
   const limits = await getPlanLimitsByUserPlan(profile?.plan)
   if (limits.maxContractsPerMonth !== null && (contractsThisMonth ?? 0) >= limits.maxContractsPerMonth) {
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }

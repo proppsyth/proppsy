@@ -11,6 +11,7 @@ import PublishActions from './PublishActions'
 import StockShareButtons from './StockShareButtons'
 import ContractHistory from './ContractHistory'
 import ActivityPanel from '@/components/shared/ActivityPanel'
+import PendingApprovalBanner from '@/components/shared/PendingApprovalBanner'
 
 export const metadata: Metadata = { title: 'รายละเอียดทรัพย์' }
 
@@ -44,7 +45,7 @@ export default async function StockDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: stock }, { data: credit }, { data: inquiryRows }, { data: contractRows }] = await Promise.all([
+  const [{ data: stock }, { data: credit }, { data: inquiryRows }, { data: contractRows }, { data: agentProfile }] = await Promise.all([
     supabase
       .from('stock')
       .select('*, owner:owners(*), project:projects(*)')
@@ -70,6 +71,7 @@ export default async function StockDetailPage({
       .eq('agent_uid', user.id)
       .is('deleted_at', null)
       .order('created_at', { ascending: false }),
+    supabase.from('profiles').select('account_status').eq('id', user.id).single(),
   ])
 
   if (!stock) notFound()
@@ -91,6 +93,11 @@ export default async function StockDetailPage({
 
   return (
     <div className="w-full p-4 lg:p-8 pt-6 max-w-5xl overflow-x-hidden">
+      {/* Pending approval notice */}
+      {agentProfile?.account_status === 'pending' && (
+        <PendingApprovalBanner message="บัญชีของคุณยังอยู่ระหว่างรอการอนุมัติ — ยังไม่สามารถเผยแพร่ทรัพย์ได้" />
+      )}
+
       {/* Back + header */}
       <div className="mb-5">
         <Link href="/stock" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition mb-3 w-fit">

@@ -75,6 +75,16 @@ export async function publishStock(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
 
+  // Block publish for pending users — must be approved first
+  const { data: agentProfile } = await supabase
+    .from('profiles')
+    .select('account_status')
+    .eq('id', user.id)
+    .single()
+  if (agentProfile?.account_status === 'pending') {
+    return { error: 'บัญชีของคุณยังอยู่ระหว่างรอการอนุมัติจากแอดมิน ยังไม่สามารถเผยแพร่ทรัพย์ได้' }
+  }
+
   const { data: stock } = await supabase
     .from('stock')
     .select('id, is_published, status')
