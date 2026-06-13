@@ -78,6 +78,20 @@ export async function deactivateUser(userId: string, reason?: string): Promise<{
   }
 }
 
+export async function deleteUser(userId: string): Promise<{ error?: string }> {
+  try {
+    await assertAdmin()
+    const admin = await createAdminClient()
+    // Hard-delete: removes the auth user row; FK cascades handle dependent rows.
+    const { error } = await admin.auth.admin.deleteUser(userId)
+    if (error) return { error: error.message }
+    revalidatePath('/admin/users')
+    return {}
+  } catch {
+    return { error: 'ไม่มีสิทธิ์' }
+  }
+}
+
 export async function restoreUser(userId: string): Promise<{ error?: string }> {
   try {
     await assertAdmin()
