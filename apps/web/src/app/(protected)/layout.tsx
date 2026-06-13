@@ -20,14 +20,17 @@ export default async function ProtectedLayout({
 
   if (!profile) redirect('/login')
 
+  // Deactivated accounts are blocked regardless of other status
+  if (profile.deleted_at) redirect('/login')
+
   // Rejected accounts cannot log in
   if (profile.account_status === 'rejected') redirect('/login')
 
-  // No consent yet → complete the consent flow (which also approves the account)
+  // No consent yet → complete the consent flow
   if (!profile.accepted_terms_at) redirect('/consent')
 
-  // Consent done but still pending → recovery page that auto-approves
-  if (profile.account_status !== 'approved') redirect('/pending-approval')
+  // Rejected accounts cannot access protected pages
+  // Pending accounts CAN access the app — they just can't publish or create contracts
 
   return (
     <div className="flex min-h-screen bg-gray-50 overflow-x-hidden">

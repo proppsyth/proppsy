@@ -36,7 +36,8 @@ export async function saveConsent(): Promise<{ error?: string; needsProfileSetup
 
   // Always grant starter credits immediately so users can use AI/features while pending.
   // approveUser() checks credits.total_earned to prevent double-granting.
-  await grantStarterCredits(user.id)
+  // Non-fatal: wrap in try/catch so a credits failure doesn't block consent submission.
+  try { await grantStarterCredits(user.id) } catch { /* will retry on next login if needed */ }
 
   // Check if Google user still needs to fill in profile info (phone, national_id, id_card)
   const { data: profile } = await admin

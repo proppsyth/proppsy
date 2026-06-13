@@ -21,14 +21,21 @@ export default async function ConsentPage({
 
   if (profile?.accepted_terms_at) {
     const params = await searchParams
-    // Recovery: consent timestamps are set but approval update previously failed.
-    // Approve in-place before redirecting so the user doesn't hit /pending-approval.
-    if (profile.account_status === 'pending') {
-      await admin
+    // Consent already done — send them on their way.
+    // Pending users can access the dashboard (publish/contract blocked server-side).
+    // If profile info is still missing (Google user), send to setup page.
+    if (profile.account_status !== 'rejected') {
+      const { data: fullProfile } = await admin
         .from('profiles')
-        .update({ account_status: 'approved' })
+        .select('auth_provider, phone, national_id')
         .eq('id', user.id)
-        .eq('account_status', 'pending')
+        .single()
+      if (
+        fullProfile?.auth_provider === 'google' &&
+        (!fullProfile?.phone || !fullProfile?.national_id)
+      ) {
+        redirect('/profile/setup')
+      }
     }
     redirect(params.next ?? '/dashboard')
   }
