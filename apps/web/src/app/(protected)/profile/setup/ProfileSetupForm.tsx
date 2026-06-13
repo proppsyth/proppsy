@@ -169,8 +169,11 @@ export default function ProfileSetupForm({ name, avatarUrl }: Props) {
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">ที่อยู่</label>
         <AddressSelector
-          value={{ province: form.province, district: form.district, subdistrict: form.subdistrict, zip: form.zip }}
-          onChange={v => setForm(f => ({ ...f, ...v }))}
+          province={form.province}
+          district={form.district}
+          subdistrict={form.subdistrict}
+          zip={form.zip}
+          onChange={(field, value) => setForm(f => ({ ...f, [field]: value }))}
         />
         <div className="mt-2 grid grid-cols-2 gap-2">
           <input className={INPUT_CLS} value={form.address_no} onChange={set('address_no')} placeholder="บ้านเลขที่" />
