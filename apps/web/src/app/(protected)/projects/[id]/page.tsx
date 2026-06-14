@@ -171,7 +171,7 @@ export default async function ProjectDetailPage({
 
           {/* Nearby amenities */}
           {((p as unknown as { nearby_amenities?: unknown[] }).nearby_amenities ?? []).length > 0 && (
-            <Section title="สถานที่สำคัญใกล้เคียง">
+            <Section title="สถานที่สำคัญใกล้เคียง (รัศมี 5 กม.)">
               {(() => {
                 const catMeta: Record<string, { label: string; Icon: React.ComponentType<{ className?: string }> }> = {
                   education:   { label: 'สถานศึกษา/มหาวิทยาลัย', Icon: School },

@@ -675,7 +675,7 @@ export default function ProjectForm({ initialData, projectId, existingStations =
               <Plus className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-xs text-gray-400">AI จะกรอกให้อัตโนมัติ หรือเพิ่มเองด้วยปุ่ม + · ห้าง โรงเรียน โรงพยาบาล วัด</p>
+          <p className="text-xs text-gray-400">AI จะกรอกให้อัตโนมัติ (รัศมี 5 กม. ทุกแห่งที่หาเจอ) หรือเพิ่มเองด้วยปุ่ม +</p>
         </div>
       </Section>
 
