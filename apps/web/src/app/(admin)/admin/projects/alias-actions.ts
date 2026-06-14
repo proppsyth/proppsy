@@ -160,6 +160,38 @@ export async function getAllAliases(): Promise<AliasRow[]> {
   })
 }
 
+// ─── Delete project (admin only) ─────────────────────────────────────────
+// If replacementProjectId is provided, all stock in the project will be
+// reassigned to it before deleting. Aliases are cascade-deleted by DB FK.
+
+export async function deleteProject(
+  projectId: string,
+  replacementProjectId?: string,
+): Promise<{ error?: string }> {
+  try {
+    await assertAdmin()
+    const admin = await createAdminClient()
+
+    if (replacementProjectId) {
+      // Reassign all stock to the replacement project
+      const { error: moveErr } = await admin
+        .from('stock')
+        .update({ project_id: replacementProjectId })
+        .eq('project_id', projectId)
+      if (moveErr) return { error: 'ย้ายทรัพย์ไม่สำเร็จ: ' + moveErr.message }
+    }
+
+    const { error } = await admin.from('projects').delete().eq('id', projectId)
+    if (error) return { error: 'ลบโครงการไม่สำเร็จ: ' + error.message }
+
+    revalidatePath('/admin/projects')
+    revalidatePath('/projects')
+    return {}
+  } catch {
+    return { error: 'ไม่มีสิทธิ์' }
+  }
+}
+
 // ─── Load potential duplicates (admin page) ───────────────────────────────
 
 export async function getPotentialDuplicates(threshold = 0.5): Promise<DuplicatePair[]> {

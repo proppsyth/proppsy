@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Search, MapPin, Train, Building2, Plus } from 'lucide-react'
+import { Search, MapPin, Train, Plus } from 'lucide-react'
+import DeleteProjectModal from './DeleteProjectModal'
 
 interface ProjectRow {
   id: string
@@ -74,6 +75,7 @@ export default function AdminProjectsList({ projects }: { projects: ProjectRow[]
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide hidden md:table-cell">BTS/MRT</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">สต็อก</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide hidden lg:table-cell">วันที่สร้าง</th>
+                  <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -126,6 +128,12 @@ export default function AdminProjectsList({ projects }: { projects: ProjectRow[]
                         month: 'short',
                         day: 'numeric',
                       })}
+                    </td>
+                    <td className="px-4 py-3">
+                      <DeleteProjectModal
+                        project={p}
+                        allProjects={projects}
+                      />
                     </td>
                   </tr>
                 ))}
