@@ -103,6 +103,8 @@ interface ProjectData {
   parking_pct?: number | null
   facilities: string[]
   bts_mrt: string[]
+  transit_distances?: { station: string; line: string; distance_m: number }[] | null
+  nearby_amenities?: { name: string; category: string; distance_m: number }[] | null
   address_no?: string | null
   address_road?: string | null
   province?: string | null
@@ -131,6 +133,7 @@ export default async function PublicPropertyDetailPage({
         name_th, name_en, developer, built_year,
         total_floors, total_units, parking_pct,
         facilities, bts_mrt,
+        transit_distances, nearby_amenities,
         address_no, address_road, province, district, subdistrict, zip,
         map_url
       ),

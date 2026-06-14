@@ -4,7 +4,9 @@ import {
   Trees, Flame, Monitor, Users, Baby, UtensilsCrossed,
   ShoppingBag, Sparkles, Wifi, ParkingCircle,
   BookOpen, Cctv, KeyRound, Sailboat, Droplets,
+  School, Heart, Landmark, Store, Star,
 } from 'lucide-react'
+import { stationColorClass, stationDotClass } from '@/lib/transitColors'
 
 interface ProjectData {
   name_th: string
@@ -16,6 +18,8 @@ interface ProjectData {
   parking_pct?: number | null
   facilities: string[]
   bts_mrt: string[]
+  transit_distances?: { station: string; line: string; distance_m: number }[] | null
+  nearby_amenities?: { name: string; category: string; distance_m: number }[] | null
   address_no?: string | null
   address_road?: string | null
   province?: string | null
@@ -59,6 +63,20 @@ const FACILITY_MAP: Record<string, { icon: React.ElementType; color: string; bg:
   'Shuttle Service':          { icon: Sailboat,         color: 'text-sky-700',     bg: 'bg-sky-50 border-sky-100' },
 }
 
+const AMENITY_CATEGORY_META: Record<string, { label: string; Icon: React.ElementType }> = {
+  education:   { label: 'สถานศึกษา',     Icon: School },
+  shopping:    { label: 'ห้าง/ช้อปปิ้ง', Icon: ShoppingBag },
+  healthcare:  { label: 'โรงพยาบาล',    Icon: Heart },
+  cultural:    { label: 'วัด/ศาสนสถาน', Icon: Landmark },
+  convenience: { label: 'ร้านสะดวกซื้อ', Icon: Store },
+  restaurant:  { label: 'ร้านอาหาร',    Icon: UtensilsCrossed },
+  landmark:    { label: 'สถานที่ดัง',    Icon: Star },
+}
+
+function fmtDist(m: number) {
+  return m >= 1000 ? `${(m / 1000).toFixed(1)} กม.` : `${m} ม.`
+}
+
 function FacilityChip({ name }: { name: string }) {
   const config = FACILITY_MAP[name]
   const Icon = config?.icon ?? Sparkles
@@ -90,6 +108,20 @@ export default function ProjectSection({ project }: { project: ProjectData }) {
   const hasTransport = project.bts_mrt && project.bts_mrt.length > 0
   const hasFacilities = project.facilities && project.facilities.length > 0
 
+  const transitDistances = project.transit_distances ?? []
+  const nearbyAmenities = project.nearby_amenities ?? []
+
+  // Group nearby amenities by category
+  const grouped = new Map<string, { name: string; distance_m: number }[]>()
+  for (const a of nearbyAmenities) {
+    const arr = grouped.get(a.category) ?? []
+    arr.push({ name: a.name, distance_m: a.distance_m })
+    grouped.set(a.category, arr)
+  }
+
+  // Build distMap for bts_mrt chips
+  const distMap = new Map<string, number>(transitDistances.map(d => [d.station, d.distance_m]))
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       {/* Header */}
@@ -116,49 +148,59 @@ export default function ProjectSection({ project }: { project: ProjectData }) {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2.5">ข้อมูลโครงการ</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {project.total_floors && (
-                <StatCard
-                  icon={<Layers className="w-4 h-4" />}
-                  value={`${project.total_floors}`}
-                  label="จำนวนชั้น"
-                />
+                <StatCard icon={<Layers className="w-4 h-4" />} value={`${project.total_floors}`} label="จำนวนชั้น" />
               )}
               {project.total_units && (
-                <StatCard
-                  icon={<Building2 className="w-4 h-4" />}
-                  value={`${project.total_units}`}
-                  label="จำนวนยูนิต"
-                />
+                <StatCard icon={<Building2 className="w-4 h-4" />} value={`${project.total_units}`} label="จำนวนยูนิต" />
               )}
               {project.built_year && (
-                <StatCard
-                  icon={<CalendarDays className="w-4 h-4" />}
-                  value={`${project.built_year}`}
-                  label="ปีที่สร้างเสร็จ"
-                />
+                <StatCard icon={<CalendarDays className="w-4 h-4" />} value={`${project.built_year}`} label="ปีที่สร้างเสร็จ" />
               )}
               {project.parking_pct && (
-                <StatCard
-                  icon={<Car className="w-4 h-4" />}
-                  value={`${project.parking_pct}%`}
-                  label="ที่จอดรถ"
-                />
+                <StatCard icon={<Car className="w-4 h-4" />} value={`${project.parking_pct}%`} label="ที่จอดรถ" />
               )}
             </div>
           </div>
         )}
 
-        {/* Transport */}
+        {/* BTS/MRT Chips + distances */}
         {hasTransport && (
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2.5">การเดินทาง</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2.5">รถไฟฟ้าใกล้เคียง</p>
             <div className="flex flex-wrap gap-2">
-              {project.bts_mrt.map(station => (
-                <div
-                  key={station}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-full border border-green-100"
-                >
-                  <Train className="w-3 h-3 text-green-600 flex-shrink-0" />
-                  <span className="text-xs font-medium text-green-700 whitespace-nowrap">{station}</span>
+              {project.bts_mrt.map(station => {
+                const dm = distMap.get(station)
+                return (
+                  <span
+                    key={station}
+                    className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full font-medium border ${stationColorClass(station)}`}
+                  >
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${stationDotClass(station)}`} />
+                    <Train className="w-3 h-3 flex-shrink-0" />
+                    {station}
+                    {dm != null && (
+                      <span className="opacity-70 font-normal">{fmtDist(dm)}</span>
+                    )}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Transit distances full table */}
+        {transitDistances.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2.5">ระยะทางสถานีรถไฟฟ้า (ทุกสาย)</p>
+            <div className="space-y-1.5">
+              {transitDistances.map((t, i) => (
+                <div key={i} className="flex items-center gap-3 py-1.5 border-b border-gray-50 last:border-0">
+                  <Train className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                  <span className="text-sm font-medium text-gray-800 flex-1">{t.station}</span>
+                  <span className="text-xs text-gray-400 hidden sm:block">{t.line}</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${stationColorClass(t.station)}`}>
+                    {fmtDist(t.distance_m)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -186,6 +228,35 @@ export default function ProjectSection({ project }: { project: ProjectData }) {
                 ดูแผนที่ Google Maps
               </a>
             )}
+          </div>
+        )}
+
+        {/* Nearby Amenities */}
+        {grouped.size > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2.5">สถานที่ใกล้เคียง (รัศมี 5 กม.)</p>
+            <div className="space-y-3">
+              {[...grouped.entries()].map(([cat, items]) => {
+                const meta = AMENITY_CATEGORY_META[cat] ?? { label: cat, Icon: MapPin }
+                const CatIcon = meta.Icon
+                return (
+                  <div key={cat}>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <CatIcon className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{meta.label}</span>
+                    </div>
+                    <div className="space-y-1">
+                      {items.map((a, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm py-1 pl-5 border-b border-gray-50 last:border-0">
+                          <span className="text-gray-700 text-xs">{a.name}</span>
+                          <span className="text-[11px] text-gray-400 flex-shrink-0 ml-2">{fmtDist(a.distance_m)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 
