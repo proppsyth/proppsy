@@ -347,7 +347,7 @@ export default async function PublicPropertyDetailPage({
           </div>
 
           {/* Right: Contact + sidebar banners + sibling units */}
-          <div className="space-y-4 min-w-0">
+          <div className="space-y-4 min-w-0 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pb-4 scrollbar-none">
             <ContactCard agent={stock.agent ?? null} stockId={stock.id} />
             <BannerSidebar position="listing_sidebar" />
             {siblingUnits.length > 0 && (

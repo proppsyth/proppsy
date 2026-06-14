@@ -34,7 +34,7 @@ export default function ContactCard({ agent, stockId }: Props) {
   const avatarUrl = agent?.avatar_url || agent?.logo_url
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden sticky top-20">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/70">
         <h2 className="text-sm font-semibold text-gray-700">ติดต่อตัวแทน</h2>
       </div>
