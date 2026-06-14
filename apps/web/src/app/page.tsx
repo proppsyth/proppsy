@@ -3,7 +3,6 @@ import StorageImage from '@/components/shared/StorageImage'
 import {
   ArrowRight, Newspaper, Building2, Home, Star, MapPin,
   LayoutGrid, Bed, Building, Grid3X3, Layers,
-  FileText, User, ClipboardList,
 } from 'lucide-react'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
@@ -269,10 +268,10 @@ export default async function HomePage() {
 
       {/* ─────────────────── Animated Stats ──────────────────────── */}
       <StatsCounter stats={[
-        { value: contractCount ?? 0, label: 'สัญญาที่ออกแล้ว', unit: 'ฉบับ',   icon: FileText },
-        { value: agentCount   ?? 0, label: 'เอเจนต์ที่ใช้งาน', unit: 'คน',     icon: User },
-        { value: stockCount   ?? 0, label: 'ทรัพย์ในระบบ',     unit: 'รายการ', icon: Home },
-        { value: 9,                  label: 'ประเภทสัญญา',      unit: 'ประเภท', icon: ClipboardList },
+        { value: contractCount ?? 0, label: 'สัญญาที่ออกแล้ว', unit: 'ฉบับ'   },
+        { value: agentCount   ?? 0, label: 'เอเจนต์ที่ใช้งาน', unit: 'คน'     },
+        { value: stockCount   ?? 0, label: 'ทรัพย์ในระบบ',     unit: 'รายการ' },
+        { value: 9,                  label: 'ประเภทสัญญา',      unit: 'ประเภท' },
       ]} />
 
       {/* ─────────────────── Banner strip ────────────────────────── */}

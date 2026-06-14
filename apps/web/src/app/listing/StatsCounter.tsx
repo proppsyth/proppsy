@@ -2,20 +2,22 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { FileText, User, Home, ClipboardList } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
 
+// Only serialisable data — no React components/functions as props
 export interface StatItem {
   value: number
   label: string
   unit: string
-  icon: LucideIcon
 }
 
+// Icons are defined here inside the Client Component — never passed from Server
+const STAT_ICONS = [FileText, User, Home, ClipboardList]
+
 const DEFAULT_STATS: StatItem[] = [
-  { value: 1240, label: 'สัญญาที่ออกแล้ว', unit: 'ฉบับ', icon: FileText },
-  { value: 68,   label: 'เอเจนต์ที่ใช้งาน', unit: 'คน',   icon: User },
-  { value: 530,  label: 'ทรัพย์ในระบบ',    unit: 'รายการ', icon: Home },
-  { value: 9,    label: 'ประเภทสัญญา',     unit: 'ประเภท', icon: ClipboardList },
+  { value: 1240, label: 'สัญญาที่ออกแล้ว', unit: 'ฉบับ'   },
+  { value: 68,   label: 'เอเจนต์ที่ใช้งาน', unit: 'คน'     },
+  { value: 530,  label: 'ทรัพย์ในระบบ',    unit: 'รายการ' },
+  { value: 9,    label: 'ประเภทสัญญา',     unit: 'ประเภท' },
 ]
 
 function CountUp({ target, active }: { target: number; active: boolean }) {
@@ -58,16 +60,21 @@ export default function StatsCounter({ stats }: { stats?: StatItem[] }) {
           ตัวเลขจริงจากระบบ Proppsy
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center text-white">
-          {displayStats.map(s => (
-            <div key={s.label}>
-              <div className="flex justify-center mb-2"><s.icon className="w-8 h-8 text-blue-200" /></div>
-              <p className="text-3xl sm:text-4xl font-bold tabular-nums">
-                <CountUp target={s.value} active={visible} />+
-              </p>
-              <p className="text-xs text-blue-200 mt-0.5">{s.unit}</p>
-              <p className="text-sm font-medium mt-1">{s.label}</p>
-            </div>
-          ))}
+          {displayStats.map((s, i) => {
+            const Icon = STAT_ICONS[i] ?? FileText
+            return (
+              <div key={s.label}>
+                <div className="flex justify-center mb-2">
+                  <Icon className="w-8 h-8 text-blue-200" />
+                </div>
+                <p className="text-3xl sm:text-4xl font-bold tabular-nums">
+                  <CountUp target={s.value} active={visible} />+
+                </p>
+                <p className="text-xs text-blue-200 mt-0.5">{s.unit}</p>
+                <p className="text-sm font-medium mt-1">{s.label}</p>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
