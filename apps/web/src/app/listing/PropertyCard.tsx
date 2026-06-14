@@ -23,7 +23,7 @@ export default function PropertyCard({ stock }: { stock: StockWithProject }) {
   const location = [stock.project?.district, stock.project?.province].filter(Boolean).join(', ')
   const stations = stock.project?.bts_mrt?.slice(0, 2) ?? []
 
-  const slug = buildListingSlug({ id: stock.id, room_type: stock.room_type, listing_type: stock.listing_type })
+  const slug = buildListingSlug({ id: stock.id, room_type: stock.room_type, listing_type: stock.listing_type, project_name: stock.project_name })
 
   return (
     <Link

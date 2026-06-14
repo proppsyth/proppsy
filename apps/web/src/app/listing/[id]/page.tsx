@@ -62,7 +62,7 @@ export async function generateMetadata({
     'ดูรายละเอียดและติดต่อเอเจนต์ได้ที่ Proppsy',
   ].filter(Boolean).join(' | ')
 
-  const canonicalSlug = buildListingSlug({ id, room_type: d.room_type, listing_type: d.listing_type })
+  const canonicalSlug = buildListingSlug({ id, room_type: d.room_type, listing_type: d.listing_type, project_name: d.project_name })
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app'
   // Use actual property photo as OG image — LINE/FB/Twitter crawlers use absolute URLs
   const ogImageUrl = d.photo_urls?.[0]
@@ -153,7 +153,7 @@ export default async function PublicPropertyDetailPage({
   const isRent = stock.listing_type !== 'sale'
   const isSale = stock.listing_type !== 'rent'
   const projectName = stock.project?.name_th ?? stock.project_name
-  const canonicalSlug = buildListingSlug({ id: stock.id, room_type: stock.room_type, listing_type: stock.listing_type })
+  const canonicalSlug = buildListingSlug({ id: stock.id, room_type: stock.room_type, listing_type: stock.listing_type, project_name: stock.project_name })
 
   // Sibling units in same project (fetch in parallel-ish after main query resolves)
   const siblingRes = stock.project_id
