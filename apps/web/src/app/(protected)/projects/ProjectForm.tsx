@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Sparkles, Loader2, Plus, X, CheckCircle2, AlertCircle, Train, ChevronDown, MapPin, School, ShoppingBag, Heart, Landmark } from 'lucide-react'
+import { Sparkles, Loader2, Plus, X, CheckCircle2, AlertCircle, Train, ChevronDown, MapPin, School, ShoppingBag, Heart, Landmark, Store, UtensilsCrossed, Star } from 'lucide-react'
 import type { Project } from '@/types'
 import { createProject, updateProject, enrichProject } from './actions'
 import type { ProjectInput } from './actions'
@@ -77,10 +77,13 @@ interface TransitEntry { station: string; line: string; distance_m: number }
 interface AmenityEntry { name: string; category: string; distance_m: number }
 
 const AMENITY_CATEGORIES = [
-  { value: 'education', label: 'สถานศึกษา', Icon: School },
-  { value: 'shopping',  label: 'ห้าง/ช้อปปิ้ง', Icon: ShoppingBag },
-  { value: 'healthcare',label: 'โรงพยาบาล', Icon: Heart },
-  { value: 'cultural',  label: 'วัด/ศาสนสถาน', Icon: Landmark },
+  { value: 'education',   label: 'สถานศึกษา/มหาวิทยาลัย', Icon: School },
+  { value: 'shopping',    label: 'ห้าง/ช้อปปิ้ง',          Icon: ShoppingBag },
+  { value: 'healthcare',  label: 'โรงพยาบาล',              Icon: Heart },
+  { value: 'cultural',    label: 'วัด/ศาสนสถาน',           Icon: Landmark },
+  { value: 'convenience', label: 'ร้านสะดวกซื้อ',          Icon: Store },
+  { value: 'restaurant',  label: 'ร้านอาหารชื่อดัง',       Icon: UtensilsCrossed },
+  { value: 'landmark',    label: 'สถานที่ดังๆ อื่นๆ',      Icon: Star },
 ]
 
 interface FormState {

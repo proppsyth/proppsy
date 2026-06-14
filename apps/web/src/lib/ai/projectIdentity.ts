@@ -31,7 +31,7 @@ export interface TransitDistance {
 
 export interface NearbyAmenity {
   name: string
-  category: 'education' | 'shopping' | 'healthcare' | 'cultural'
+  category: 'education' | 'shopping' | 'healthcare' | 'cultural' | 'convenience' | 'restaurant' | 'landmark'
   distance_m: number
 }
 
@@ -132,8 +132,8 @@ function buildPrompt(rawName: string): string {
   ],
   "nearby_amenities": [
     {
-      "name": "ชื่อสถานที่ที่มีชื่อเสียงและดังจริงๆ เท่านั้น",
-      "category": "education หรือ shopping หรือ healthcare หรือ cultural",
+      "name": "ชื่อสถานที่ที่มีชื่อเสียงหรือเป็นที่รู้จัก",
+      "category": "education หรือ shopping หรือ healthcare หรือ cultural หรือ convenience หรือ restaurant หรือ landmark",
       "distance_m": ระยะห่างเป็นเมตร
     }
   ],
@@ -150,7 +150,14 @@ function buildPrompt(rawName: string): string {
 - ชื่อผู้พัฒนา (developer): ภาษาอังกฤษเท่านั้นเสมอ ห้ามใส่ภาษาไทย (เช่น "แสนสิริ" → "Sansiri", "พฤกษา" → "Pruksa Real Estate", "อนันดา" → "Ananda Development")
 - ชื่อสถานีรถไฟฟ้า (bts_mrt และ transit_distances): ภาษาไทยเท่านั้น รูปแบบ "BTS ทองหล่อ" ไม่ใช่ "Thonglor"
 - transit_distances: ให้ครอบคลุมทุกสายที่อยู่ใกล้เคียงได้แก่ BTS สุขุมวิท, BTS สีลม, BTS สายสีทอง, MRT สายสีน้ำเงิน, MRT สายสีม่วง, MRT สายสีชมพู, MRT สายสีเหลือง, ARL แอร์พอร์ตเรลลิงก์, SRT สายสีแดง — ระบุเฉพาะสายที่อยู่ในระยะ 3 กม.
-- nearby_amenities: คัดเฉพาะสถานที่ที่มีชื่อเสียงระดับประเทศหรือระดับภูมิภาคเท่านั้น หมวดหมู่ละไม่เกิน 2 แห่ง รัศมีไม่เกิน 5 กม.
+- nearby_amenities: ค้นหาสถานที่สำคัญในรัศมีไม่เกิน 3 กม. ครอบคลุมทุก category ที่หาได้ หมวดละไม่เกิน 3 แห่ง เรียงจากใกล้สุด ได้แก่:
+  · education = โรงเรียน มหาวิทยาลัย วิทยาลัย
+  · shopping = ห้างสรรพสินค้า ศูนย์การค้า ตลาด
+  · healthcare = โรงพยาบาล คลินิก
+  · cultural = วัด มัสยิด โบสถ์ สถานที่ทางศาสนา
+  · convenience = เซเว่นอีเลเว่น Lotus Express FamilyMart ร้านสะดวกซื้อ
+  · restaurant = ร้านอาหารชื่อดัง ร้านที่รู้จักกันดี
+  · landmark = สถานที่ท่องเที่ยว สถานที่ดังๆ อื่นๆ อนุสาวรีย์ สวนสาธารณะ
 - map_url: ถ้าไม่รู้ลิงก์ตรง ให้สร้าง Google Maps Search URL ในรูปแบบ https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rawName)}+กรุงเทพ
 - ถ้าชื่อที่ป้อนเป็นภาษาอังกฤษหรือทับศัพท์ → name_th คือชื่อทางการภาษาไทย
 - confidence = 100 ถ้าแน่ใจมาก, ลดลงตามความไม่แน่นอน, 0 ถ้าไม่รู้จักโครงการนี้เลย

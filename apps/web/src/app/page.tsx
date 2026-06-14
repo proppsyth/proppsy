@@ -19,6 +19,7 @@ import { extractYouTubeId, youTubeEmbedUrl } from '@/lib/youtube'
 import HomeHeroClient from './HomeHeroClient'
 import type { HeroSlide } from './listing/HeroBanner'
 import type { LucideIcon } from 'lucide-react'
+import { stationSolidColorClass, stationDotClass } from '@/lib/transitColors'
 
 export const metadata: Metadata = {
   title: 'Proppsy — ค้นหาที่พัก เช่า ขาย คอนโด บ้าน',
@@ -288,33 +289,16 @@ export default async function HomePage() {
             </div>
             <p className="text-xs text-gray-400 mb-5">ทรัพย์ใกล้รถไฟฟ้าในระบบ</p>
             <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none flex-wrap sm:flex-nowrap">
-              {btsMrtOptions.map(station => {
-                const lower = station.toLowerCase()
-                const isMrtBlue   = lower.includes('mrt') && !lower.includes('สีม่วง') && !lower.includes('สีเหลือง') && !lower.includes('สีชมพู')
-                const isMrtPurple = lower.includes('สีม่วง') || lower.includes('purple')
-                const isMrtYellow = lower.includes('สีเหลือง') || lower.includes('yellow')
-                const isMrtPink   = lower.includes('สีชมพู') || lower.includes('pink')
-                const isArl       = lower.includes('arl') || lower.includes('airport')
-                const isBtsSilom  = lower.includes('silom') || lower.includes('สีลม')
-                // Default BTS Sukhumvit (green) for anything with 'bts'
-                const color = isMrtBlue   ? 'bg-blue-700 text-white border-blue-700'
-                            : isMrtPurple ? 'bg-purple-700 text-white border-purple-700'
-                            : isMrtYellow ? 'bg-yellow-400 text-gray-900 border-yellow-400'
-                            : isMrtPink   ? 'bg-pink-500 text-white border-pink-500'
-                            : isArl       ? 'bg-red-600 text-white border-red-600'
-                            : isBtsSilom  ? 'bg-green-800 text-white border-green-800'
-                            : 'bg-green-600 text-white border-green-600'   // BTS Sukhumvit default
-                return (
-                  <Link
-                    key={station}
-                    href={`/listing?bts_mrt=${encodeURIComponent(station)}`}
-                    className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold border transition hover:opacity-90 active:scale-95 ${color}`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-white/60 flex-shrink-0" />
-                    {station}
-                  </Link>
-                )
-              })}
+              {btsMrtOptions.map(station => (
+                <Link
+                  key={station}
+                  href={`/listing?bts_mrt=${encodeURIComponent(station)}`}
+                  className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold border transition hover:opacity-90 active:scale-95 ${stationSolidColorClass(station)}`}
+                >
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${stationDotClass(station)} opacity-70`} />
+                  {station}
+                </Link>
+              ))}
             </div>
           </div>
         </div>

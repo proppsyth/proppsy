@@ -29,6 +29,32 @@ const GOLD_STATIONS = new Set([
   'BTS เจริญนคร','BTS คลองสาน',
 ])
 
+/**
+ * Solid/filled chip style for homepage & public-facing areas.
+ * Returns `bg-* text-* border-*` with solid background.
+ */
+export function stationSolidColorClass(station: string): string {
+  if (GOLD_STATIONS.has(station))
+    return 'bg-yellow-500 text-white border-yellow-500'
+  if (station.startsWith('BTS') || station.startsWith('bts'))
+    return 'bg-green-600 text-white border-green-600'
+  if (PURPLE_STATIONS.has(station))
+    return 'bg-purple-700 text-white border-purple-700'
+  if (PINK_STATIONS.has(station))
+    return 'bg-pink-500 text-white border-pink-500'
+  if (YELLOW_STATIONS.has(station))
+    return 'bg-yellow-400 text-gray-900 border-yellow-400'
+  if (station.startsWith('MRT') || station.startsWith('mrt'))
+    return 'bg-blue-700 text-white border-blue-700'
+  if (station.startsWith('ARL') || station.startsWith('arl') || station.toLowerCase().includes('airport'))
+    return 'bg-red-600 text-white border-red-600'
+  if (station.startsWith('SRT') || station.startsWith('srt'))
+    return 'bg-rose-700 text-white border-rose-700'
+  if (station.startsWith('BRT') || station.startsWith('brt'))
+    return 'bg-orange-500 text-white border-orange-500'
+  return 'bg-gray-600 text-white border-gray-600'
+}
+
 /** Returns `bg-* text-* border-*` Tailwind classes for the station's line color */
 export function stationColorClass(station: string): string {
   if (GOLD_STATIONS.has(station))

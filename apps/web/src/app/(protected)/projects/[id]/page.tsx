@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, Pencil, Building2, MapPin, ExternalLink, ShieldCheck, Train, School, ShoppingBag, Heart, Landmark } from 'lucide-react'
+import { ArrowLeft, Pencil, Building2, MapPin, ExternalLink, ShieldCheck, Train, School, ShoppingBag, Heart, Landmark, Store, UtensilsCrossed, Star } from 'lucide-react'
 import { stationColorClass, stationDotClass } from '@/lib/transitColors'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
@@ -174,10 +174,13 @@ export default async function ProjectDetailPage({
             <Section title="สถานที่สำคัญใกล้เคียง">
               {(() => {
                 const catMeta: Record<string, { label: string; Icon: React.ComponentType<{ className?: string }> }> = {
-                  education: { label: 'สถานศึกษา', Icon: School },
-                  shopping:  { label: 'ห้าง/ช้อปปิ้ง', Icon: ShoppingBag },
-                  healthcare:{ label: 'โรงพยาบาล', Icon: Heart },
-                  cultural:  { label: 'วัด/ศาสนสถาน', Icon: Landmark },
+                  education:   { label: 'สถานศึกษา/มหาวิทยาลัย', Icon: School },
+                  shopping:    { label: 'ห้าง/ช้อปปิ้ง',          Icon: ShoppingBag },
+                  healthcare:  { label: 'โรงพยาบาล',              Icon: Heart },
+                  cultural:    { label: 'วัด/ศาสนสถาน',           Icon: Landmark },
+                  convenience: { label: 'ร้านสะดวกซื้อ',          Icon: Store },
+                  restaurant:  { label: 'ร้านอาหารชื่อดัง',       Icon: UtensilsCrossed },
+                  landmark:    { label: 'สถานที่ดังๆ อื่นๆ',      Icon: Star },
                 }
                 const grouped = new Map<string, { name: string; distance_m: number }[]>()
                 for (const a of (p as unknown as { nearby_amenities?: { name: string; category: string; distance_m: number }[] }).nearby_amenities ?? []) {
