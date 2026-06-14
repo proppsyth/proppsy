@@ -14,6 +14,7 @@ import StatsCounter from './listing/StatsCounter'
 import { BannerStrip } from '@/components/shared/BannerZone'
 import PropertyCard from './listing/PropertyCard'
 import type { StockWithProject } from './listing/PropertyCard'
+import PremiumPropertyCard from './listing/PremiumPropertyCard'
 import { extractYouTubeId, youTubeEmbedUrl } from '@/lib/youtube'
 import HomeHeroClient from './HomeHeroClient'
 import type { HeroSlide } from './listing/HeroBanner'
@@ -244,28 +245,30 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* ──────────────── HOT Listings (Premium · 3 เครดิต) ─────────── */}
+      {/* ──────────────── Featured Listings (Premium · 3 เครดิต) ────── */}
       {premiumStocks.length > 0 && (
         <div className="py-10 bg-white border-b border-gray-100">
           <div className="max-w-6xl mx-auto px-4">
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <span
                   className="text-xs px-2.5 py-1 rounded-full font-bold text-white animate-hot-glow"
                   style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}
                 >
-                  HOT
+                  Featured
                 </span>
-                <h2 className="text-lg font-bold text-gray-900">ทรัพย์สินแนะนำ</h2>
+                <h2 className="text-lg font-bold text-gray-900">ทรัพย์เด่นประจำสัปดาห์</h2>
               </div>
               <Link href="/listing?premium=true" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                 ดูทั้งหมด <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
-              {premiumStocks.map(stock => (
-                <div key={stock.id} className="flex-shrink-0 w-72 sm:w-80 snap-start lg:w-auto">
-                  <PropertyCard stock={stock} />
+            <p className="text-xs text-gray-400 mb-5">คัดสรรจากราคา ทำเล และคะแนนรีวิว</p>
+            {/* Mobile: horizontal scroll · Desktop: 2-col grid (bigger cards) */}
+            <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0">
+              {premiumStocks.slice(0, 6).map(stock => (
+                <div key={stock.id} className="flex-shrink-0 w-80 snap-start sm:w-auto">
+                  <PremiumPropertyCard stock={stock} />
                 </div>
               ))}
             </div>
@@ -273,16 +276,68 @@ export default async function HomePage() {
         </div>
       )}
 
-      {/* ──────────────── Regular Listings (1 เครดิต) ────────────────── */}
-      {regularStocks.length > 0 && (
-        <div className="py-10">
+      {/* ──────────────── BTS / MRT Section ──────────────────────────── */}
+      {btsMrtOptions.length > 0 && (
+        <div className="bg-gray-50 py-10 border-b border-gray-100">
           <div className="max-w-6xl mx-auto px-4">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-gray-900">ทรัพย์ทั่วไป</h2>
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-lg font-bold text-gray-900">ค้นหาตามสถานี BTS / MRT</h2>
               <Link href="/listing" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                 ดูทั้งหมด <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
+            <p className="text-xs text-gray-400 mb-5">ทรัพย์ใกล้รถไฟฟ้าในระบบ</p>
+            <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none flex-wrap sm:flex-nowrap">
+              {btsMrtOptions.map(station => {
+                const lower = station.toLowerCase()
+                const isMrtBlue   = lower.includes('mrt') && !lower.includes('สีม่วง') && !lower.includes('สีเหลือง') && !lower.includes('สีชมพู')
+                const isMrtPurple = lower.includes('สีม่วง') || lower.includes('purple')
+                const isMrtYellow = lower.includes('สีเหลือง') || lower.includes('yellow')
+                const isMrtPink   = lower.includes('สีชมพู') || lower.includes('pink')
+                const isArl       = lower.includes('arl') || lower.includes('airport')
+                const isBtsSilom  = lower.includes('silom') || lower.includes('สีลม')
+                // Default BTS Sukhumvit (green) for anything with 'bts'
+                const color = isMrtBlue   ? 'bg-blue-700 text-white border-blue-700'
+                            : isMrtPurple ? 'bg-purple-700 text-white border-purple-700'
+                            : isMrtYellow ? 'bg-yellow-400 text-gray-900 border-yellow-400'
+                            : isMrtPink   ? 'bg-pink-500 text-white border-pink-500'
+                            : isArl       ? 'bg-red-600 text-white border-red-600'
+                            : isBtsSilom  ? 'bg-green-800 text-white border-green-800'
+                            : 'bg-green-600 text-white border-green-600'   // BTS Sukhumvit default
+                return (
+                  <Link
+                    key={station}
+                    href={`/listing?bts_mrt=${encodeURIComponent(station)}`}
+                    className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold border transition hover:opacity-90 active:scale-95 ${color}`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-white/60 flex-shrink-0" />
+                    {station}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ──────────────── New Projects (Regular · 1 เครดิต) ──────────── */}
+      {regularStocks.length > 0 && (
+        <div className="py-10 bg-white border-b border-gray-100">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="flex items-center justify-between mb-1">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                    New Projects
+                  </span>
+                  <h2 className="text-lg font-bold text-gray-900">โครงการใหม่ที่น่าสนใจ</h2>
+                </div>
+              </div>
+              <Link href="/listing" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                ดูทั้งหมด <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+            <p className="text-xs text-gray-400 mb-5">พร้อมอยู่จากผู้พัฒนาชั้นนำ</p>
             <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
               {regularStocks.map(stock => (
                 <div key={stock.id} className="flex-shrink-0 w-72 sm:w-80 snap-start lg:w-auto">

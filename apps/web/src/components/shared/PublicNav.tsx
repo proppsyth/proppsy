@@ -16,7 +16,7 @@ const NAV_LINKS = [
 // Auth state is handled client-side by NavAuthButtons to avoid SSR hydration mismatch.
 export default function PublicNav() {
   return (
-    <nav className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+    <nav className="bg-white border-b border-gray-100 sticky top-0 z-30 shadow-sm">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-2">
 
         {/* Mobile hamburger — client component to avoid <details> hydration issues */}
