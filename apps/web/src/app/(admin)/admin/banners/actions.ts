@@ -27,18 +27,28 @@ export async function createBanner(data: {
   start_date?: string
   end_date?: string
   sort_order: number
+  subtitle?: string
+  tag?: string
+  text_align?: string
+  gradient?: string
+  show_search?: boolean
 }): Promise<{ error?: string }> {
   try {
     const { supabase } = await assertAdmin()
     const { error } = await supabase.from('banners').insert({
-      title:      data.title,
-      image_url:  data.image_url || null,
-      link_url:   data.link_url || null,
-      position:   data.position,
-      is_active:  data.is_active,
-      start_date: data.start_date || null,
-      end_date:   data.end_date || null,
-      sort_order: data.sort_order,
+      title:       data.title,
+      image_url:   data.image_url || null,
+      link_url:    data.link_url || null,
+      position:    data.position,
+      is_active:   data.is_active,
+      start_date:  data.start_date || null,
+      end_date:    data.end_date || null,
+      sort_order:  data.sort_order,
+      subtitle:    data.subtitle || null,
+      tag:         data.tag || null,
+      text_align:  data.text_align || 'center',
+      gradient:    data.gradient || null,
+      show_search: data.show_search ?? true,
     })
     if (error) return { error: error.message }
     revalidateBannerPaths()
@@ -57,6 +67,11 @@ export async function updateBanner(id: string, data: {
   start_date?: string | null
   end_date?: string | null
   sort_order?: number
+  subtitle?: string | null
+  tag?: string | null
+  text_align?: string
+  gradient?: string | null
+  show_search?: boolean
 }): Promise<{ error?: string }> {
   try {
     const { supabase } = await assertAdmin()

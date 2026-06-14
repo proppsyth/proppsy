@@ -26,6 +26,7 @@ export default function HomeHeroClient({ slides, provinces, btsMrtOptions }: Pro
   const [current, setCurrent] = useState(0)
   const [paused, setPaused] = useState(false)
   const [lt, setLt] = useState<'rent' | 'sale'>('rent')
+  const [keyword, setKeyword] = useState('')
   const [roomType, setRoomType] = useState('all')
   const [province, setProvince] = useState('all')
   const [btsMrt, setBtsMrt] = useState('all')
@@ -44,6 +45,7 @@ export default function HomeHeroClient({ slides, provinces, btsMrtOptions }: Pro
   function handleSearch() {
     const params = new URLSearchParams()
     params.set('listing_type', lt)
+    if (keyword.trim()) params.set('q', keyword.trim())
     if (province !== 'all') params.set('province', province)
     if (btsMrt !== 'all') params.set('bts_mrt', btsMrt)
     if (roomType !== 'all') params.set('room_type', roomType)
@@ -67,7 +69,7 @@ export default function HomeHeroClient({ slides, provinces, btsMrtOptions }: Pro
           sizes="100vw"
         />
       ) : (
-        <div className={`absolute inset-0 bg-gradient-to-br ${slide.gradient ?? 'from-blue-900 via-blue-700 to-indigo-800'}`}>
+        <div className={`absolute inset-0 bg-gradient-to-br ${slide.gradient ?? 'from-[#0f2044] via-[#1a3a6e] to-[#0e3460]'}`}>
           <div
             className="absolute inset-0 opacity-[0.06]"
             style={{
@@ -78,89 +80,152 @@ export default function HomeHeroClient({ slides, provinces, btsMrtOptions }: Pro
         </div>
       )}
 
-      {/* ── Overlay gradient ── */}
+      {/* ── Overlay ── */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/10 to-black/60 pointer-events-none" />
 
       {/* ── Content ── */}
-      <div className="relative z-10 w-full max-w-2xl mx-auto px-4 flex flex-col items-center gap-5 pt-12 pb-16">
+      <div className="relative z-10 w-full max-w-2xl mx-auto px-4 flex flex-col items-center gap-4 pt-12 pb-16">
         {/* Tag */}
-        <span className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-md text-white text-xs font-medium px-4 py-1.5 rounded-full border border-white/25">
-          🏠 Proppsy Real Estate
-        </span>
+        {slide.tag && (
+          <span className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-md text-white text-xs font-medium px-4 py-1.5 rounded-full border border-white/25">
+            {slide.tag}
+          </span>
+        )}
 
         {/* Title */}
-        <h1 className="text-3xl sm:text-5xl font-bold text-white text-center leading-tight drop-shadow-lg">
-          ค้นพบที่พักในฝัน<br />ในแบบของคุณ
-        </h1>
-        <p className="text-white/80 text-sm sm:text-base text-center max-w-md">
-          ทรัพย์สินคุณภาพพร้อมเอเจนต์มืออาชีพดูแลคุณ
-        </p>
+        {slide.title && (
+          <h1 className="text-3xl sm:text-5xl font-bold text-white text-center leading-tight drop-shadow-lg whitespace-pre-line">
+            {slide.title}
+          </h1>
+        )}
+
+        {/* Subtitle */}
+        {slide.subtitle && (
+          <p className="text-white/80 text-sm sm:text-base text-center max-w-md">
+            {slide.subtitle}
+          </p>
+        )}
 
         {/* ── Search card ── */}
-        <div className="w-full bg-white rounded-2xl shadow-2xl overflow-hidden mt-2">
-          {/* Tabs: เช่า / ซื้อ */}
-          <div className="flex border-b border-gray-100">
-            {([{ v: 'rent' as const, l: 'เช่า' }, { v: 'sale' as const, l: 'ซื้อ' }]).map(({ v, l }) => (
-              <button
-                key={v}
-                onClick={() => setLt(v)}
-                className={`flex-1 py-3.5 text-sm font-semibold transition-colors ${
-                  lt === v
-                    ? 'text-blue-700 bg-blue-50/60 border-b-2 border-blue-600'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                {l}
-              </button>
-            ))}
+        {slide.showSearch !== false && (
+          <div className="w-full bg-white rounded-2xl shadow-2xl overflow-hidden mt-1">
+            {/* Tabs: เช่า / ซื้อ */}
+            <div className="flex border-b border-gray-100">
+              {([{ v: 'rent' as const, l: 'เช่า' }, { v: 'sale' as const, l: 'ซื้อ' }]).map(({ v, l }) => (
+                <button
+                  key={v}
+                  onClick={() => setLt(v)}
+                  className={`flex-1 py-3 text-sm font-semibold transition-colors ${
+                    lt === v
+                      ? 'text-blue-700 bg-blue-50/60 border-b-2 border-blue-600'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+
+            {/* Keyword input */}
+            <div className="px-3 pt-3 pb-1.5">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={keyword}
+                  onChange={e => setKeyword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                  placeholder="ค้นหาชื่อโครงการ, ย่าน, ถนน..."
+                  className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 placeholder-gray-400"
+                />
+              </div>
+            </div>
+
+            {/* Filters — compact 2-col grid on mobile, single row on sm+ */}
+            <div className="px-3 pb-3">
+              {/* Mobile grid */}
+              <div className="grid grid-cols-2 gap-1.5 sm:hidden">
+                <select
+                  value={roomType}
+                  onChange={e => setRoomType(e.target.value)}
+                  className="px-2 py-2 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600"
+                >
+                  {ROOM_TYPES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+
+                <select
+                  value={province}
+                  onChange={e => setProvince(e.target.value)}
+                  className="px-2 py-2 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600"
+                >
+                  <option value="all">ทุกจังหวัด</option>
+                  {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+
+                {btsMrtOptions.length > 0 ? (
+                  <select
+                    value={btsMrt}
+                    onChange={e => setBtsMrt(e.target.value)}
+                    className="px-2 py-2 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600"
+                  >
+                    <option value="all">ทุกสายรถไฟฟ้า</option>
+                    {btsMrtOptions.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                ) : <div />}
+
+                <button
+                  onClick={handleSearch}
+                  className="flex items-center justify-center gap-1.5 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold rounded-xl transition text-xs shadow-sm"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  ค้นหา
+                </button>
+              </div>
+
+              {/* Desktop single row */}
+              <div className="hidden sm:flex gap-2 items-stretch">
+                <select
+                  value={roomType}
+                  onChange={e => setRoomType(e.target.value)}
+                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 min-w-0"
+                >
+                  {ROOM_TYPES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+
+                <select
+                  value={province}
+                  onChange={e => setProvince(e.target.value)}
+                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 min-w-0"
+                >
+                  <option value="all">ทุกจังหวัด</option>
+                  {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+
+                {btsMrtOptions.length > 0 && (
+                  <select
+                    value={btsMrt}
+                    onChange={e => setBtsMrt(e.target.value)}
+                    className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 min-w-0"
+                  >
+                    <option value="all">ทุกสายรถไฟฟ้า</option>
+                    {btsMrtOptions.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                )}
+
+                <button
+                  onClick={handleSearch}
+                  className="flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold rounded-xl transition text-sm flex-shrink-0 shadow-sm"
+                >
+                  <Search className="w-4 h-4" />
+                  ค้นหา
+                </button>
+              </div>
+            </div>
           </div>
-
-          {/* Filters */}
-          <div className="p-4 flex flex-col sm:flex-row gap-2.5 items-stretch">
-            {/* Room type */}
-            <select
-              value={roomType}
-              onChange={e => setRoomType(e.target.value)}
-              className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 min-w-0"
-            >
-              {ROOM_TYPES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
-
-            {/* Province */}
-            <select
-              value={province}
-              onChange={e => setProvince(e.target.value)}
-              className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 min-w-0"
-            >
-              <option value="all">ทุกจังหวัด</option>
-              {provinces.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-
-            {/* BTS/MRT */}
-            {btsMrtOptions.length > 0 && (
-              <select
-                value={btsMrt}
-                onChange={e => setBtsMrt(e.target.value)}
-                className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 min-w-0"
-              >
-                <option value="all">ทุกสายรถไฟฟ้า</option>
-                {btsMrtOptions.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
-            )}
-
-            {/* Search button */}
-            <button
-              onClick={handleSearch}
-              className="flex items-center justify-center gap-2 px-7 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold rounded-xl transition text-sm flex-shrink-0 shadow-sm"
-            >
-              <Search className="w-4 h-4" />
-              ค้นหา
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* ── Carousel dots & arrows ── */}
+      {/* ── Carousel arrows & dots ── */}
       {slides.length > 1 && (
         <>
           <button

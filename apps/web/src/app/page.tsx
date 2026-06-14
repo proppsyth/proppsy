@@ -3,6 +3,7 @@ import StorageImage from '@/components/shared/StorageImage'
 import {
   ArrowRight, Newspaper, Building2, Home, Star, MapPin,
   LayoutGrid, Bed, Building, Grid3X3, Layers,
+  FileText, User, ClipboardList,
 } from 'lucide-react'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
@@ -62,6 +63,9 @@ export default async function HomePage() {
     { data: featuredVideos },
     { data: stocksRaw },
     { data: bannerRows },
+    { count: contractCount },
+    { count: agentCount },
+    { count: stockCount },
   ] = await Promise.all([
     supabase.from('projects').select('province, bts_mrt').not('province', 'is', null),
     supabase.from('projects').select('district').eq('province', 'กรุงเทพมหานคร').not('district', 'is', null),
@@ -77,12 +81,15 @@ export default async function HomePage() {
       .order('published_at', { ascending: false, nullsFirst: false })
       .limit(12),
     supabase.from('banners')
-      .select('id, title, image_url, link_url')
+      .select('id, title, subtitle, tag, text_align, gradient, show_search, image_url, link_url')
       .eq('position', 'home_top')
       .eq('is_active', true)
       .or(`start_date.is.null,start_date.lte.${today}`)
       .or(`end_date.is.null,end_date.gte.${today}`)
       .order('sort_order'),
+    supabase.from('contracts').select('*', { count: 'exact', head: true }),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('account_status', 'approved'),
+    supabase.from('stock').select('*', { count: 'exact', head: true }).eq('is_published', true),
   ])
 
   const featuredStocks = (stocksRaw ?? []) as unknown as StockWithProject[]
@@ -114,9 +121,27 @@ export default async function HomePage() {
       showSearch: false,
     },
   ]
-  const dbSlides: HeroSlide[] = (bannerRows ?? [])
-    .filter(b => b.image_url)
-    .map(b => ({ type: 'image' as const, imageUrl: b.image_url!, linkUrl: b.link_url ?? undefined, title: b.title ?? undefined }))
+  const dbSlides: HeroSlide[] = (bannerRows ?? []).map(b =>
+    b.image_url
+      ? {
+          type: 'image' as const,
+          imageUrl: b.image_url,
+          linkUrl: b.link_url ?? undefined,
+          title: b.title ?? undefined,
+          subtitle: (b as { subtitle?: string }).subtitle ?? undefined,
+          tag: (b as { tag?: string }).tag ?? undefined,
+          showSearch: (b as { show_search?: boolean }).show_search ?? true,
+        }
+      : {
+          type: 'gradient' as const,
+          gradient: (b as { gradient?: string }).gradient ?? 'from-[#0f2044] via-[#1a3a6e] to-[#0e3460]',
+          title: b.title ?? undefined,
+          subtitle: (b as { subtitle?: string }).subtitle ?? undefined,
+          tag: (b as { tag?: string }).tag ?? undefined,
+          showSearch: (b as { show_search?: boolean }).show_search ?? true,
+          linkUrl: b.link_url ?? undefined,
+        }
+  )
   const slides = dbSlides.length > 0 ? dbSlides : FALLBACK_SLIDES
 
   // Compute provinces list for hero search dropdowns
@@ -243,7 +268,12 @@ export default async function HomePage() {
       )}
 
       {/* ─────────────────── Animated Stats ──────────────────────── */}
-      <StatsCounter />
+      <StatsCounter stats={[
+        { value: contractCount ?? 0, label: 'สัญญาที่ออกแล้ว', unit: 'ฉบับ',   icon: FileText },
+        { value: agentCount   ?? 0, label: 'เอเจนต์ที่ใช้งาน', unit: 'คน',     icon: User },
+        { value: stockCount   ?? 0, label: 'ทรัพย์ในระบบ',     unit: 'รายการ', icon: Home },
+        { value: 9,                  label: 'ประเภทสัญญา',      unit: 'ประเภท', icon: ClipboardList },
+      ]} />
 
       {/* ─────────────────── Banner strip ────────────────────────── */}
       <BannerStrip position="listing_top" />
