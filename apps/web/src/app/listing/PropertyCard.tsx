@@ -5,6 +5,7 @@ import CompareButton from '@/components/shared/CompareButton'
 import { Building2, Maximize, Layers, MapPin, Train } from 'lucide-react'
 import type { Stock } from '@/types'
 import { formatRoomType } from '@/types'
+import { buildListingSlug } from '@/lib/listingSlug'
 
 export type StockWithProject = Stock & {
   project?: { province?: string; district?: string; bts_mrt?: string[] } | null
@@ -22,9 +23,11 @@ export default function PropertyCard({ stock }: { stock: StockWithProject }) {
   const location = [stock.project?.district, stock.project?.province].filter(Boolean).join(', ')
   const stations = stock.project?.bts_mrt?.slice(0, 2) ?? []
 
+  const slug = buildListingSlug({ id: stock.id, room_type: stock.room_type, listing_type: stock.listing_type })
+
   return (
     <Link
-      href={`/listing/${stock.id}`}
+      href={`/listing/${slug}`}
       className={`group bg-white rounded-2xl overflow-hidden border shadow-sm hover:shadow-md transition-shadow block ${
         stock.is_premium ? 'border-orange-200 ring-1 ring-orange-200' : 'border-gray-100'
       }`}

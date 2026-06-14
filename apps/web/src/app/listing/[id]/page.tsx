@@ -6,6 +6,7 @@ import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { Stock } from '@/types'
 import { formatRoomType } from '@/types'
+import { buildListingSlug, extractListingId } from '@/lib/listingSlug'
 import PublicNav from '@/components/shared/PublicNav'
 import PublicFooter from '@/components/shared/PublicFooter'
 import PhotoGallery from '@/app/(protected)/stock/[id]/PhotoGallery'
@@ -23,11 +24,12 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string }>
 }): Promise<Metadata> {
-  const { id } = await params
+  const { id: rawSlug } = await params
+  const id = extractListingId(rawSlug)
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('stock')
-    .select('project_name, room_type, unit_no, listing_type, rent_price, sale_price, size_sqm, project:projects(district, province)')
+    .select('project_name, room_type, unit_no, listing_type, rent_price, sale_price, size_sqm, photo_urls, project:projects(district, province)')
     .eq('id', id)
     .single()
 
@@ -36,7 +38,7 @@ export async function generateMetadata({
   const d = data as {
     project_name?: string | null; room_type?: string | null; unit_no?: string | null
     listing_type?: string | null; rent_price?: number | null; sale_price?: number | null
-    size_sqm?: number | null
+    size_sqm?: number | null; photo_urls?: string[] | null
     project?: { district?: string | null; province?: string | null } | null
   }
   const fmtN = (n: number) => new Intl.NumberFormat('th-TH').format(n)
@@ -57,24 +59,32 @@ export async function generateMetadata({
     location && `ย่าน${location}`,
     d.size_sqm && `ขนาด ${d.size_sqm} ตร.ม.`,
     priceStr,
+    'ดูรายละเอียดและติดต่อเอเจนต์ได้ที่ Proppsy',
   ].filter(Boolean).join(' | ')
 
-  // og:image / twitter:image are handled by the co-located opengraph-image.tsx file
-  // which generates a reliable same-domain PNG — no cross-origin URL resolution issues.
+  const canonicalSlug = buildListingSlug({ id, room_type: d.room_type, listing_type: d.listing_type })
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app'
+  // Use actual property photo as OG image — LINE/FB/Twitter crawlers use absolute URLs
+  const ogImageUrl = d.photo_urls?.[0]
+    ? d.photo_urls[0]
+    : `${siteUrl}/listing/${canonicalSlug}/opengraph-image`
+
   return {
     title,
     description,
-    alternates: { canonical: `/listing/${id}` },
+    alternates: { canonical: `/listing/${canonicalSlug}` },
     openGraph: {
       title,
       description,
       type: 'website',
-      url: `/listing/${id}`,
+      url: `/listing/${canonicalSlug}`,
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: title }],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
+      images: [ogImageUrl],
     },
   }
 }
@@ -107,7 +117,9 @@ export default async function PublicPropertyDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const { id } = await params
+  const { id: rawSlug } = await params
+  // Support both legacy /listing/STK-0006 and SEO /listing/for-rent-studio-stk-0006
+  const id = extractListingId(rawSlug)
   // Use service client so unauthenticated visitors can read published listings (bypasses RLS)
   const supabase = createServiceClient()
 
@@ -141,6 +153,7 @@ export default async function PublicPropertyDetailPage({
   const isRent = stock.listing_type !== 'sale'
   const isSale = stock.listing_type !== 'rent'
   const projectName = stock.project?.name_th ?? stock.project_name
+  const canonicalSlug = buildListingSlug({ id: stock.id, room_type: stock.room_type, listing_type: stock.listing_type })
 
   // Sibling units in same project (fetch in parallel-ish after main query resolves)
   const siblingRes = stock.project_id
@@ -251,7 +264,7 @@ export default async function PublicPropertyDetailPage({
                   <SaveButton stockId={stock.id} />
                 </div>
                 <ShareButtons
-                  path={`/listing/${stock.id}`}
+                  path={`/listing/${canonicalSlug}`}
                   title={[projectName, stock.unit_no].filter(Boolean).join(' · ') || 'ทรัพย์'}
                 />
               </div>
@@ -395,7 +408,7 @@ export default async function PublicPropertyDetailPage({
             '@context': 'https://schema.org',
             '@type': 'Apartment',
             name: [projectName, stock.unit_no].filter(Boolean).join(' · ') || 'ทรัพย์',
-            url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app'}/listing/${stock.id}`,
+            url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app'}/listing/${canonicalSlug}`,
             image: (stock.photo_urls ?? []).slice(0, 5),
             ...(stock.project && {
               address: {
