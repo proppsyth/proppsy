@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Sparkles, Loader2, Plus, X, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Sparkles, Loader2, Plus, X, CheckCircle2, AlertCircle, Train, ChevronDown } from 'lucide-react'
 import type { Project } from '@/types'
 import { createProject, updateProject, enrichProject } from './actions'
 import type { ProjectInput } from './actions'
@@ -17,11 +17,57 @@ const FACILITY_OPTIONS = [
   'Co-working space', 'ห้องประชุม', 'สนามเด็กเล่น', 'ร้านอาหาร',
 ]
 
-const BTS_MRT_OPTIONS = [
-  'BTS อโศก', 'BTS พร้อมพงษ์', 'BTS ทองหล่อ', 'BTS เอกมัย',
-  'BTS ออนนุช', 'BTS อ่อนนุช', 'BTS สยาม', 'BTS ชิดลม',
-  'MRT สุขุมวิท', 'MRT เพชรบุรี', 'MRT พระราม 9', 'MRT ลาดพร้าว',
-  'Airport Link มักกะสัน', 'Airport Link รามคำแหง',
+// Canonical station list — Thai only, all active lines
+// Used for combobox suggestions; DB-loaded stations (existingStations prop) appear first
+const CANONICAL_STATIONS: string[] = [
+  // BTS สุขุมวิท (สายสีเขียวเข้ม)
+  'BTS หมอชิต','BTS สะพานควาย','BTS อารีย์','BTS สนามเป้า',
+  'BTS อนุสาวรีย์ชัยสมรภูมิ','BTS พญาไท','BTS ราชเทวี','BTS สยาม',
+  'BTS ชิดลม','BTS เพลินจิต','BTS นานา','BTS อโศก',
+  'BTS พร้อมพงษ์','BTS ทองหล่อ','BTS เอกมัย','BTS พระโขนง',
+  'BTS อ่อนนุช','BTS บางจาก','BTS ปุณณวิถี','BTS อุดมสุข',
+  'BTS บางนา','BTS แบริ่ง','BTS สำโรง','BTS ปู่เจ้า',
+  'BTS ช้างเผือก','BTS สายลวด','BTS เคหะฯ','BTS คูคต',
+  // BTS สีลม (สายสีเขียวอ่อน)
+  'BTS สนามกีฬาแห่งชาติ','BTS ราชดำริ','BTS ศาลาแดง',
+  'BTS ช่องนนทรี','BTS สุรศักดิ์','BTS สะพานตากสิน',
+  'BTS กรุงธนบุรี','BTS วงเวียนใหญ่','BTS โพธิ์นิมิต',
+  'BTS ตลาดพลู','BTS วุฒากาศ','BTS บางหว้า',
+  // BTS สายสีทอง
+  'BTS เจริญนคร','BTS คลองสาน',
+  // MRT สายสีน้ำเงิน
+  'MRT ท่าพระ','MRT บางขุนนนท์','MRT บางอ้อ','MRT บางพลัด',
+  'MRT สิรินธร','MRT บางยี่ขัน','MRT เตาปูน','MRT บางซื่อ',
+  'MRT กำแพงเพชร','MRT จตุจักร','MRT พหลโยธิน','MRT ลาดพร้าว',
+  'MRT รัชดาภิเษก','MRT สุทธิสาร','MRT ห้วยขวาง',
+  'MRT ศูนย์วัฒนธรรมแห่งประเทศไทย','MRT พระราม 9','MRT เพชรบุรี',
+  'MRT สุขุมวิท','MRT สีลม','MRT สามย่าน','MRT หัวลำโพง',
+  'MRT วังบูรพาภิรมย์','MRT สนามไชย','MRT อิสรภาพ',
+  'MRT บางไผ่','MRT เพชรเกษม 48','MRT ภาษีเจริญ',
+  'MRT บางแค','MRT หลักสอง','MRT โชคชัย 4',
+  // MRT สายสีม่วง
+  'MRT คลองบางไผ่','MRT ตลาดบางใหญ่','MRT สามแยกบางใหญ่',
+  'MRT บางพูด','MRT บางรักน้อย-ท่าอิฐ','MRT ไทรม้า',
+  'MRT สะพานพระนั่งเกล้า','MRT แยกนนทบุรี 1','MRT บางกระสอ',
+  'MRT ศูนย์ราชการนนทบุรี','MRT กระทรวงสาธารณสุข',
+  'MRT แยกติวานนท์','MRT วงศ์สว่าง','MRT บางซ่อน',
+  // MRT สายสีชมพู
+  'MRT แคราย','MRT สนามบินน้ำ','MRT สามแยกปากเกร็ด',
+  'MRT ปากเกร็ด','MRT เมืองทองธานี','MRT มีนบุรี',
+  // MRT สายสีเหลือง
+  'MRT ลาดพร้าว 71','MRT ลาดพร้าว 83','MRT มหาดไทย',
+  'MRT ลาดพร้าว 101','MRT บางกะปิ','MRT แยกลำสาลี',
+  'MRT ศรีนุช','MRT ศรีกรีฑา','MRT หัวหมาก','MRT ทับช้าง',
+  // Airport Rail Link
+  'ARL พญาไท','ARL ราชปรารภ','ARL มักกะสัน',
+  'ARL รามคำแหง','ARL หัวหมาก','ARL บ้านทับช้าง',
+  'ARL ลาดกระบัง','ARL สุวรรณภูมิ',
+  // SRT สายสีแดง
+  'SRT รังสิต','SRT ดอนเมือง','SRT หลักหก','SRT การเคหะ',
+  'SRT บางเขน','SRT หลักสี่','SRT มหาวิทยาลัยเกษตรศาสตร์',
+  'SRT บางซื่อ','SRT ตลิ่งชัน',
+  // BRT
+  'BRT ราชพฤกษ์','BRT สาทร','BRT อาคารสงเคราะห์',
 ]
 
 // ─── Types ───────────────────────────────────────────────────
@@ -105,9 +151,11 @@ function toInput(f: FormState): ProjectInput {
 interface Props {
   initialData?: Project
   projectId?: string
+  /** Station names already used in DB — shown first in combobox */
+  existingStations?: string[]
 }
 
-export default function ProjectForm({ initialData, projectId }: Props) {
+export default function ProjectForm({ initialData, projectId, existingStations = [] }: Props) {
   const router = useRouter()
   const [form, setForm] = useState<FormState>(
     initialData ? projectToForm(initialData) : DEFAULT
@@ -116,7 +164,19 @@ export default function ProjectForm({ initialData, projectId }: Props) {
   const [isPending, startTransition] = useTransition()
   const [isEnriching, startEnrich] = useTransition()
   const [enrichMessage, setEnrichMessage] = useState('')
-  const [btsInput, setBtsInput] = useState('')
+  const [stationSearch, setStationSearch] = useState('')
+  const [stationOpen, setStationOpen] = useState(false)
+  const stationRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!stationOpen) return
+    function handler(e: MouseEvent) {
+      if (stationRef.current && !stationRef.current.contains(e.target as Node)) setStationOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [stationOpen])
   const [bypassDuplicate, setBypassDuplicate] = useState(false)
   const [duplicateSuggestion, setDuplicateSuggestion] = useState<{
     id: string
@@ -202,6 +262,7 @@ export default function ProjectForm({ initialData, projectId }: Props) {
       apply('zip',         result.zip)
       if (result.facilities?.length) { set('facilities', result.facilities); fields.push('facilities') }
       if (result.bts_mrt?.length)    { set('bts_mrt',   result.bts_mrt);    fields.push('bts_mrt') }
+      if (result.map_url)            { set('map_url', result.map_url);       fields.push('map_url') }
 
       const uniqueFields = [...new Set(fields)]
       setEnrichMessage(uniqueFields.length ? `กรอกข้อมูลอัตโนมัติ ${uniqueFields.length} รายการ` : 'ไม่พบข้อมูลเพิ่มเติม')
@@ -341,66 +402,112 @@ export default function ProjectForm({ initialData, projectId }: Props) {
         </div>
       </Section>
 
-      {/* BTS/MRT */}
+      {/* BTS/MRT — combobox */}
       <Section title="BTS / MRT ใกล้เคียง">
         <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {BTS_MRT_OPTIONS.map(s => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => toggleArray('bts_mrt', s)}
-                className={`px-2.5 py-1 text-xs rounded-full border transition ${
-                  form.bts_mrt.includes(s)
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-          {/* Custom BTS/MRT */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={btsInput}
-              onChange={e => setBtsInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && btsInput.trim()) {
-                  e.preventDefault()
-                  set('bts_mrt', [...form.bts_mrt, btsInput.trim()])
-                  setBtsInput('')
-                }
-              }}
-              placeholder="เพิ่มสถานีอื่น..."
-              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (btsInput.trim()) {
-                  set('bts_mrt', [...form.bts_mrt, btsInput.trim()])
-                  setBtsInput('')
-                }
-              }}
-              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
-          {form.bts_mrt.filter(s => !BTS_MRT_OPTIONS.includes(s)).length > 0 && (
+          {/* Selected stations chips */}
+          {form.bts_mrt.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {form.bts_mrt.filter(s => !BTS_MRT_OPTIONS.includes(s)).map(s => (
-                <span key={s} className="flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+              {form.bts_mrt.map(s => (
+                <span key={s} className="flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-100 text-blue-700 rounded-full font-medium">
+                  <Train className="w-3 h-3" />
                   {s}
-                  <button type="button" onClick={() => set('bts_mrt', form.bts_mrt.filter(v => v !== s))}>
+                  <button type="button" onClick={() => set('bts_mrt', form.bts_mrt.filter(v => v !== s))} className="ml-0.5 hover:text-red-500 transition">
                     <X className="w-3 h-3" />
                   </button>
                 </span>
               ))}
             </div>
           )}
+
+          {/* Combobox */}
+          <div ref={stationRef} className="relative">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Train className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={stationSearch}
+                  onChange={e => { setStationSearch(e.target.value); setStationOpen(true) }}
+                  onFocus={() => setStationOpen(true)}
+                  onKeyDown={e => {
+                    // Allow adding custom station with Enter if no match
+                    if (e.key === 'Enter' && stationSearch.trim()) {
+                      e.preventDefault()
+                      const val = stationSearch.trim()
+                      if (!form.bts_mrt.includes(val)) set('bts_mrt', [...form.bts_mrt, val])
+                      setStationSearch('')
+                      setStationOpen(false)
+                    }
+                    if (e.key === 'Escape') setStationOpen(false)
+                  }}
+                  placeholder="ค้นหาสถานี เช่น BTS อโศก, MRT สุทธิสาร..."
+                  className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setStationOpen(o => !o)}
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl transition"
+              >
+                <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${stationOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+
+            {stationOpen && (() => {
+              const q = stationSearch.trim().toLowerCase()
+              // DB stations first, then canonical list — deduplicated
+              const allOptions = [...new Set([...existingStations, ...CANONICAL_STATIONS])]
+              const filtered = q
+                ? allOptions.filter(s => s.toLowerCase().includes(q))
+                : allOptions
+              const available = filtered.filter(s => !form.bts_mrt.includes(s))
+              if (available.length === 0 && !q) return null
+              return (
+                <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto py-1">
+                  {q && !CANONICAL_STATIONS.includes(stationSearch.trim()) && stationSearch.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = stationSearch.trim()
+                        if (!form.bts_mrt.includes(val)) set('bts_mrt', [...form.bts_mrt, val])
+                        setStationSearch('')
+                        setStationOpen(false)
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 border-b border-gray-100"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      เพิ่ม &ldquo;{stationSearch.trim()}&rdquo;
+                    </button>
+                  )}
+                  {available.length > 0
+                    ? available.map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => {
+                            set('bts_mrt', [...form.bts_mrt, s])
+                            setStationSearch('')
+                            setStationOpen(false)
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <Train className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                          {s}
+                          {existingStations.includes(s) && (
+                            <span className="ml-auto text-[10px] text-blue-500 font-medium">ใช้แล้ว</span>
+                          )}
+                        </button>
+                      ))
+                    : (
+                        <p className="px-4 py-3 text-sm text-gray-400 text-center">ไม่พบสถานี</p>
+                      )
+                  }
+                </div>
+              )
+            })()}
+          </div>
+          <p className="text-xs text-gray-400">พิมพ์ชื่อสถานีเพื่อค้นหา หรือกด ▾ เพื่อดูรายการทั้งหมด · Enter เพิ่มชื่อที่ไม่มีในรายการ</p>
         </div>
       </Section>
 

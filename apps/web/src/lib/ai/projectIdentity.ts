@@ -20,6 +20,21 @@ import { normalizeAddressFields } from '@/lib/address'
 
 // ─── Public types ─────────────────────────────────────────────
 
+export interface TransitDistance {
+  /** Thai station name e.g. "BTS อโศก" */
+  station: string
+  /** Line name e.g. "BTS สุขุมวิท" */
+  line: string
+  /** Distance in metres */
+  distance_m: number
+}
+
+export interface NearbyAmenity {
+  name: string
+  category: 'education' | 'shopping' | 'healthcare' | 'cultural'
+  distance_m: number
+}
+
 export interface ProjectIdentityResult {
   /** Canonical Thai project name (corrected from raw input when needed). */
   name_th: string
@@ -34,13 +49,21 @@ export interface ProjectIdentityResult {
   confidence: number
   /** Other known names: abbreviations, old names, romanised variants. */
   aliases: string[]
+  /** Developer name — ALWAYS in English (e.g. "Sansiri", "AP Thailand") */
   developer: string | null
   built_year: number | null
   total_floors: number | null
   total_units: number | null
   parking_pct: number | null
   facilities: string[]
+  /** Station names only (Thai), used for filtering e.g. ["BTS อโศก", "MRT สุขุมวิท"] */
   bts_mrt: string[]
+  /** Nearest station per line with distance in metres */
+  transit_distances: TransitDistance[]
+  /** Top-tier nearby amenities, max 2 per category within 5km */
+  nearby_amenities: NearbyAmenity[]
+  /** Google Maps URL — direct link or search URL */
+  map_url: string | null
   address_road: string | null
   moo: string | null
   province: string | null
@@ -63,6 +86,9 @@ interface RawGeminiProject {
   parking_pct?: number | null
   facilities?: string[] | null
   bts_mrt?: string[] | null
+  transit_distances?: TransitDistance[] | null
+  nearby_amenities?: NearbyAmenity[] | null
+  map_url?: string | null
   address_road?: string | null
   moo?: string | null
   province?: string | null
@@ -81,7 +107,7 @@ function buildPrompt(rawName: string): string {
 ขอให้คุณ:
 1. ระบุว่าชื่อนี้ตรงกับโครงการอสังหาริมทรัพย์ใด (แม้ชื่อจะสะกดผิด เป็นภาษาอังกฤษ หรือเป็นชื่อทับศัพท์)
 2. แก้ไขชื่อให้เป็นชื่อทางการที่ถูกต้อง
-3. รวบรวมข้อมูลโครงการ
+3. รวบรวมข้อมูลโครงการ รวมถึงระยะทางจากรถไฟฟ้าทุกสาย และสถานที่สำคัญใกล้เคียง
 
 ส่งคืน JSON เท่านั้น ไม่ต้องมีคำอธิบาย:
 
@@ -90,13 +116,28 @@ function buildPrompt(rawName: string): string {
   "name_en": "Official English project name หรือ null",
   "confidence": ตัวเลข 0-100 ความมั่นใจว่าระบุโครงการถูก,
   "aliases": ["ชื่อเรียกอื่น เช่น ชื่อย่อ ชื่อเก่า ชื่อทับศัพท์"],
-  "developer": "ชื่อบริษัทผู้พัฒนา หรือ null",
+  "developer": "ชื่อบริษัทผู้พัฒนาเป็นภาษาอังกฤษเท่านั้น เช่น Sansiri, AP Thailand, Origin Property, Pruksa Real Estate, SC Asset หรือ null",
   "built_year": ปีสร้างเสร็จ ค.ศ. หรือ null,
   "total_floors": จำนวนชั้น หรือ null,
   "total_units": จำนวนยูนิต หรือ null,
   "parking_pct": เปอร์เซ็นต์ที่จอดรถ 0-100 หรือ null,
-  "facilities": ["สิ่งอำนวยความสะดวก"],
-  "bts_mrt": ["BTS/MRT ที่ใกล้ที่สุด"],
+  "facilities": ["สิ่งอำนวยความสะดวก เช่น สระว่ายน้ำ ฟิตเนส"],
+  "bts_mrt": ["ชื่อสถานีที่ใกล้ที่สุด ภาษาไทย รูปแบบ: BTS อโศก หรือ MRT สุขุมวิท หรือ ARL มักกะสัน"],
+  "transit_distances": [
+    {
+      "station": "ชื่อสถานี ภาษาไทย เช่น BTS อโศก",
+      "line": "ชื่อสาย เช่น BTS สุขุมวิท หรือ MRT สายสีน้ำเงิน",
+      "distance_m": ระยะห่างเป็นเมตร เช่น 350
+    }
+  ],
+  "nearby_amenities": [
+    {
+      "name": "ชื่อสถานที่ที่มีชื่อเสียงและดังจริงๆ เท่านั้น",
+      "category": "education หรือ shopping หรือ healthcare หรือ cultural",
+      "distance_m": ระยะห่างเป็นเมตร
+    }
+  ],
+  "map_url": "ลิงก์ Google Maps ของโครงการ ถ้าไม่มีลิงก์ตรงให้ใช้รูปแบบ https://www.google.com/maps/search/?api=1&query=ชื่อโครงการ+กรุงเทพ",
   "address_road": "ถนนหลัก หรือ null",
   "moo": "หมู่บ้าน/ชุมชน หรือ null",
   "province": "จังหวัด (ภาษาไทย) หรือ null",
@@ -106,8 +147,12 @@ function buildPrompt(rawName: string): string {
 }
 
 กฎสำคัญ:
+- ชื่อผู้พัฒนา (developer): ภาษาอังกฤษเท่านั้นเสมอ ห้ามใส่ภาษาไทย (เช่น "แสนสิริ" → "Sansiri", "พฤกษา" → "Pruksa Real Estate", "อนันดา" → "Ananda Development")
+- ชื่อสถานีรถไฟฟ้า (bts_mrt และ transit_distances): ภาษาไทยเท่านั้น รูปแบบ "BTS ทองหล่อ" ไม่ใช่ "Thonglor"
+- transit_distances: ให้ครอบคลุมทุกสายที่อยู่ใกล้เคียงได้แก่ BTS สุขุมวิท, BTS สีลม, BTS สายสีทอง, MRT สายสีน้ำเงิน, MRT สายสีม่วง, MRT สายสีชมพู, MRT สายสีเหลือง, ARL แอร์พอร์ตเรลลิงก์, SRT สายสีแดง — ระบุเฉพาะสายที่อยู่ในระยะ 3 กม.
+- nearby_amenities: คัดเฉพาะสถานที่ที่มีชื่อเสียงระดับประเทศหรือระดับภูมิภาคเท่านั้น หมวดหมู่ละไม่เกิน 2 แห่ง รัศมีไม่เกิน 5 กม.
+- map_url: ถ้าไม่รู้ลิงก์ตรง ให้สร้าง Google Maps Search URL ในรูปแบบ https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rawName)}+กรุงเทพ
 - ถ้าชื่อที่ป้อนเป็นภาษาอังกฤษหรือทับศัพท์ → name_th คือชื่อทางการภาษาไทย
-- ถ้าชื่อที่ป้อนสะกดผิดเล็กน้อย → name_th คือชื่อที่แก้ไขแล้ว
 - confidence = 100 ถ้าแน่ใจมาก, ลดลงตามความไม่แน่นอน, 0 ถ้าไม่รู้จักโครงการนี้เลย
 - ถ้าไม่รู้จักโครงการ → name_th = ชื่อที่ผู้ใช้ป้อน, confidence = 0
 - ถ้าข้อมูลไม่แน่ชัด ให้ใส่ null ไม่ต้องเดา`
@@ -136,6 +181,9 @@ export async function identifyAndEnrichProject(
     parking_pct: null,
     facilities: [],
     bts_mrt: [],
+    transit_distances: [],
+    nearby_amenities: [],
+    map_url: null,
     address_road: null,
     moo: null,
     province: null,
@@ -187,7 +235,10 @@ export async function identifyAndEnrichProject(
       total_units:  typeof raw.total_units  === 'number' ? raw.total_units  : null,
       parking_pct:  typeof raw.parking_pct  === 'number' ? raw.parking_pct  : null,
       facilities:   Array.isArray(raw.facilities) ? raw.facilities.filter(Boolean) : [],
-      bts_mrt:      Array.isArray(raw.bts_mrt)    ? raw.bts_mrt.filter(Boolean)    : [],
+      bts_mrt:            Array.isArray(raw.bts_mrt) ? raw.bts_mrt.filter(Boolean) : [],
+      transit_distances:  Array.isArray(raw.transit_distances) ? raw.transit_distances : [],
+      nearby_amenities:   Array.isArray(raw.nearby_amenities)  ? raw.nearby_amenities  : [],
+      map_url:            raw.map_url ?? null,
       address_road: raw.address_road ?? null,
       moo:          raw.moo          ?? null,
       province:     normalized?.province_th    ?? null,

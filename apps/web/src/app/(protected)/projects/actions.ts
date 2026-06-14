@@ -17,6 +17,8 @@ export type ProjectInput = {
   parking_pct?: number
   facilities: string[]
   bts_mrt: string[]
+  transit_distances?: object[] | null
+  nearby_amenities?: object[] | null
   address_no?: string
   moo?: string
   address_road?: string
@@ -36,6 +38,7 @@ export type AiEnrichResult = {
   confidence?: number | null
   /** Other known aliases (abbreviations, old names, romanised variants). */
   aliases?: string[] | null
+  /** Developer name in English */
   developer?: string | null
   built_year?: number | null
   total_floors?: number | null
@@ -43,6 +46,9 @@ export type AiEnrichResult = {
   parking_pct?: number | null
   facilities?: string[]
   bts_mrt?: string[]
+  transit_distances?: object[] | null
+  nearby_amenities?: object[] | null
+  map_url?: string | null
   address_road?: string | null
   moo?: string | null
   province?: string | null
