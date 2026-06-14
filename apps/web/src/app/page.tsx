@@ -60,8 +60,9 @@ export default async function HomePage() {
     { data: latestArticles },
     { data: activePartners },
     { data: featuredVideos },
-    { data: stocksRaw },
+    { data: premiumStocksRaw },
     { data: bannerRows },
+    { data: regularStocksRaw },
     { count: contractCount },
     { count: agentCount },
     { count: stockCount },
@@ -72,13 +73,14 @@ export default async function HomePage() {
     supabase.from('articles').select('id, title, slug, excerpt, category').eq('is_published', true).order('created_at', { ascending: false }).limit(4),
     supabase.from('partners').select('id, name_th, name_en, logo_url, website').eq('is_active', true).order('sort_order'),
     supabase.from('website_videos').select('id, title, youtube_url').eq('is_active', true).eq('featured', true).order('sort_order').limit(1),
+    // Premium (HOT) listings — is_premium = true, up to 8
     supabase.from('stock')
       .select('id, unit_no, room_type, size_sqm, floor, rent_price, sale_price, listing_type, photo_urls, photo_thumb_urls, project_name, project_id, is_premium, co_agent_accepted, project:projects(province, district, bts_mrt)')
       .eq('status', 'available')
       .eq('is_published', true)
-      .order('is_premium', { ascending: false })
+      .eq('is_premium', true)
       .order('published_at', { ascending: false, nullsFirst: false })
-      .limit(12),
+      .limit(8),
     supabase.from('banners')
       .select('id, title, subtitle, tag, text_align, gradient, show_search, image_url, link_url')
       .eq('position', 'home_top')
@@ -86,12 +88,21 @@ export default async function HomePage() {
       .or(`start_date.is.null,start_date.lte.${today}`)
       .or(`end_date.is.null,end_date.gte.${today}`)
       .order('sort_order'),
+    // Regular listings — is_premium = false, up to 8
+    supabase.from('stock')
+      .select('id, unit_no, room_type, size_sqm, floor, rent_price, sale_price, listing_type, photo_urls, photo_thumb_urls, project_name, project_id, is_premium, co_agent_accepted, project:projects(province, district, bts_mrt)')
+      .eq('status', 'available')
+      .eq('is_published', true)
+      .eq('is_premium', false)
+      .order('published_at', { ascending: false, nullsFirst: false })
+      .limit(8),
     supabase.from('contracts').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('account_status', 'approved'),
     supabase.from('stock').select('*', { count: 'exact', head: true }).eq('is_published', true),
   ])
 
-  const featuredStocks = (stocksRaw ?? []) as unknown as StockWithProject[]
+  const premiumStocks  = (premiumStocksRaw  ?? []) as unknown as StockWithProject[]
+  const regularStocks  = (regularStocksRaw  ?? []) as unknown as StockWithProject[]
 
   // Build hero slides
   const FALLBACK_SLIDES: HeroSlide[] = [
@@ -233,25 +244,52 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* ─────────────── Featured Properties Carousel ─────────────── */}
-      {featuredStocks.length > 0 && (
-        <div className="py-10">
+      {/* ──────────────── HOT Listings (Premium · 3 เครดิต) ─────────── */}
+      {premiumStocks.length > 0 && (
+        <div className="py-10 bg-white border-b border-gray-100">
           <div className="max-w-6xl mx-auto px-4">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-gray-900">ทรัพย์สินแนะนำ</h2>
-              <Link href="/listing" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-xs px-2.5 py-1 rounded-full font-bold text-white animate-hot-glow"
+                  style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}
+                >
+                  HOT
+                </span>
+                <h2 className="text-lg font-bold text-gray-900">ทรัพย์สินแนะนำ</h2>
+              </div>
+              <Link href="/listing?premium=true" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                 ดูทั้งหมด <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
-            {/* Horizontal scroll on mobile, grid on desktop */}
             <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
-              {featuredStocks.map(stock => (
+              {premiumStocks.map(stock => (
                 <div key={stock.id} className="flex-shrink-0 w-72 sm:w-80 snap-start lg:w-auto">
                   <PropertyCard stock={stock} />
                 </div>
               ))}
             </div>
-            {/* CTA */}
+          </div>
+        </div>
+      )}
+
+      {/* ──────────────── Regular Listings (1 เครดิต) ────────────────── */}
+      {regularStocks.length > 0 && (
+        <div className="py-10">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-gray-900">ทรัพย์ทั่วไป</h2>
+              <Link href="/listing" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                ดูทั้งหมด <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
+              {regularStocks.map(stock => (
+                <div key={stock.id} className="flex-shrink-0 w-72 sm:w-80 snap-start lg:w-auto">
+                  <PropertyCard stock={stock} />
+                </div>
+              ))}
+            </div>
             <div className="mt-6 text-center">
               <Link
                 href="/listing"
