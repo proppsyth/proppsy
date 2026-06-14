@@ -3,11 +3,12 @@
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Sparkles, Loader2, Plus, X, CheckCircle2, AlertCircle, Train, ChevronDown } from 'lucide-react'
+import { Sparkles, Loader2, Plus, X, CheckCircle2, AlertCircle, Train, ChevronDown, MapPin, School, ShoppingBag, Heart, Landmark } from 'lucide-react'
 import type { Project } from '@/types'
 import { createProject, updateProject, enrichProject } from './actions'
 import type { ProjectInput } from './actions'
 import AddressSelector from '@/components/shared/AddressSelector'
+import { stationColorClass, stationDotClass } from '@/lib/transitColors'
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -72,6 +73,16 @@ const CANONICAL_STATIONS: string[] = [
 
 // ─── Types ───────────────────────────────────────────────────
 
+interface TransitEntry { station: string; line: string; distance_m: number }
+interface AmenityEntry { name: string; category: string; distance_m: number }
+
+const AMENITY_CATEGORIES = [
+  { value: 'education', label: 'สถานศึกษา', Icon: School },
+  { value: 'shopping',  label: 'ห้าง/ช้อปปิ้ง', Icon: ShoppingBag },
+  { value: 'healthcare',label: 'โรงพยาบาล', Icon: Heart },
+  { value: 'cultural',  label: 'วัด/ศาสนสถาน', Icon: Landmark },
+]
+
 interface FormState {
   name_th: string
   name_en: string
@@ -122,7 +133,11 @@ function projectToForm(p: Project): FormState {
   }
 }
 
-function toInput(f: FormState): ProjectInput {
+function toInput(
+  f: FormState,
+  transitDistances: TransitEntry[],
+  amenities: AmenityEntry[],
+): ProjectInput {
   const str = (v: string) => v.trim() || undefined
   const num = (v: string) => v.trim() ? parseFloat(v) || undefined : undefined
   return {
@@ -135,6 +150,8 @@ function toInput(f: FormState): ProjectInput {
     parking_pct: num(f.parking_pct),
     facilities: f.facilities,
     bts_mrt: f.bts_mrt,
+    transit_distances: transitDistances.length ? transitDistances : null,
+    nearby_amenities:  amenities.length        ? amenities        : null,
     address_no: str(f.address_no),
     moo: str(f.moo),
     address_road: str(f.address_road),
@@ -164,6 +181,18 @@ export default function ProjectForm({ initialData, projectId, existingStations =
   const [isPending, startTransition] = useTransition()
   const [isEnriching, startEnrich] = useTransition()
   const [enrichMessage, setEnrichMessage] = useState('')
+  // Transit distances & amenities (structured arrays, not part of string FormState)
+  const [transitDistances, setTransitDistances] = useState<TransitEntry[]>(
+    () => (initialData as unknown as { transit_distances?: TransitEntry[] })?.transit_distances ?? []
+  )
+  const [amenities, setAmenities] = useState<AmenityEntry[]>(
+    () => (initialData as unknown as { nearby_amenities?: AmenityEntry[] })?.nearby_amenities ?? []
+  )
+  // Row-add state for transit
+  const [newTransit, setNewTransit] = useState<TransitEntry>({ station: '', line: '', distance_m: 0 })
+  // Row-add state for amenities
+  const [newAmenity, setNewAmenity] = useState<AmenityEntry>({ name: '', category: 'education', distance_m: 0 })
+
   const [stationSearch, setStationSearch] = useState('')
   const [stationOpen, setStationOpen] = useState(false)
   const stationRef = useRef<HTMLDivElement>(null)
@@ -263,6 +292,14 @@ export default function ProjectForm({ initialData, projectId, existingStations =
       if (result.facilities?.length) { set('facilities', result.facilities); fields.push('facilities') }
       if (result.bts_mrt?.length)    { set('bts_mrt',   result.bts_mrt);    fields.push('bts_mrt') }
       if (result.map_url)            { set('map_url', result.map_url);       fields.push('map_url') }
+      if (result.transit_distances?.length) {
+        setTransitDistances(result.transit_distances as TransitEntry[])
+        fields.push('transit_distances')
+      }
+      if (result.nearby_amenities?.length) {
+        setAmenities(result.nearby_amenities as AmenityEntry[])
+        fields.push('nearby_amenities')
+      }
 
       const uniqueFields = [...new Set(fields)]
       setEnrichMessage(uniqueFields.length ? `กรอกข้อมูลอัตโนมัติ ${uniqueFields.length} รายการ` : 'ไม่พบข้อมูลเพิ่มเติม')
@@ -276,7 +313,7 @@ export default function ProjectForm({ initialData, projectId, existingStations =
     setError('')
     setDuplicateSuggestion(null)
     startTransition(async () => {
-      const input = toInput(form)
+      const input = toInput(form, transitDistances, amenities)
       if (projectId) {
         const res = await updateProject(projectId, input)
         if (res.error) { setError(res.error); return }
@@ -402,17 +439,17 @@ export default function ProjectForm({ initialData, projectId, existingStations =
         </div>
       </Section>
 
-      {/* BTS/MRT — combobox */}
-      <Section title="BTS / MRT ใกล้เคียง">
+      {/* BTS/MRT — combobox (Section ต้องไม่ clip overflow เพื่อให้ dropdown โชว์ได้) */}
+      <Section title="BTS / MRT ใกล้เคียง" noClip>
         <div className="space-y-3">
           {/* Selected stations chips */}
           {form.bts_mrt.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {form.bts_mrt.map(s => (
-                <span key={s} className="flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-100 text-blue-700 rounded-full font-medium">
-                  <Train className="w-3 h-3" />
+                <span key={s} className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-full font-medium border ${stationColorClass(s)}`}>
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${stationDotClass(s)}`} />
                   {s}
-                  <button type="button" onClick={() => set('bts_mrt', form.bts_mrt.filter(v => v !== s))} className="ml-0.5 hover:text-red-500 transition">
+                  <button type="button" onClick={() => set('bts_mrt', form.bts_mrt.filter(v => v !== s))} className="ml-0.5 hover:opacity-60 transition">
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -511,6 +548,134 @@ export default function ProjectForm({ initialData, projectId, existingStations =
         </div>
       </Section>
 
+      {/* ระยะทางรถไฟฟ้า */}
+      <Section title="ระยะทางสถานีรถไฟฟ้า (เมตร)">
+        <div className="space-y-2">
+          {transitDistances.length > 0 && (
+            <div className="space-y-1.5">
+              {transitDistances.map((t, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
+                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${stationDotClass(t.station)}`} />
+                  <span className="font-medium text-gray-800 flex-1 truncate">{t.station}</span>
+                  <span className="text-xs text-gray-400 truncate hidden sm:block">{t.line}</span>
+                  <span className="text-xs font-semibold text-gray-700 flex-shrink-0 ml-auto">
+                    {t.distance_m >= 1000
+                      ? `${(t.distance_m / 1000).toFixed(1)} กม.`
+                      : `${t.distance_m} ม.`}
+                  </span>
+                  <button type="button" onClick={() => setTransitDistances(prev => prev.filter((_, j) => j !== i))} className="text-gray-300 hover:text-red-500 transition flex-shrink-0">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Add row */}
+          <div className="grid grid-cols-12 gap-2 pt-1">
+            <input
+              type="text"
+              value={newTransit.station}
+              onChange={e => setNewTransit(p => ({ ...p, station: e.target.value }))}
+              placeholder="ชื่อสถานี เช่น BTS อโศก"
+              className="col-span-5 px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="text"
+              value={newTransit.line}
+              onChange={e => setNewTransit(p => ({ ...p, line: e.target.value }))}
+              placeholder="สาย เช่น BTS สุขุมวิท"
+              className="col-span-4 px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="number"
+              value={newTransit.distance_m || ''}
+              onChange={e => setNewTransit(p => ({ ...p, distance_m: parseInt(e.target.value) || 0 }))}
+              placeholder="ม."
+              className="col-span-2 px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (!newTransit.station.trim()) return
+                setTransitDistances(prev => [...prev, { ...newTransit }])
+                setNewTransit({ station: '', line: '', distance_m: 0 })
+              }}
+              className="col-span-1 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-xs text-gray-400">AI จะกรอกให้อัตโนมัติเมื่อกดค้นหาโครงการ หรือเพิ่มเองด้วยปุ่ม +</p>
+        </div>
+      </Section>
+
+      {/* สถานที่ใกล้เคียง */}
+      <Section title="สถานที่สำคัญใกล้เคียง (รัศมี 5 กม.)">
+        <div className="space-y-2">
+          {amenities.length > 0 && (
+            <div className="space-y-1.5">
+              {amenities.map((a, i) => {
+                const cat = AMENITY_CATEGORIES.find(c => c.value === a.category)
+                const CatIcon = cat?.Icon ?? MapPin
+                return (
+                  <div key={i} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
+                    <CatIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                    <span className="font-medium text-gray-800 flex-1 truncate">{a.name}</span>
+                    <span className="text-xs text-gray-400 hidden sm:block">{cat?.label ?? a.category}</span>
+                    <span className="text-xs font-semibold text-gray-700 flex-shrink-0 ml-auto">
+                      {a.distance_m >= 1000
+                        ? `${(a.distance_m / 1000).toFixed(1)} กม.`
+                        : `${a.distance_m} ม.`}
+                    </span>
+                    <button type="button" onClick={() => setAmenities(prev => prev.filter((_, j) => j !== i))} className="text-gray-300 hover:text-red-500 transition flex-shrink-0">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          {/* Add row */}
+          <div className="grid grid-cols-12 gap-2 pt-1">
+            <input
+              type="text"
+              value={newAmenity.name}
+              onChange={e => setNewAmenity(p => ({ ...p, name: e.target.value }))}
+              placeholder="ชื่อสถานที่ เช่น Central World"
+              className="col-span-5 px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <select
+              value={newAmenity.category}
+              onChange={e => setNewAmenity(p => ({ ...p, category: e.target.value }))}
+              className="col-span-4 px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              {AMENITY_CATEGORIES.map(c => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+            <input
+              type="number"
+              value={newAmenity.distance_m || ''}
+              onChange={e => setNewAmenity(p => ({ ...p, distance_m: parseInt(e.target.value) || 0 }))}
+              placeholder="ม."
+              className="col-span-2 px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (!newAmenity.name.trim()) return
+                setAmenities(prev => [...prev, { ...newAmenity }])
+                setNewAmenity({ name: '', category: 'education', distance_m: 0 })
+              }}
+              className="col-span-1 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-xs text-gray-400">AI จะกรอกให้อัตโนมัติ หรือเพิ่มเองด้วยปุ่ม + · ห้าง โรงเรียน โรงพยาบาล วัด</p>
+        </div>
+      </Section>
+
       {/* สิ่งอำนวยความสะดวก */}
       <Section title="สิ่งอำนวยความสะดวก">
         <div className="flex flex-wrap gap-2">
@@ -591,10 +756,10 @@ export default function ProjectForm({ initialData, projectId, existingStations =
 
 // ─── Sub-components ──────────────────────────────────────────
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, noClip }: { title: string; children: React.ReactNode; noClip?: boolean }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
+    <div className={`bg-white rounded-xl border border-gray-100 shadow-sm ${noClip ? 'overflow-visible' : 'overflow-hidden'}`}>
+      <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70 rounded-t-xl">
         <h2 className="text-sm font-semibold text-gray-700">{title}</h2>
       </div>
       <div className="p-4">{children}</div>

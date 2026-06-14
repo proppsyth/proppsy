@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, Pencil, Building2, MapPin, ExternalLink, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Pencil, Building2, MapPin, ExternalLink, ShieldCheck, Train, School, ShoppingBag, Heart, Landmark } from 'lucide-react'
+import { stationColorClass, stationDotClass } from '@/lib/transitColors'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import type { Project } from '@/types'
@@ -116,16 +117,103 @@ export default async function ProjectDetailPage({
             </Section>
           )}
 
-          {/* BTS/MRT */}
+          {/* BTS/MRT + distances */}
           {p.bts_mrt?.length > 0 && (
             <Section title="BTS / MRT ใกล้เคียง">
-              <div className="flex flex-wrap gap-2">
-                {p.bts_mrt.map(s => (
-                  <span key={s} className="text-xs px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full font-medium">
-                    {s}
-                  </span>
+              {(() => {
+                // Try to enrich chips with distance data
+                const distMap = new Map<string, number>(
+                  ((p as unknown as { transit_distances?: { station: string; distance_m: number }[] })
+                    .transit_distances ?? []).map(d => [d.station, d.distance_m])
+                )
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    {p.bts_mrt.map(s => {
+                      const dm = distMap.get(s)
+                      return (
+                        <span key={s} className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full font-medium border ${stationColorClass(s)}`}>
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${stationDotClass(s)}`} />
+                          {s}
+                          {dm != null && (
+                            <span className="opacity-70 font-normal">
+                              {dm >= 1000 ? `${(dm/1000).toFixed(1)}กม.` : `${dm}ม.`}
+                            </span>
+                          )}
+                        </span>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+            </Section>
+          )}
+
+          {/* Transit distances full table */}
+          {((p as unknown as { transit_distances?: unknown[] }).transit_distances ?? []).length > 0 && (
+            <Section title="ระยะทางสถานีรถไฟฟ้า (ทุกสาย)">
+              <div className="space-y-1.5">
+                {((p as unknown as { transit_distances?: { station: string; line: string; distance_m: number }[] })
+                  .transit_distances ?? []).map((t, i) => (
+                  <div key={i} className="flex items-center gap-3 py-1.5 border-b border-gray-50 last:border-0">
+                    <Train className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                    <span className="text-sm font-medium text-gray-800 flex-1">{t.station}</span>
+                    <span className="text-xs text-gray-400 hidden sm:block">{t.line}</span>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${stationColorClass(t.station)}`}>
+                      {t.distance_m >= 1000
+                        ? `${(t.distance_m / 1000).toFixed(1)} กม.`
+                        : `${t.distance_m} ม.`}
+                    </span>
+                  </div>
                 ))}
               </div>
+            </Section>
+          )}
+
+          {/* Nearby amenities */}
+          {((p as unknown as { nearby_amenities?: unknown[] }).nearby_amenities ?? []).length > 0 && (
+            <Section title="สถานที่สำคัญใกล้เคียง">
+              {(() => {
+                const catMeta: Record<string, { label: string; Icon: React.ComponentType<{ className?: string }> }> = {
+                  education: { label: 'สถานศึกษา', Icon: School },
+                  shopping:  { label: 'ห้าง/ช้อปปิ้ง', Icon: ShoppingBag },
+                  healthcare:{ label: 'โรงพยาบาล', Icon: Heart },
+                  cultural:  { label: 'วัด/ศาสนสถาน', Icon: Landmark },
+                }
+                const grouped = new Map<string, { name: string; distance_m: number }[]>()
+                for (const a of (p as unknown as { nearby_amenities?: { name: string; category: string; distance_m: number }[] }).nearby_amenities ?? []) {
+                  const arr = grouped.get(a.category) ?? []
+                  arr.push({ name: a.name, distance_m: a.distance_m })
+                  grouped.set(a.category, arr)
+                }
+                return (
+                  <div className="space-y-3">
+                    {[...grouped.entries()].map(([cat, items]) => {
+                      const meta = catMeta[cat] ?? { label: cat, Icon: MapPin }
+                      const CatIcon = meta.Icon
+                      return (
+                        <div key={cat}>
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <CatIcon className="w-3.5 h-3.5 text-gray-400" />
+                            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{meta.label}</span>
+                          </div>
+                          <div className="space-y-1">
+                            {items.map((a, i) => (
+                              <div key={i} className="flex items-center justify-between text-sm py-1 pl-5 border-b border-gray-50 last:border-0">
+                                <span className="text-gray-800">{a.name}</span>
+                                <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                                  {a.distance_m >= 1000
+                                    ? `${(a.distance_m/1000).toFixed(1)} กม.`
+                                    : `${a.distance_m} ม.`}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </Section>
           )}
 
