@@ -159,6 +159,7 @@ export default async function ListingPage({
   return (
     <div className="min-h-screen bg-gray-50">
       <PublicNav />
+      <div className="max-w-7xl mx-auto">
       <div className="bg-white border-b border-gray-100 px-4 py-3.5">
         <h1 className="text-base font-bold text-gray-900">อสังหาริมทรัพย์ทั้งหมด</h1>
         <p className="text-xs text-gray-400 mt-0.5">เช่า-ขาย คอนโด บ้าน ทาวน์เฮ้าส์ ทั่วประเทศไทย</p>
@@ -171,6 +172,7 @@ export default async function ListingPage({
         filterOptions={{ provinces, btsMrtOptions, roomTypes }}
         currentFilters={currentFilters}
       />
+      </div>
       <PublicFooter />
     </div>
   )

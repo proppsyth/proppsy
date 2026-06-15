@@ -27,7 +27,7 @@ const getStock = cache(async (id: string) => {
   const { data } = await supabase
     .from('stock')
     .select(`
-      *,
+      *, published_at,
       project:projects(
         name_th, name_en, developer, built_year,
         total_floors, total_units, parking_pct,
@@ -257,14 +257,22 @@ export default async function PublicPropertyDetailPage({
                 )}
               </div>
 
-              {/* View count + Share */}
+              {/* View count + published date + Share */}
               <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
-                {(stock.view_count ?? 0) > 0 && (
-                  <p className="flex items-center gap-1 text-xs text-gray-400">
-                    <Eye className="w-3.5 h-3.5" />
-                    {(stock.view_count ?? 0).toLocaleString('th-TH')} ครั้งที่เข้าชม
-                  </p>
-                )}
+                <div className="flex items-center gap-3 flex-wrap text-xs text-gray-400">
+                  {(stock.view_count ?? 0) > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Eye className="w-3.5 h-3.5" />
+                      {(stock.view_count ?? 0).toLocaleString('th-TH')} ครั้งที่เข้าชม
+                    </span>
+                  )}
+                  {(stock as unknown as { published_at?: string | null }).published_at && (
+                    <span>
+                      เผยแพร่{' '}
+                      {new Date((stock as unknown as { published_at: string }).published_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-3 flex-wrap">
                   <p className="text-xs text-gray-400">แชร์ประกาศนี้</p>
                   <SaveButton stockId={stock.id} />

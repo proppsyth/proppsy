@@ -84,7 +84,7 @@ export default function HomeHeroClient({ slides, provinces, btsMrtOptions }: Pro
       <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/10 to-black/60 pointer-events-none" />
 
       {/* ── Content ── */}
-      <div className="relative z-10 w-full max-w-2xl mx-auto px-4 flex flex-col items-center gap-4 pt-12 pb-16">
+      <div className="relative z-10 w-full max-w-xl mx-auto px-4 flex flex-col items-center gap-4 pt-12 pb-16">
         {/* Tag */}
         {slide.tag && (
           <span className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-md text-white text-xs font-medium px-4 py-1.5 rounded-full border border-white/25">

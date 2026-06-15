@@ -250,26 +250,17 @@ export default async function HomePage() {
       {premiumStocks.length > 0 && (
         <div className="py-10 bg-white border-b border-gray-100">
           <div className="max-w-6xl mx-auto px-4">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <span
-                  className="text-xs px-2.5 py-1 rounded-full font-bold text-white animate-hot-glow"
-                  style={{ background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' }}
-                >
-                  Featured
-                </span>
-                <h2 className="text-lg font-bold text-gray-900">ทรัพย์เด่นประจำสัปดาห์</h2>
-              </div>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-gray-900">ทรัพย์เด่น</h2>
               <Link href="/listing?premium=true" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                 ดูทั้งหมด <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
-            <p className="text-xs text-gray-400 mb-5">คัดสรรจากราคา ทำเล และคะแนนรีวิว</p>
-            {/* Mobile: horizontal scroll · Desktop: 2-col grid (bigger cards) */}
-            <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0">
-              {premiumStocks.slice(0, 6).map(stock => (
-                <div key={stock.id} className="flex-shrink-0 w-80 snap-start sm:w-auto">
-                  <PremiumPropertyCard stock={stock} />
+            {/* Mobile: horizontal scroll · Desktop: 4-col grid, max 2 rows (8 items) */}
+            <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
+              {premiumStocks.slice(0, 8).map(stock => (
+                <div key={stock.id} className="flex-shrink-0 w-72 snap-start lg:w-auto">
+                  <PropertyCard stock={stock} />
                 </div>
               ))}
             </div>
@@ -295,7 +286,7 @@ export default async function HomePage() {
                   href={`/listing?bts_mrt=${encodeURIComponent(station)}`}
                   className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold border transition hover:opacity-90 active:scale-95 ${stationSolidColorClass(station)}`}
                 >
-                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${stationDotClass(station)} opacity-70`} />
+                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 bg-white/90 ring-1 ring-white/40`} />
                   {station}
                 </Link>
               ))}
@@ -308,20 +299,12 @@ export default async function HomePage() {
       {regularStocks.length > 0 && (
         <div className="py-10 bg-white border-b border-gray-100">
           <div className="max-w-6xl mx-auto px-4">
-            <div className="flex items-center justify-between mb-1">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-                    New Projects
-                  </span>
-                  <h2 className="text-lg font-bold text-gray-900">โครงการใหม่ที่น่าสนใจ</h2>
-                </div>
-              </div>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-gray-900">ทรัพย์ใหม่ที่น่าสนใจ</h2>
               <Link href="/listing" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                 ดูทั้งหมด <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
-            <p className="text-xs text-gray-400 mb-5">พร้อมอยู่จากผู้พัฒนาชั้นนำ</p>
             <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
               {regularStocks.map(stock => (
                 <div key={stock.id} className="flex-shrink-0 w-72 sm:w-80 snap-start lg:w-auto">

@@ -176,6 +176,7 @@ export default function LoginClient({ redirectTo }: { redirectTo: string }) {
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleLogin()}
               autoComplete="current-password"
               placeholder="••••••••"
               className="w-full px-4 py-3 pr-11 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
