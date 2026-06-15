@@ -5,6 +5,7 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import type { Appointment } from '@/types'
 import AppointmentList from '../appointments/AppointmentList'
+import { checkLeaseExpiryNotifications } from './lease-expiry-check'
 
 export const metadata: Metadata = { title: 'นัดหมาย & ปฏิทิน' }
 
@@ -44,10 +45,14 @@ export default async function CalendarPage({
   const monthStartStr = monthStart.toLocaleDateString('en-CA')
   const monthEndStr = monthEnd.toLocaleDateString('en-CA')
 
+  // Non-blocking: fire & forget lease expiry notifications
+  void checkLeaseExpiryNotifications()
+
   const [
     { data: monthAppointments },
     { data: contracts },
     { data: signingContracts },
+    { data: leaseEndStocks },
     { data: appointments },
   ] = await Promise.all([
     supabase
@@ -71,6 +76,13 @@ export default async function CalendarPage({
       .gte('move_in_date', monthStartStr)
       .lte('move_in_date', monthEndStr)
       .neq('status', 'cancelled'),
+    supabase
+      .from('stock')
+      .select('id, unit_no, project_name, contract_end_date')
+      .eq('agent_uid', user.id)
+      .eq('status', 'rented')
+      .gte('contract_end_date', monthStartStr)
+      .lte('contract_end_date', monthEndStr),
     isUpcoming
       ? supabase
           .from('appointments')
@@ -111,6 +123,15 @@ export default async function CalendarPage({
     const list = signingByDay.get(day) ?? []
     list.push(c)
     signingByDay.set(day, list)
+  }
+
+  const leaseByDay = new Map<number, typeof leaseEndStocks>()
+  for (const s of leaseEndStocks ?? []) {
+    if (!s.contract_end_date) continue
+    const day = new Date(s.contract_end_date + 'T00:00:00').getDate()
+    const list = leaseByDay.get(day) ?? []
+    list.push(s)
+    leaseByDay.set(day, list)
   }
 
   const firstWeekday = (monthStart.getDay() + 6) % 7
@@ -189,6 +210,7 @@ export default async function CalendarPage({
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />นัดหมาย</span>
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />สัญญาหมดอายุ</span>
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />นัดทำสัญญา</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block" />สัญญาเช่าหมด</span>
             </div>
 
             {/* Grid */}
@@ -206,8 +228,9 @@ export default async function CalendarPage({
                   const apts = aptByDay.get(day) ?? []
                   const expirations = contractByDay.get(day) ?? []
                   const signings = signingByDay.get(day) ?? []
+                  const leases = leaseByDay.get(day) ?? []
                   const weekday = i % 7
-                  const hasEvents = apts.length > 0 || expirations.length > 0 || signings.length > 0
+                  const hasEvents = apts.length > 0 || expirations.length > 0 || signings.length > 0 || leases.length > 0
 
                   return (
                     <div
@@ -235,6 +258,9 @@ export default async function CalendarPage({
                               ))}
                               {signings.slice(0, 2).map((_, idx) => (
                                 <span key={idx} className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                              ))}
+                              {leases.slice(0, 2).map((_, idx) => (
+                                <span key={idx} className="w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
                               ))}
                             </div>
                           )}
@@ -272,6 +298,17 @@ export default async function CalendarPage({
                               </Link>
                             ))}
                             {signings.length > 2 && <p className="text-[10px] text-green-400 px-1">+{signings.length - 2}</p>}
+                            {leases.slice(0, 2).map(s => (
+                              <Link
+                                key={s.id}
+                                href={`/stock/${s.id}`}
+                                className="block px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded text-[10px] truncate hover:bg-orange-200 transition"
+                                title={`${s.project_name ?? ''} ${s.unit_no ? `ห้อง ${s.unit_no}` : ''} สัญญาเช่าหมด`}
+                              >
+                                🏠 {s.unit_no ?? s.id}
+                              </Link>
+                            ))}
+                            {leases.length > 2 && <p className="text-[10px] text-orange-400 px-1">+{leases.length - 2}</p>}
                           </div>
                         </>
                       )}

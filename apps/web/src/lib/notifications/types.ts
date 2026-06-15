@@ -9,6 +9,9 @@ export type NotificationType =
   | 'contract_expiry_60'
   | 'contract_expiry_30'
   | 'contract_expiry_7'
+  // Stock lease end date warnings
+  | 'lease_expiry_30'
+  | 'lease_expiry_7'
   // Listings — view milestones
   | 'listing_views_100'
   | 'listing_views_500'
@@ -46,6 +49,8 @@ export const NOTIFICATION_ICON: Record<string, string> = {
   contract_expiry_60:  '⚠️',
   contract_expiry_30:  '⚠️',
   contract_expiry_7:   '🔴',
+  lease_expiry_30:     '🏠',
+  lease_expiry_7:      '🔴',
   listing_views_100:   '👁️',
   listing_views_500:   '🔥',
   listing_views_1000:  '🚀',
