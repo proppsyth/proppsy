@@ -12,6 +12,7 @@ import StockShareButtons from './StockShareButtons'
 import ContractHistory from './ContractHistory'
 import ActivityPanel from '@/components/shared/ActivityPanel'
 import PendingApprovalBanner from '@/components/shared/PendingApprovalBanner'
+import AiPostButton from './AiPostButton'
 
 export const metadata: Metadata = { title: 'รายละเอียดทรัพย์' }
 
@@ -340,6 +341,9 @@ export default async function StockDetailPage({
               <InfoItem label="บันทึกเมื่อ" value={createdDate} />
             </div>
           </Section>
+
+          {/* AI Facebook Post */}
+          <AiPostButton stockId={s.id} />
 
           {/* กิจกรรม */}
           <ActivityPanel entityType="stock" entityId={s.id} />
