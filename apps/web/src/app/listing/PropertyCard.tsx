@@ -28,6 +28,7 @@ export default function PropertyCard({ stock }: { stock: StockWithProject }) {
   return (
     <Link
       href={`/listing/${slug}`}
+      prefetch={false}
       className={`group bg-white rounded-2xl overflow-hidden border shadow-sm hover:shadow-md transition-shadow block ${
         stock.is_premium ? 'border-orange-200 ring-1 ring-orange-200' : 'border-gray-100'
       }`}

@@ -25,6 +25,11 @@ const nextConfig = {
     root: path.resolve(__dirname, '../..'),
   },
   images: {
+    // In dev mode, skip Next.js image optimization to avoid fetching from
+    // Supabase storage on every page load — those fetches time out on localhost
+    // and cause Supabase rate-limiting that makes the entire dev server hang.
+    // Production (Vercel) uses normal optimization with remotePatterns.
+    unoptimized: process.env.NODE_ENV === 'development',
     remotePatterns: [
       {
         protocol: 'https',

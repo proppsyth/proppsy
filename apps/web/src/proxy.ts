@@ -29,6 +29,15 @@ function isProtectedPath(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Public paths don't need auth validation — skip Supabase entirely.
+  // getUser() makes a round-trip to Supabase auth server on every request,
+  // which adds 500ms on Vercel and 20-40s on localhost. Skipping it for
+  // public pages (listing, news, homepage, sign, etc.) is safe because
+  // those pages use createServiceClient() directly and don't need a session.
+  if (!isProtectedPath(pathname)) {
+    return NextResponse.next({ request })
+  }
+
   // supabaseResponse carries refreshed session cookies back to the browser.
   // ALL return paths must either return this object or copy its cookies onto
   // their own response — otherwise the browser never receives the new tokens
@@ -63,9 +72,6 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
-  // Non-protected path: return supabaseResponse so refreshed tokens are forwarded.
-  if (!isProtectedPath(pathname)) return supabaseResponse
 
   // ── Gate 1: must be authenticated ───────────────────────────────────────────
   if (!user) {
@@ -128,7 +134,7 @@ export const config = {
     //   - Browser-level assets     (favicon.ico, manifests, icons, fonts)
     //   - Common static extensions (images, fonts, PDFs)
     // Public pages (/login, /listing, /sign, /news, etc.) ARE matched but
-    // skipped inside the function via isProtectedPath().
+    // exit early via the isProtectedPath() check at the top.
     '/((?!_next/static|_next/image|favicon\\.ico|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|pdf)$).*)',
   ],
 }

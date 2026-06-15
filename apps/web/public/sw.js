@@ -1,4 +1,4 @@
-const CACHE = 'proppsy-v3'
+const CACHE = 'proppsy-v4'
 
 self.addEventListener('install', () => self.skipWaiting())
 
@@ -17,6 +17,10 @@ self.addEventListener('fetch', e => {
   if (e.request.mode === 'navigate') return
   const url = new URL(e.request.url)
   if (url.origin !== self.location.origin) return
+  // Skip Next.js RSC / router data fetches — these must reach the server directly
+  // so App Router client-side navigation doesn't hang waiting on the SW.
+  if (url.searchParams.has('_rsc')) return
+  if (url.pathname.startsWith('/_next/data/')) return
 
   // Cache-first for static assets; network-first for everything else
   const isStatic =

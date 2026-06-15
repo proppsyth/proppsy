@@ -34,6 +34,7 @@ export default function PremiumPropertyCard({ stock }: { stock: StockWithProject
   return (
     <Link
       href={`/listing/${slug}`}
+      prefetch={false}
       className="group bg-white rounded-2xl overflow-hidden border border-orange-200 ring-1 ring-orange-100 shadow-md hover:shadow-xl transition-shadow block"
     >
       {/* Image — 16:9 for premium feel */}

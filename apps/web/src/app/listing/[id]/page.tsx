@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
+import { cache } from 'react'
 import { ArrowLeft, Building2, Maximize, Layers, MapPin, Wind, Eye, Users } from 'lucide-react'
 import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -19,6 +20,31 @@ import RecentlyViewed from './RecentlyViewed'
 import SaveButton from '@/components/shared/SaveButton'
 import { BannerSidebar } from '@/components/shared/BannerZone'
 
+// Deduplicate the stock fetch across generateMetadata + page component —
+// React.cache() ensures only one Supabase round-trip per request, not two.
+const getStock = cache(async (id: string) => {
+  const supabase = createServiceClient()
+  const { data } = await supabase
+    .from('stock')
+    .select(`
+      *,
+      project:projects(
+        name_th, name_en, developer, built_year,
+        total_floors, total_units, parking_pct,
+        facilities, bts_mrt,
+        transit_distances, nearby_amenities,
+        address_no, address_road, province, district, subdistrict, zip,
+        map_url
+      ),
+      agent:profiles(name, nickname, email, phone, line_id, logo_url, avatar_url, company_name, team_name, first_name_th, last_name_th, position, public_slug)
+    `)
+    .eq('id', id)
+    .eq('is_published', true)
+    .eq('status', 'available')
+    .single()
+  return data
+})
+
 export async function generateMetadata({
   params,
 }: {
@@ -26,12 +52,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id: rawSlug } = await params
   const id = extractListingId(rawSlug)
-  const supabase = createServiceClient()
-  const { data } = await supabase
-    .from('stock')
-    .select('project_name, room_type, unit_no, listing_type, rent_price, sale_price, size_sqm, photo_urls, project:projects(district, province)')
-    .eq('id', id)
-    .single()
+  const data = await getStock(id)
 
   if (!data) return { title: 'รายละเอียดทรัพย์ — Proppsy' }
 
@@ -122,28 +143,9 @@ export default async function PublicPropertyDetailPage({
   const { id: rawSlug } = await params
   // Support both legacy /listing/STK-0006 and SEO /listing/for-rent-studio-stk-0006
   const id = extractListingId(rawSlug)
-  // Use service client so unauthenticated visitors can read published listings (bypasses RLS)
-  const supabase = createServiceClient()
 
-  const { data: stockRaw } = await supabase
-    .from('stock')
-    .select(`
-      *,
-      project:projects(
-        name_th, name_en, developer, built_year,
-        total_floors, total_units, parking_pct,
-        facilities, bts_mrt,
-        transit_distances, nearby_amenities,
-        address_no, address_road, province, district, subdistrict, zip,
-        map_url
-      ),
-      agent:profiles(name, nickname, email, phone, line_id, logo_url, avatar_url, company_name, team_name, first_name_th, last_name_th, position, public_slug)
-    `)
-    .eq('id', id)
-    .eq('is_published', true)
-    .eq('status', 'available')
-    .single()
-
+  // getStock() is React.cache() — result is shared with generateMetadata (no extra round-trip)
+  const stockRaw = await getStock(id)
   if (!stockRaw) notFound()
 
   const stock = stockRaw as unknown as Stock & {
@@ -158,7 +160,8 @@ export default async function PublicPropertyDetailPage({
   const projectName = stock.project?.name_th ?? stock.project_name
   const canonicalSlug = buildListingSlug({ id: stock.id, room_type: stock.room_type, listing_type: stock.listing_type, project_name: stock.project_name })
 
-  // Sibling units in same project (fetch in parallel-ish after main query resolves)
+  const supabase = createServiceClient()
+  // Sibling units in same project
   const siblingRes = stock.project_id
     ? await supabase
       .from('stock')
