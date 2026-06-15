@@ -1,7 +1,38 @@
 import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+// All agent workspace routes under (protected)/
+const AGENT_PREFIXES = [
+  '/dashboard',
+  '/stock',
+  '/owners',
+  '/customers',
+  '/projects',
+  '/contracts',
+  '/calendar',
+  '/commission',
+  '/credits',
+  '/billing',
+  '/profile',
+  '/consent',
+  '/pending-approval',
+]
+
+function isProtectedPath(pathname: string): boolean {
+  return (
+    pathname.startsWith('/admin') ||
+    AGENT_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))
+  )
+}
 
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // supabaseResponse carries refreshed session cookies back to the browser.
+  // ALL return paths must either return this object or copy its cookies onto
+  // their own response — otherwise the browser never receives the new tokens
+  // and the next request triggers another refresh cycle.
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -13,9 +44,10 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
+          // Write new tokens into the request so downstream Server Components
+          // see the refreshed session within this same request cycle.
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          // Rebuild supabaseResponse so the Set-Cookie headers reach the browser.
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -25,33 +57,65 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // getUser() validates the JWT with the Supabase auth server (not just locally).
+  // This is also what triggers the automatic access-token refresh when the
+  // token is near expiry — do NOT replace with getSession() which is local-only.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  const pathname = request.nextUrl.pathname
+  // Non-protected path: return supabaseResponse so refreshed tokens are forwarded.
+  if (!isProtectedPath(pathname)) return supabaseResponse
 
-  // Public routes — no auth required
-  const publicPaths = [
-    '/', '/login', '/register', '/about', '/contact', '/how-to',
-    '/news', '/listing', '/agent', '/services',
-    '/reset-password', '/forgot-password', '/auth', '/help', '/sign',
-  ]
-  const isPublicPath = publicPaths.some(p => pathname === p || pathname.startsWith(p + '/'))
-
-  // Unauthenticated user on a protected route → redirect to login
-  if (!user && !isPublicPath) {
+  // ── Gate 1: must be authenticated ───────────────────────────────────────────
+  if (!user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    // Preserve intended destination so login can redirect back after sign-in.
+    // Login page reads `redirect` param — keep consistent with LoginClient.
     url.searchParams.set('redirect', pathname)
     return NextResponse.redirect(url)
   }
 
-  // Authenticated user visiting login/register → redirect to dashboard
-  // Skip server action requests to avoid crashing fetchServerAction
-  const isServerAction = request.headers.has('next-action')
-  if (user && (pathname === '/login' || pathname === '/register') && !isServerAction) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+  // ── Gate 2 & 3: profile checks (only when needed) ───────────────────────────
+  // Fetch profile only for admin routes (role check) or when deactivation
+  // enforcement is needed. Skipping this on regular agent routes saves one
+  // DB round-trip per request (~100-300ms on localhost, ~5ms on Vercel).
+  const needsProfileCheck = pathname.startsWith('/admin') || pathname.startsWith('/co-agents')
+  if (needsProfileCheck) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, deleted_at')
+      .eq('id', user.id)
+      .single()
+
+    // No profile row → treat as unauthenticated
+    if (!profile) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    // Deactivated: clear session cookies so the browser doesn't hold stale tokens
+    if (profile.deleted_at) {
+      const loginUrl = new URL('/login', request.url)
+      const redirect = NextResponse.redirect(loginUrl)
+      request.cookies
+        .getAll()
+        .filter(c => c.name.startsWith('sb-'))
+        .forEach(c => redirect.cookies.delete(c.name))
+      return redirect
+    }
+
+    // Admin routes require role = 'admin'
+    if (pathname.startsWith('/admin') && profile.role !== 'admin') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      url.search = ''
+      const redirect = NextResponse.redirect(url)
+      supabaseResponse.cookies
+        .getAll()
+        .forEach(c => redirect.cookies.set(c.name, c.value, { path: '/' }))
+      return redirect
+    }
   }
 
   return supabaseResponse
@@ -59,6 +123,12 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|logo|images|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Run on every path EXCEPT:
+    //   - Next.js internal routes  (_next/static, _next/image)
+    //   - Browser-level assets     (favicon.ico, manifests, icons, fonts)
+    //   - Common static extensions (images, fonts, PDFs)
+    // Public pages (/login, /listing, /sign, /news, etc.) ARE matched but
+    // skipped inside the function via isProtectedPath().
+    '/((?!_next/static|_next/image|favicon\\.ico|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|pdf)$).*)',
   ],
 }

@@ -1,4 +1,4 @@
-const CACHE = 'proppsy-v2'
+const CACHE = 'proppsy-v3'
 
 self.addEventListener('install', () => self.skipWaiting())
 
@@ -12,10 +12,13 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return
+  // Let the browser handle page navigations directly — avoids blocking on
+  // SSR compilation (dev mode) and opaque-redirect issues with Next.js routes.
+  if (e.request.mode === 'navigate') return
   const url = new URL(e.request.url)
   if (url.origin !== self.location.origin) return
 
-  // Cache-first for static assets; network-first for pages/api
+  // Cache-first for static assets; network-first for everything else
   const isStatic =
     url.pathname.startsWith('/_next/static') ||
     url.pathname.startsWith('/fonts') ||
@@ -38,7 +41,11 @@ self.addEventListener('fetch', e => {
     )
   } else {
     e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
+      fetch(e.request).catch(() =>
+        caches.match(e.request).then(cached =>
+          cached ?? new Response('Network unavailable', { status: 503 })
+        )
+      )
     )
   }
 })
