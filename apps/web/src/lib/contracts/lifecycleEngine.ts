@@ -7,7 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // ── Stock transitions ─────────────────────────────────────────
 
 export async function setStockReserved(supabase: SupabaseClient, stockId: string, agentUid: string) {
-  await supabase.from('stock').update({ status: 'reserved' }).eq('id', stockId).eq('agent_uid', agentUid)
+  await supabase.from('stock').update({ status: 'reserved', is_published: false, published_at: null }).eq('id', stockId).eq('agent_uid', agentUid)
 }
 
 export async function setStockPendingMoveIn(supabase: SupabaseClient, stockId: string, agentUid: string) {

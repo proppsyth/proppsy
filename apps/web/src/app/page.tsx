@@ -228,7 +228,8 @@ export default async function HomePage() {
       {/* ─────────────────── Property Types ──────────────────────── */}
       <div className="bg-white py-10 border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4">
-          <h2 className="text-lg font-bold text-gray-900 mb-5">ค้นหาตามประเภทห้อง</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-1">ค้นหาตามประเภทห้อง</h2>
+          <p className="text-xs text-gray-400 mb-5">เลือกประเภทห้องที่ใช่ เพื่อกรองรายการทรัพย์ที่ตรงกับความต้องการ</p>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
             {ROOM_TYPE_TILES.map(({ value, label, Icon }) => (
               <Link
@@ -251,7 +252,10 @@ export default async function HomePage() {
         <div className="py-10 bg-white border-b border-gray-100">
           <div className="max-w-6xl mx-auto px-4">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-gray-900">ทรัพย์เด่น</h2>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">ทรัพย์เด่น</h2>
+                <p className="text-xs text-gray-400 mt-0.5">ทรัพย์คัดพิเศษจากเอเจนต์มืออาชีพ</p>
+              </div>
               <Link href="/listing?premium=true" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                 ดูทั้งหมด <ArrowRight className="w-3.5 h-3.5" />
               </Link>
@@ -300,7 +304,10 @@ export default async function HomePage() {
         <div className="py-10 bg-white border-b border-gray-100">
           <div className="max-w-6xl mx-auto px-4">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-gray-900">ทรัพย์ใหม่ที่น่าสนใจ</h2>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">ทรัพย์ใหม่ที่น่าสนใจ</h2>
+                <p className="text-xs text-gray-400 mt-0.5">รายการล่าสุดที่เพิ่งเผยแพร่ พร้อมให้เช่า/ซื้อ</p>
+              </div>
               <Link href="/listing" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                 ดูทั้งหมด <ArrowRight className="w-3.5 h-3.5" />
               </Link>

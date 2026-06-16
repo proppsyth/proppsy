@@ -2,12 +2,14 @@
 
 import { useState } from 'react'
 import { generateFacebookPost } from './ai-post-actions'
+import { useAiQuota } from '@/hooks/useAiQuota'
 
 export default function AiPostButton({ stockId, isPublished }: { stockId: string; isPublished: boolean }) {
   const [loading, setLoading] = useState(false)
   const [post, setPost] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const { quota } = useAiQuota()
 
   async function handleGenerate() {
     setLoading(true)
@@ -29,19 +31,25 @@ export default function AiPostButton({ stockId, isPublished }: { stockId: string
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const remaining = quota ? quota.limit - quota.used : null
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-base">✨</span>
-          <h3 className="text-sm font-semibold text-gray-700">สร้างโพสต์ Facebook ด้วย AI</h3>
+          <h3 className="text-sm font-semibold text-gray-700">สร้างโพสต์ด้วย AI</h3>
+          {remaining !== null && (
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${remaining > 5 ? 'bg-green-100 text-green-700' : remaining > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600'}`}>
+              เหลือ {remaining}/{quota?.limit}
+            </span>
+          )}
         </div>
         {isPublished ? (
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={loading}
-            className="px-3 py-1.5 bg-blue-600 active:bg-blue-800 disabled:bg-blue-300 text-white text-xs font-medium rounded-lg transition-colors"
+            disabled={loading || remaining === 0}
+            className="px-3 py-1.5 bg-blue-600 active:bg-blue-800 disabled:bg-gray-300 text-white text-xs font-medium rounded-lg transition-colors"
           >
             {loading ? 'กำลังสร้าง...' : 'สร้างโพสต์'}
           </button>
@@ -53,7 +61,7 @@ export default function AiPostButton({ stockId, isPublished }: { stockId: string
       </div>
 
       {!isPublished && (
-        <p className="text-xs text-gray-400">เผยแพร่ทรัพย์นี้ก่อนเพื่อสร้างโพสต์ Facebook</p>
+        <p className="text-xs text-gray-400">เผยแพร่ทรัพย์นี้ก่อนเพื่อสร้างโพสต์</p>
       )}
 
       {loading && (
@@ -77,7 +85,7 @@ export default function AiPostButton({ stockId, isPublished }: { stockId: string
             onClick={handleCopy}
             className="mt-2 w-full py-2 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 active:bg-gray-100 transition-colors"
           >
-            {copied ? '✓ คัดลอกแล้ว' : 'คัดลอกโพสต์'}
+            {copied ? 'คัดลอกแล้ว' : 'คัดลอกโพสต์'}
           </button>
         </div>
       )}

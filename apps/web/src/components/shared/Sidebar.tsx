@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Home as HomeIcon, FileText, UserCheck, Users, Building2,
   Calendar, TrendingUp, Zap, CreditCard, Settings, LogOut, ShieldAlert,
-  Menu, ChevronRight, Bell, Handshake,
+  Menu, ChevronRight, Bell, Handshake, Activity,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -21,7 +21,7 @@ interface SidebarProps {
 
 const NAV_ITEMS: { href: string; icon: LucideIcon; label: string; permission: string | null }[] = [
   { href: '/dashboard',          icon: LayoutDashboard, label: 'แดชบอร์ด',        permission: null },
-  { href: '/dashboard/activity', icon: Bell,            label: 'กิจกรรม',          permission: null },
+  { href: '/dashboard/activity', icon: Activity,         label: 'กิจกรรม',          permission: null },
   { href: '/stock',              icon: HomeIcon,        label: 'ทรัพย์',            permission: 'stock' },
   { href: '/owners',             icon: UserCheck,       label: 'เจ้าของทรัพย์',    permission: 'owner' },
   { href: '/customers',          icon: Users,           label: 'ลูกค้า',            permission: 'customer' },
@@ -49,7 +49,7 @@ const SHEET_GRID = [
   { href: '/customers',          icon: Users,       label: 'ลูกค้า',     permission: 'customer' },
   { href: '/projects',           icon: Building2,   label: 'โครงการ',    permission: 'project' },
   { href: '/co-agents',          icon: Handshake,   label: 'Co-Agent',   permission: null },
-  { href: '/dashboard/activity', icon: Bell,        label: 'กิจกรรม',    permission: null },
+  { href: '/dashboard/activity', icon: Activity,    label: 'กิจกรรม',    permission: null },
   { href: '/commission',         icon: TrendingUp,  label: 'คอมมิชชัน',  permission: null },
   { href: '/credits',            icon: Zap,         label: 'เครดิต',     permission: null },
   { href: '/billing',            icon: CreditCard,  label: 'ชำระเงิน',   permission: null },
