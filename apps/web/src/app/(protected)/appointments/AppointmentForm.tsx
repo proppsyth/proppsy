@@ -2,13 +2,15 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Calendar } from 'lucide-react'
+import { Loader2, Calendar, Plus } from 'lucide-react'
 import { createAppointment } from './actions'
 import EntityCombobox from '@/components/shared/EntityCombobox'
 import {
   searchStocks, searchCustomers,
   type StockSearchResult, type CustomerSearchResult,
 } from '@/app/(protected)/contracts/search-actions'
+import QuickStockModal from '@/app/(protected)/contracts/QuickStockModal'
+import CustomerDrawer from '@/app/(protected)/contracts/CustomerDrawer'
 
 function Label({ children }: { children: React.ReactNode }) {
   return <label className="block text-xs font-medium text-gray-600 mb-1">{children}</label>
@@ -28,6 +30,8 @@ export default function AppointmentForm() {
   const [stockLabel, setStockLabel] = useState('')
   const [customerId, setCustomerId] = useState('')
   const [customerLabel, setCustomerLabel] = useState('')
+  const [showQuickStock, setShowQuickStock] = useState(false)
+  const [showCustomerDrawer, setShowCustomerDrawer] = useState(false)
 
   function handleStockSelect(r: StockSearchResult | null) {
     setStockId(r?.id ?? '')
@@ -57,6 +61,7 @@ export default function AppointmentForm() {
   }
 
   return (
+    <>
     <div className="max-w-xl space-y-4">
       <div>
         <Label>ชื่อนัดหมาย *</Label>
@@ -91,6 +96,14 @@ export default function AppointmentForm() {
           searchFn={searchStocks}
           placeholder="ค้นหาโครงการ, ห้อง, อาคาร..."
         />
+        <button
+          type="button"
+          onClick={() => setShowQuickStock(true)}
+          className="mt-1.5 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium transition"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          เพิ่มทรัพย์ใหม่
+        </button>
       </div>
 
       <div>
@@ -103,6 +116,14 @@ export default function AppointmentForm() {
           searchFn={searchCustomers}
           placeholder="ค้นหาลูกค้า / ผู้เช่า..."
         />
+        <button
+          type="button"
+          onClick={() => setShowCustomerDrawer(true)}
+          className="mt-1.5 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium transition"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          เพิ่มลูกค้าใหม่
+        </button>
       </div>
 
       <div>
@@ -137,5 +158,19 @@ export default function AppointmentForm() {
         </button>
       </div>
     </div>
+
+    {showQuickStock && (
+      <QuickStockModal
+        onCreated={(id, label) => { setStockId(id); setStockLabel(label); setShowQuickStock(false) }}
+        onClose={() => setShowQuickStock(false)}
+      />
+    )}
+    {showCustomerDrawer && (
+      <CustomerDrawer
+        onCreated={(id, label) => { setCustomerId(id); setCustomerLabel(label); setShowCustomerDrawer(false) }}
+        onClose={() => setShowCustomerDrawer(false)}
+      />
+    )}
+    </>
   )
 }
