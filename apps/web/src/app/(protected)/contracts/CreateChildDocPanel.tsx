@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, ChevronLeft, Loader2, X, AlertCircle, Sparkles, User, UserPlus } from 'lucide-react'
+import { Plus, ChevronLeft, Loader2, X, AlertCircle, Sparkles, UserPlus } from 'lucide-react'
 import AddressSelector from '@/components/shared/AddressSelector'
 import CoAgentDrawer from './CoAgentDrawer'
 import { DOC_TYPE_LABELS } from '@/types'
@@ -591,14 +591,6 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
             <div className="mb-1">
               <label className="block text-xs text-gray-500 mb-1 font-medium">เลือก Co-Agent ที่บันทึกไว้</label>
               <div className="flex gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setForm(f => ({ ...f, selectedCoAgentId: '', coAgentName: '', coAgentNationalId: '', coAgentTaxId: '', coAgentAddressNo: '', coAgentMoo: '', coAgentSoi: '', coAgentRoad: '', coAgentSubdistrict: '', coAgentDistrict: '', coAgentProvince: '', coAgentZip: '', coAgentBankName: '', coAgentAccountName: '', coAgentAccountNo: '' }))}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-medium transition ${!form.selectedCoAgentId ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                >
-                  <User className="w-3 h-3" />
-                  กรอกใหม่
-                </button>
                 {coAgents.map(p => (
                   <button
                     key={p.id}
