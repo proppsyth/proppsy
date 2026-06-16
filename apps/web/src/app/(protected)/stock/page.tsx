@@ -11,12 +11,14 @@ export const metadata: Metadata = { title: 'ทรัพย์ของฉัน
 const STATUS_TABS = [
   { key: '', label: 'ทั้งหมด' },
   { key: 'available', label: 'ว่าง' },
+  { key: 'reserved', label: 'จอง' },
+  { key: 'pending_move_in', label: 'รอเข้าอยู่' },
   { key: 'rented', label: 'เช่าแล้ว' },
   { key: 'sold', label: 'ขายแล้ว' },
   { key: 'unavailable', label: 'ไม่ว่าง' },
 ]
 
-const VALID_STATUSES = ['available', 'rented', 'sold', 'unavailable']
+const VALID_STATUSES = ['available', 'reserved', 'pending_move_in', 'rented', 'sold', 'unavailable']
 
 export default async function StockPage({
   searchParams,

@@ -2,49 +2,42 @@ import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { getRequireApproval } from '@/lib/settings'
 
-// Safety-net page for the edge case where a user has completed consent but
-// account_status is still 'pending'. Normally the callback and consent page
-// both fix this in-place, so a user should almost never land here. When they do,
-// we auto-approve them and redirect to /dashboard immediately.
+async function signOutAction() {
+  'use server'
+  const supabase = await createClient()
+  await supabase.auth.signOut()
+  redirect('/login')
+}
+
 export default async function PendingApprovalPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
   if (!user) redirect('/login')
 
   const admin = await createAdminClient()
-  const { data: profile } = await admin
-    .from('profiles')
-    .select('accepted_terms_at, account_status, name')
-    .eq('id', user.id)
-    .single()
+  const [{ data: profile }, requireApproval] = await Promise.all([
+    admin.from('profiles').select('accepted_terms_at, account_status, name').eq('id', user.id).single(),
+    getRequireApproval(),
+  ])
 
-  // No profile at all → login
   if (!profile) redirect('/login')
-
-  // Rejected → login
   if (profile.account_status === 'rejected') redirect('/login')
-
-  // Already approved → they shouldn't be here; send to dashboard
   if (profile.account_status === 'approved') redirect('/dashboard')
-
-  // No consent yet → back to consent
   if (!profile.accepted_terms_at) redirect('/consent')
 
-  // Pending + consent done → auto-approve now (last recovery point)
-  const { error } = await admin
-    .from('profiles')
-    .update({ account_status: 'approved' })
-    .eq('id', user.id)
-    .eq('account_status', 'pending')
-
-  if (!error) {
-    // Successfully approved — take them directly to dashboard
-    redirect('/dashboard')
+  // When require_approval is off, auto-approve as a safety-net (e.g. saveConsent failed silently).
+  if (!requireApproval) {
+    const { error } = await admin
+      .from('profiles')
+      .update({ account_status: 'approved' })
+      .eq('id', user.id)
+      .eq('account_status', 'pending')
+    if (!error) redirect('/dashboard')
   }
 
-  // If approval still failed, show an explanatory page
+  // require_approval is on — show the waiting page.
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-sm text-center">
@@ -68,14 +61,16 @@ export default async function PendingApprovalPage() {
               href="/dashboard"
               className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl text-sm transition"
             >
-              ลองเข้าสู่ระบบอีกครั้ง
+              ตรวจสอบสถานะอีกครั้ง
             </Link>
-            <Link
-              href="/login"
-              className="block w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-xl text-sm transition"
-            >
-              ออกจากระบบ
-            </Link>
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-xl text-sm transition"
+              >
+                ออกจากระบบ
+              </button>
+            </form>
           </div>
 
           <p className="text-xs text-gray-400 mt-5">

@@ -9,12 +9,12 @@ import {
   Building2, User, Home,
 } from 'lucide-react'
 import type {
-  StockSearchResult, OwnerSearchResult, CustomerSearchResult, ContractSearchResult, EntitySearchResult,
+  StockSearchResult, OwnerSearchResult, CustomerSearchResult, CoAgentSearchResult, ContractSearchResult, EntitySearchResult,
 } from '@/app/(protected)/contracts/search-actions'
 
 // ─── Types ───────────────────────────────────────────────────
 
-type EntityKind = 'stock' | 'owner' | 'customer' | 'contract'
+type EntityKind = 'stock' | 'owner' | 'customer' | 'co_agent' | 'contract'
 
 interface StockProps {
   kind: 'stock'
@@ -43,6 +43,15 @@ interface CustomerProps {
   placeholder?: string
 }
 
+interface CoAgentProps {
+  kind: 'co_agent'
+  value: string
+  selectedLabel?: string
+  onSelect: (result: CoAgentSearchResult | null) => void
+  searchFn: (q: string) => Promise<CoAgentSearchResult[]>
+  placeholder?: string
+}
+
 interface ContractProps {
   kind: 'contract'
   value: string
@@ -52,7 +61,7 @@ interface ContractProps {
   placeholder?: string
 }
 
-type Props = StockProps | OwnerProps | CustomerProps | ContractProps
+type Props = StockProps | OwnerProps | CustomerProps | CoAgentProps | ContractProps
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -73,10 +82,17 @@ function stockSub(r: StockSearchResult): string {
 }
 
 const STATUS_TH: Record<string, string> = {
-  available: 'ว่าง', rented: 'เช่าแล้ว', sold: 'ขายแล้ว', unavailable: 'ไม่ว่าง',
+  available: 'ว่าง',
+  reserved: 'จอง',
+  pending_move_in: 'รอเข้าอยู่',
+  rented: 'เช่าแล้ว',
+  sold: 'ขายแล้ว',
+  unavailable: 'ไม่ว่าง',
 }
 const STATUS_COLOR: Record<string, string> = {
   available: 'bg-green-100 text-green-700',
+  reserved: 'bg-yellow-100 text-yellow-700',
+  pending_move_in: 'bg-orange-100 text-orange-700',
   rented: 'bg-blue-100 text-blue-700',
   sold: 'bg-purple-100 text-purple-700',
   unavailable: 'bg-gray-100 text-gray-500',
@@ -199,6 +215,33 @@ function PersonRow({
           {r.phone && <span className="text-xs text-gray-400">{r.phone}</span>}
           <span className="text-[10px] text-gray-300">{r.id}</span>
         </div>
+      </div>
+    </button>
+  )
+}
+
+function CoAgentRow({
+  r, selected, onSelect,
+}: {
+  r: CoAgentSearchResult
+  selected: boolean
+  onSelect: () => void
+}) {
+  const name = [r.prefix_th, r.first_name_th, r.last_name_th].filter(Boolean).join(' ')
+  return (
+    <button
+      type="button"
+      onPointerDown={e => { e.preventDefault(); onSelect() }}
+      className={`w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-blue-50 transition cursor-pointer ${selected ? 'bg-blue-50' : ''}`}
+    >
+      <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+        <User className="w-4 h-4 text-amber-600" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <span className={`text-sm font-medium truncate block ${selected ? 'text-blue-700' : 'text-gray-900'}`}>
+          {name}
+        </span>
+        {r.tax_id && <span className="text-xs text-gray-400">เลขเสียภาษี: {r.tax_id}</span>}
       </div>
     </button>
   )
@@ -344,11 +387,13 @@ export default function EntityCombobox(props: Props) {
   // Derive display label for selected item
   const displayLabel = selectedLabel || (value ? value : '')
 
-  const emptyIcon = kind === 'stock' ? <Building2 className="w-8 h-8 text-gray-200" /> : kind === 'contract' ? <Building2 className="w-8 h-8 text-gray-200" /> : <User className="w-8 h-8 text-gray-200" />
+  const emptyIcon = (kind === 'stock' || kind === 'contract') ? <Building2 className="w-8 h-8 text-gray-200" /> : <User className="w-8 h-8 text-gray-200" />
   const emptyHint = kind === 'stock'
     ? 'ค้นหาด้วยชื่อโครงการ, ห้อง, อาคาร'
     : kind === 'contract'
     ? 'ค้นหาด้วยรหัสสัญญา (BK-XXXX)'
+    : kind === 'co_agent'
+    ? 'ค้นหาด้วยชื่อหรือเลขเสียภาษี'
     : 'ค้นหาด้วยชื่อ, เบอร์โทร'
 
   // ─── Dropdown content ───────────────────────────────────────
@@ -377,6 +422,7 @@ export default function EntityCombobox(props: Props) {
             kind === 'stock' ? 'ค้นหาโครงการ, ห้อง, อาคาร...' :
             kind === 'owner' ? 'ค้นหาเจ้าของทรัพย์...' :
             kind === 'contract' ? 'ค้นหาสัญญา (BK-XXXX)...' :
+            kind === 'co_agent' ? 'ค้นหา Co-Agent...' :
             'ค้นหาลูกค้า / ผู้เช่า...'
           }
           className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400"
@@ -435,6 +481,12 @@ export default function EntityCombobox(props: Props) {
               />
             ) : r.kind === 'contract' ? (
               <ContractRow
+                r={r}
+                selected={i === activeIdx || r.id === value}
+                onSelect={() => handleSelect(r)}
+              />
+            ) : r.kind === 'co_agent' ? (
+              <CoAgentRow
                 r={r}
                 selected={i === activeIdx || r.id === value}
                 onSelect={() => handleSelect(r)}
