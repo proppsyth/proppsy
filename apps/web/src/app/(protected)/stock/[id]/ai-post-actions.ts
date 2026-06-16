@@ -112,15 +112,14 @@ ${contactLines}
 ตอบเฉพาะโพสต์เท่านั้น ไม่ต้องมีคำอธิบายเพิ่มเติม`
 
     const genai = new GoogleGenerativeAI(apiKey)
-    const model = genai.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const model = genai.getGenerativeModel({ model: 'gemini-2.5-flash' })
     const result = await model.generateContent(prompt)
     const text = result.response.text()
 
     await incrementAiUsage()
     return { post: text.trim() }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error('[ai-post] catch:', msg)
-    return { error: `เกิดข้อผิดพลาด: ${msg}` }
+    console.error('[ai-post]', err)
+    return { error: 'เกิดข้อผิดพลาด กรุณาลองใหม่' }
   }
 }
