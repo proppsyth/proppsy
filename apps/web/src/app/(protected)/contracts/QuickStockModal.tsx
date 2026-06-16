@@ -205,17 +205,20 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
                     placeholder="ค้นหาโครงการ..."
                     selectedId={projectId}
                     selectedLabel={projectName}
-                    onSelect={(item: { id: string; name_th: string }) => {
+                    onSelect={(item: { id: string; name_th: string; name_en?: string | null }) => {
                       setProjectId(item.id)
-                      setProjectName(item.name_th)
+                      setProjectName(item.name_en || item.name_th)
                     }}
                     onClear={() => { setProjectId(''); setProjectName('') }}
                     searchFn={searchProjects}
-                    renderResult={(item: { id: string; name_th: string; district?: string | null; province?: string | null }) => (
+                    renderResult={(item: { id: string; name_th: string; name_en?: string | null; district?: string | null; province?: string | null }) => (
                       <span>
-                        <span className="font-medium text-gray-800">{item.name_th}</span>
+                        <span className="font-medium text-gray-800">{item.name_en || item.name_th}</span>
                         {(item.district || item.province) && (
                           <span className="text-xs text-gray-400 ml-1">· {[item.district, item.province].filter(Boolean).join(' ')}</span>
+                        )}
+                        {item.name_en && item.name_th !== item.name_en && (
+                          <span className="block text-xs text-gray-400 mt-0.5">{item.name_th}</span>
                         )}
                       </span>
                     )}

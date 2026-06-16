@@ -57,8 +57,8 @@ export default async function ProjectDetailPage({
             </div>
             <div className="min-w-0">
               <p className="text-xs text-gray-400">{p.id}</p>
-              <h1 className="text-xl font-bold text-gray-900 leading-snug">{p.name_th}</h1>
-              {p.name_en && <p className="text-sm text-gray-500 mt-0.5">{p.name_en}</p>}
+              <h1 className="text-xl font-bold text-gray-900 leading-snug">{p.name_en || p.name_th}</h1>
+              {p.name_en && p.name_en !== p.name_th && <p className="text-sm text-gray-500 mt-0.5">{p.name_th}</p>}
             </div>
           </div>
           {isAdmin ? (

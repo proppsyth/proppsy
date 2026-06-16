@@ -75,8 +75,8 @@ function ProjectCard({ project: p }: { project: Project }) {
         </div>
         <div className="min-w-0">
           <p className="text-xs text-gray-400 mb-0.5">{p.id}</p>
-          <p className="font-semibold text-gray-900 text-sm leading-tight">{p.name_th}</p>
-          {p.name_en && <p className="text-xs text-gray-400 mt-0.5">{p.name_en}</p>}
+          <p className="font-semibold text-gray-900 text-sm leading-tight">{p.name_en || p.name_th}</p>
+          {p.name_en && p.name_en !== p.name_th && <p className="text-xs text-gray-400 mt-0.5">{p.name_th}</p>}
         </div>
       </div>
 
