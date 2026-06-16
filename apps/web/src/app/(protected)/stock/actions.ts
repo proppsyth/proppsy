@@ -17,7 +17,7 @@ export type StockInput = {
   unit_no?: string
   unit_name?: string
   building?: string
-  floor?: number
+  floor?: number | string
   room_type?: string
   size_sqm?: number
   view_direction?: string
@@ -40,7 +40,7 @@ export type AiParseResult = {
   project_name?: string | null
   unit_no?: string | null
   building?: string | null
-  floor?: number | null
+  floor?: number | string | null
   room_type?: string | null
   size_sqm?: number | null
   view_direction?: string | null
@@ -80,9 +80,14 @@ export async function createStock(
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
 
   const [{ data: profile }, { count: stockCount }] = await Promise.all([
-    supabase.from('profiles').select('plan').eq('id', user.id).single(),
+    supabase.from('profiles').select('plan, account_status').eq('id', user.id).single(),
     supabase.from('stock').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
   ])
+
+  if (profile?.account_status === 'pending') {
+    return { error: 'บัญชีของคุณรอการอนุมัติจากแอดมิน กรุณารอการอนุมัติก่อนเพิ่มทรัพย์' }
+  }
+
   const limits = await getPlanLimitsByUserPlan(profile?.plan)
   if (limits.maxStock !== null && (stockCount ?? 0) >= limits.maxStock) {
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxStock} ทรัพย์)` }
@@ -98,7 +103,12 @@ export async function createStock(
     owner_id: input.owner_id || null,
   })
 
-  if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
+  if (error) {
+    if (error.code === '42501' || error.message.includes('row-level security')) {
+      return { error: 'บัญชีของคุณรอการอนุมัติจากแอดมิน กรุณารอการอนุมัติก่อนเพิ่มทรัพย์' }
+    }
+    return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
+  }
 
   await logActivity({
     userId: user.id,
@@ -227,7 +237,7 @@ export async function parseStockTextWithEntities(
   "project_name": "ชื่อโครงการ หรือ null",
   "unit_no": "เลขห้อง/ยูนิต หรือ null",
   "building": "อาคาร/ตึก หรือ null",
-  "floor": ตัวเลขชั้น หรือ null,
+  "floor": ชั้น เช่น "5" หรือ "12A" (string) หรือ null,
   "room_type": "Studio|1BR|2BR|3BR|Penthouse|อื่นๆ หรือ null",
   "size_sqm": ตัวเลขตร.ม. หรือ null,
   "view_direction": "ทิศหน้าห้อง หรือ null",
@@ -420,7 +430,7 @@ export async function parseStockText(
   "project_name": "ชื่อโครงการ หรือ null",
   "unit_no": "เลขห้อง/ยูนิต หรือ null",
   "building": "อาคาร/ตึก หรือ null",
-  "floor": ตัวเลขชั้น หรือ null,
+  "floor": ชั้น เช่น "5" หรือ "12A" (string) หรือ null,
   "room_type": "Studio|1BR|2BR|3BR|Penthouse|อื่นๆ หรือ null",
   "size_sqm": ตัวเลขตร.ม. หรือ null,
   "view_direction": "ทิศหน้าห้อง หรือ null",

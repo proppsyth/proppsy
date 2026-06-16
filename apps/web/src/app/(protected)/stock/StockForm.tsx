@@ -23,6 +23,7 @@ import QuickProjectModal from './QuickProjectModal'
 // ─── Constants ───────────────────────────────────────────────
 
 const ROOM_TYPES = ['Studio', '1BR', '2BR', '3BR', 'Penthouse', 'อื่นๆ']
+const CUSTOM_ROOM_TYPES_KEY = 'proppsy_custom_room_types'
 const LISTING_TYPES = [
   { value: 'rent', label: 'ให้เช่า' },
   { value: 'sale', label: 'ขาย' },
@@ -121,7 +122,7 @@ function toInput(f: FormState): StockInput {
     unit_no: f.unit_no || undefined,
     unit_name: f.unit_name || undefined,
     building: f.building || undefined,
-    floor: i(f.floor),
+    floor: f.floor || undefined,
     room_type: f.room_type || undefined,
     size_sqm: n(f.size_sqm),
     view_direction: f.view_direction || undefined,
@@ -172,8 +173,32 @@ export default function StockForm({ initialData, stockId, allowAI = true, initia
   const [showQuickOwner, setShowQuickOwner] = useState(false)
   const [showQuickProject, setShowQuickProject] = useState(false)
   const [dupWarning, setDupWarning] = useState<string | null>(null)
+  const [customRoomTypes, setCustomRoomTypes] = useState<string[]>([])
+  const [addingRoomType, setAddingRoomType] = useState(false)
+  const [newRoomTypeText, setNewRoomTypeText] = useState('')
   const dupCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { quota, refresh: refreshQuota, isExhausted } = useAiQuota()
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOM_ROOM_TYPES_KEY)
+      if (raw) setCustomRoomTypes(JSON.parse(raw))
+    } catch { /* ignore */ }
+  }, [])
+
+  function handleAddCustomRoomType() {
+    const val = newRoomTypeText.trim()
+    if (!val) { setAddingRoomType(false); return }
+    setCustomRoomTypes(prev => {
+      if (prev.includes(val) || ROOM_TYPES.includes(val)) return prev
+      const next = [...prev, val]
+      try { localStorage.setItem(CUSTOM_ROOM_TYPES_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+    set('room_type', val)
+    setNewRoomTypeText('')
+    setAddingRoomType(false)
+  }
 
   useEffect(() => {
     setDupWarning(null)
@@ -416,14 +441,38 @@ export default function StockForm({ initialData, stockId, allowAI = true, initia
           </div>
           <div>
             <Label text="ชั้น" />
-            <input value={form.floor} onChange={setField('floor')} type="number" min="1" placeholder="5" className={INPUT_CLS} />
+            <input value={form.floor} onChange={setField('floor')} type="text" placeholder="เช่น 5 หรือ 12A" className={INPUT_CLS} />
           </div>
           <div>
             <Label text="ประเภทห้อง" />
-            <select value={form.room_type} onChange={setField('room_type')} className={INPUT_CLS}>
-              <option value="">-- เลือก --</option>
-              {ROOM_TYPES.map(t => <option key={t} value={t}>{formatRoomType(t)}</option>)}
-            </select>
+            {addingRoomType ? (
+              <div className="flex gap-2">
+                <input
+                  autoFocus
+                  value={newRoomTypeText}
+                  onChange={e => setNewRoomTypeText(e.target.value)}
+                  placeholder="เช่น Duplex / ดูเพล็กซ์"
+                  className={INPUT_CLS}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddCustomRoomType() } }}
+                />
+                <button type="button" onClick={handleAddCustomRoomType} className="px-3 rounded-lg bg-blue-600 text-white text-sm font-medium shrink-0">เพิ่ม</button>
+                <button type="button" onClick={() => { setAddingRoomType(false); setNewRoomTypeText('') }} className="px-3 rounded-lg border border-gray-200 text-gray-500 text-sm shrink-0">ยกเลิก</button>
+              </div>
+            ) : (
+              <select
+                value={form.room_type}
+                onChange={e => {
+                  if (e.target.value === '__add_new__') { setAddingRoomType(true); return }
+                  set('room_type', e.target.value)
+                }}
+                className={INPUT_CLS}
+              >
+                <option value="">-- เลือก --</option>
+                {ROOM_TYPES.map(t => <option key={t} value={t}>{formatRoomType(t)}</option>)}
+                {customRoomTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                <option value="__add_new__">+ เพิ่มประเภทห้องใหม่...</option>
+              </select>
+            )}
           </div>
           <div>
             <Label text="ขนาด (ตร.ม.)" />

@@ -38,7 +38,7 @@ const DROPDOWN_NAV = [
   { href: '/services', label: 'บริการ' },
   { href: '/news',     label: 'ข่าวสาร' },
   { href: '/about',    label: 'เกี่ยวกับเรา' },
-  { href: '/faq',      label: 'คู่มือ & FAQ' },
+  { href: '/help',     label: 'คู่มือ & FAQ' },
   { href: '/contact',  label: 'ติดต่อเรา' },
 ]
 

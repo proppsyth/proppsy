@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
-import { Plus, X, Pencil, Trash2, ScanLine, Loader2, BookOpen, PenLine, Upload } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, ScanLine, Loader2, BookOpen, PenLine, Upload, Search } from 'lucide-react'
 import { createCoAgent, updateCoAgent, deleteCoAgent, parseCoAgentIdCard, parseCoAgentBankBook, type CoAgentInput } from './actions'
 import { compressForOcr } from '@/lib/compressForOcr'
 import AddressSelector from '@/components/shared/AddressSelector'
@@ -556,6 +556,16 @@ export default function CoAgentManager({ initialCoAgents }: { initialCoAgents: C
   const [editingAgent, setEditingAgent] = useState<CoAgent | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [search, setSearch] = useState('')
+
+  const filteredCoAgents = coAgents.filter(p => {
+    if (!search.trim()) return true
+    const q = search.trim().toLowerCase()
+    return [
+      fullNameTh(p), p.first_name_en, p.last_name_en,
+      p.national_id, p.bank_account_no, p.bank_name,
+    ].filter(Boolean).some(v => v!.toLowerCase().includes(q))
+  })
 
   function openCreate() { setEditingAgent(null); setShowForm(true) }
   function openEdit(p: CoAgent) { setEditingAgent(p); setShowForm(true) }
@@ -602,13 +612,29 @@ export default function CoAgentManager({ initialCoAgents }: { initialCoAgents: C
 
   return (
     <div>
+      {coAgents.length > 0 && (
+        <div className="relative mb-4">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="ค้นหาชื่อ, เลขบัตร, เลขบัญชี..."
+            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      )}
       {coAgents.length === 0 ? (
         <div className="text-center py-10 text-gray-400 text-sm">
           ยังไม่มี Co-Agent — กดปุ่มด้านล่างเพื่อเพิ่ม
         </div>
+      ) : filteredCoAgents.length === 0 ? (
+        <div className="text-center py-10 text-gray-400 text-sm">
+          ไม่พบ Co-Agent ที่ค้นหา
+        </div>
       ) : (
         <div className="space-y-2 mb-4">
-          {coAgents.map(p => (
+          {filteredCoAgents.map(p => (
             <div key={p.id} className="flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-gray-100 shadow-sm">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-gray-800 truncate">{fullNameTh(p)}</p>

@@ -9,7 +9,7 @@ export interface StockSearchResult {
   unit_no?: string | null
   room_type?: string | null
   building?: string | null
-  floor?: number | null
+  floor?: number | string | null
   status: string
   rent_price?: number | null
   deposit?: number | null

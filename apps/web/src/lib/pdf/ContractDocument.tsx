@@ -136,7 +136,7 @@ export interface StockData {
   project_name?: string | null
   unit_no?: string | null
   building?: string | null
-  floor?: number | null
+  floor?: number | string | null
   room_type?: string | null
   size_sqm?: number | null
   address_road?: string | null

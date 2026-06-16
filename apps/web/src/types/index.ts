@@ -221,7 +221,7 @@ export interface Stock {
   unit_no?: string
   unit_name?: string
   building?: string
-  floor?: number
+  floor?: number | string
   room_type?: RoomType
   size_sqm?: number
   view_direction?: string
@@ -491,11 +491,11 @@ export function resolvePlan(plan?: string | null): Plan {
 }
 
 export const ROOM_TYPE_LABELS: Record<string, string> = {
-  'Studio':   'Studio',
-  '1BR':      '1 Bedroom',
-  '2BR':      '2 Bedrooms',
-  '3BR':      '3 Bedrooms',
-  'Penthouse':'Penthouse',
+  'Studio':   'Studio / สตูดิโอ',
+  '1BR':      '1 Bedroom / 1 ห้องนอน',
+  '2BR':      '2 Bedrooms / 2 ห้องนอน',
+  '3BR':      '3 Bedrooms / 3 ห้องนอน',
+  'Penthouse':'Penthouse / เพนต์เฮาส์',
   'อื่นๆ':    'อื่นๆ',
 }
 
