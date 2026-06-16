@@ -20,6 +20,12 @@ export default async function ProtectedLayout({
 
   if (!profile) redirect('/login')
 
+  // Fallback to Google/OAuth avatar if profile has no uploaded photo
+  if (!profile.avatar_url) {
+    const googleAvatar = (user.user_metadata?.avatar_url ?? user.user_metadata?.picture) as string | undefined
+    if (googleAvatar) profile.avatar_url = googleAvatar
+  }
+
   // Deactivated accounts are blocked regardless of other status
   if (profile.deleted_at) redirect('/login')
 
