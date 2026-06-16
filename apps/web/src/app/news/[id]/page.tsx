@@ -94,11 +94,11 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ id:
             ...(news.summary && { description: news.summary }),
             ...(news.cover_url && { image: [news.cover_url] }),
             datePublished: news.created_at,
-            url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app'}/news/${news.id}`,
+            url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.proppsy.com'}/news/${news.id}`,
             publisher: {
               '@type': 'Organization',
               name: 'Proppsy',
-              url: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app',
+              url: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.proppsy.com',
             },
           }),
         }}

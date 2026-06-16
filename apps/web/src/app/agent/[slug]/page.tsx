@@ -221,7 +221,7 @@ export default async function AgentProfilePage({
             name: displayName,
             ...(agent.bio && { description: agent.bio }),
             ...(avatarUrl && { image: avatarUrl }),
-            url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app'}/agent/${slug}`,
+            url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.proppsy.com'}/agent/${slug}`,
             ...(agent.show_phone && agent.phone && { telephone: agent.phone }),
             ...(agent.company_name && {
               worksFor: { '@type': 'Organization', name: agent.company_name },

@@ -86,7 +86,7 @@ export async function generateMetadata({
   ].filter(Boolean).join(' | ')
 
   const canonicalSlug = buildListingSlug({ id, room_type: d.room_type, listing_type: d.listing_type, project_name: d.project_name })
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.proppsy.com'
   // Use actual property photo as OG image — LINE/FB/Twitter crawlers use absolute URLs
   const ogImageUrl = d.photo_urls?.[0]
     ? d.photo_urls[0]
@@ -424,7 +424,7 @@ export default async function PublicPropertyDetailPage({
             '@context': 'https://schema.org',
             '@type': 'Apartment',
             name: [projectName, stock.unit_no].filter(Boolean).join(' · ') || 'ทรัพย์',
-            url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app'}/listing/${canonicalSlug}`,
+            url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.proppsy.com'}/listing/${canonicalSlug}`,
             image: (stock.photo_urls ?? []).slice(0, 5),
             ...(stock.project && {
               address: {

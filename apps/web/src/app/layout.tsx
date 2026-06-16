@@ -21,7 +21,7 @@ const ibmPlexSans = IBM_Plex_Sans({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proppsy.vercel.app'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.proppsy.com'),
   title: {
     default: 'Proppsy — ค้นหาที่พักและทรัพย์สิน',
     template: '%s | Proppsy',
