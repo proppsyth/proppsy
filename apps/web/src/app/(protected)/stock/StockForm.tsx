@@ -17,7 +17,7 @@ import { AiLimitModal } from '@/components/shared/AiLimitModal'
 import EntityCombobox from '@/components/shared/EntityCombobox'
 import { searchOwners } from '@/app/(protected)/contracts/search-actions'
 import type { OwnerSearchResult } from '@/app/(protected)/contracts/search-actions'
-import QuickOwnerModal from './QuickOwnerModal'
+import OwnerDrawer from '@/app/(protected)/contracts/OwnerDrawer'
 import QuickProjectModal from './QuickProjectModal'
 
 // ─── Constants ───────────────────────────────────────────────
@@ -611,7 +611,7 @@ export default function StockForm({ initialData, stockId, allowAI = true, initia
     </form>
 
     {showQuickOwner && (
-      <QuickOwnerModal
+      <OwnerDrawer
         onCreated={handleOwnerCreated}
         onClose={() => setShowQuickOwner(false)}
       />
