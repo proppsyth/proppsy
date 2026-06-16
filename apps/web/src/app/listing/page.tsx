@@ -1,3 +1,5 @@
+export const revalidate = 0
+
 import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/server'
 import PublicNav from '@/components/shared/PublicNav'
