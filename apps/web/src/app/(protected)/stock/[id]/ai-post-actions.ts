@@ -36,10 +36,10 @@ export async function generateFacebookPost(input: StockPostInput): Promise<PostR
     if (!user) return { error: 'ไม่ได้เข้าสู่ระบบ' }
 
     // Fetch stock + agent profile in parallel (no join — avoids RLS issue on projects table)
-    const [stockRes, { data: agent }] = await Promise.all([
+    const [{ data: stock }, { data: agent }] = await Promise.all([
       supabase
         .from('stock')
-        .select('id, is_published, unit_no, room_type, floor, size_sqm, view_direction, listing_type, rent_price, sale_price, deposit, pet_allowed, notes, project_name, project_id')
+        .select('id, is_published, unit_no, room_type, floor, size_sqm, view_direction, listing_type, rent_price, sale_price, deposit, notes, project_name, project_id')
         .eq('id', input.stockId)
         .eq('agent_uid', user.id)
         .single(),
@@ -50,9 +50,7 @@ export async function generateFacebookPost(input: StockPostInput): Promise<PostR
         .single(),
     ])
 
-    console.error('[ai-post] stockRes', JSON.stringify({ data: stockRes.data, error: stockRes.error, stockId: input.stockId, uid: user.id }))
-    const stock = stockRes.data
-    if (!stock) return { error: `ไม่พบข้อมูลทรัพย์ [${stockRes.error?.code ?? 'null'}] ${stockRes.error?.message ?? ''}` }
+    if (!stock) return { error: 'ไม่พบข้อมูลทรัพย์' }
     if (!stock.is_published) return { error: 'ทรัพย์นี้ยังไม่ได้เผยแพร่' }
 
     // Fetch project separately (service-role-like read via user's accessible projects)
@@ -85,7 +83,6 @@ export async function generateFacebookPost(input: StockPostInput): Promise<PostR
       stock.listing_type !== 'sale' && stock.rent_price && `ราคาเช่า: ${fmt(stock.rent_price)} บาท/เดือน`,
       stock.listing_type !== 'rent' && stock.sale_price && `ราคาขาย: ${fmt(stock.sale_price)} บาท`,
       stock.deposit && `เงินมัดจำ: ${stock.deposit} เดือน`,
-      stock.pet_allowed ? 'เลี้ยงสัตว์ได้' : null,
       stock.notes && `หมายเหตุ: ${stock.notes}`,
     ].filter(Boolean).join('\n')
 
