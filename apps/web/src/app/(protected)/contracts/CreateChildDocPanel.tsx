@@ -2,11 +2,13 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, ChevronLeft, Loader2, X, AlertCircle, Sparkles, User } from 'lucide-react'
+import { Plus, ChevronLeft, Loader2, X, AlertCircle, Sparkles, User, UserPlus } from 'lucide-react'
 import AddressSelector from '@/components/shared/AddressSelector'
+import CoAgentDrawer from './CoAgentDrawer'
 import { DOC_TYPE_LABELS } from '@/types'
 import type { ContractDocType } from '@/types'
 import { createChildDocument } from './actions'
+import { getCoAgentById } from '@/app/(protected)/co-agents/actions'
 import { calculateCommission, calculateCommissionSplit, commissionHint } from '@/lib/contracts/commissionRules'
 import { computeLeaseEndDate } from '@/lib/contracts/leaseFromReservation'
 
@@ -190,11 +192,14 @@ function todayStr(): string {
 
 // ─── Component ───────────────────────────────────────────────
 
-export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory = 'lease', coAgents = [] }: Props) {
+export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory = 'lease', coAgents: initialCoAgents = [] }: Props) {
   const router = useRouter()
   const [selectedType, setSelectedType] = useState<ContractDocType | null>(null)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
+  const [localCoAgents, setLocalCoAgents] = useState<CoAgentProfile[]>(initialCoAgents)
+  const [showCoAgentDrawer, setShowCoAgentDrawer] = useState(false)
+  const coAgents = localCoAgents
 
   const DOC_GROUPS = parentCategory === 'reservation' ? RESERVATION_DOC_GROUPS : LEASE_DOC_GROUPS
 
@@ -353,6 +358,37 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
       coAgentAccountName: profile.bank_account_name ?? '',
       coAgentAccountNo:   profile.bank_account_no ?? '',
     }))
+  }
+
+  async function handleNewCoAgentCreated(id: string, _label: string) {
+    const { data } = await getCoAgentById(id)
+    if (data) {
+      const profile: CoAgentProfile = {
+        id,
+        prefix_th: data.prefix_th ?? null,
+        prefix_en: data.prefix_en ?? null,
+        first_name_th: data.first_name_th,
+        last_name_th: data.last_name_th,
+        first_name_en: data.first_name_en ?? null,
+        last_name_en: data.last_name_en ?? null,
+        address_no: data.address_no ?? null,
+        moo: data.moo ?? null,
+        soi: data.soi ?? null,
+        road: data.road ?? null,
+        subdistrict: data.subdistrict ?? null,
+        district: data.district ?? null,
+        province: data.province ?? null,
+        zip: data.zip ?? null,
+        bank_name: data.bank_name ?? null,
+        bank_account_name: data.bank_account_name ?? null,
+        bank_account_no: data.bank_account_no ?? null,
+        national_id: data.national_id ?? null,
+        tax_id: data.tax_id ?? null,
+      }
+      setLocalCoAgents(prev => [...prev, profile])
+      handleSelectCoAgent(id)
+    }
+    setShowCoAgentDrawer(false)
   }
 
   function handleSubmit() {
@@ -552,31 +588,37 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
         {isCoAgent && (
           <>
             {/* Profile selector */}
-            {coAgents.length > 0 && (
-              <div className="mb-1">
-                <label className="block text-xs text-gray-500 mb-1 font-medium">เลือก Co-Agent ที่บันทึกไว้</label>
-                <div className="flex gap-2 flex-wrap">
+            <div className="mb-1">
+              <label className="block text-xs text-gray-500 mb-1 font-medium">เลือก Co-Agent ที่บันทึกไว้</label>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, selectedCoAgentId: '', coAgentName: '', coAgentNationalId: '', coAgentTaxId: '', coAgentAddressNo: '', coAgentMoo: '', coAgentSoi: '', coAgentRoad: '', coAgentSubdistrict: '', coAgentDistrict: '', coAgentProvince: '', coAgentZip: '', coAgentBankName: '', coAgentAccountName: '', coAgentAccountNo: '' }))}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-medium transition ${!form.selectedCoAgentId ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                >
+                  <User className="w-3 h-3" />
+                  กรอกใหม่
+                </button>
+                {coAgents.map(p => (
                   <button
+                    key={p.id}
                     type="button"
-                    onClick={() => setForm(f => ({ ...f, selectedCoAgentId: '', coAgentName: '', coAgentNationalId: '', coAgentTaxId: '', coAgentAddressNo: '', coAgentMoo: '', coAgentSoi: '', coAgentRoad: '', coAgentSubdistrict: '', coAgentDistrict: '', coAgentProvince: '', coAgentZip: '', coAgentBankName: '', coAgentAccountName: '', coAgentAccountNo: '' }))}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-medium transition ${!form.selectedCoAgentId ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                    onClick={() => handleSelectCoAgent(p.id)}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition ${form.selectedCoAgentId === p.id ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
                   >
-                    <User className="w-3 h-3" />
-                    กรอกใหม่
+                    {[p.prefix_th, p.first_name_th, p.last_name_th].filter(Boolean).join(' ')}
                   </button>
-                  {coAgents.map(p => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => handleSelectCoAgent(p.id)}
-                      className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition ${form.selectedCoAgentId === p.id ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
-                    >
-                      {[p.prefix_th, p.first_name_th, p.last_name_th].filter(Boolean).join(' ')}
-                    </button>
-                  ))}
-                </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setShowCoAgentDrawer(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-dashed border-indigo-300 text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition"
+                >
+                  <UserPlus className="w-3 h-3" />
+                  เพิ่มใหม่
+                </button>
               </div>
-            )}
+            </div>
 
             <p className="text-xs font-semibold text-gray-600 mt-1">ข้อมูล Co-Agent</p>
             <Field label="ชื่อ Co-Agent *" value={form.coAgentName}
@@ -688,6 +730,7 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
     : 'สร้างเอกสารที่เกี่ยวข้อง'
 
   return (
+    <>
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
         <h2 className="text-sm font-semibold text-gray-700">{panelTitle}</h2>
@@ -765,6 +808,14 @@ export default function CreateChildDocPanel({ leaseId, leaseData, parentCategory
         )}
       </div>
     </div>
+
+    {showCoAgentDrawer && (
+      <CoAgentDrawer
+        onCreated={handleNewCoAgentCreated}
+        onClose={() => setShowCoAgentDrawer(false)}
+      />
+    )}
+    </>
   )
 }
 

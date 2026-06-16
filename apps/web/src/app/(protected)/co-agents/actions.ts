@@ -70,6 +70,24 @@ export async function updateCoAgent(id: string, input: CoAgentInput): Promise<{ 
   }
 }
 
+export async function getCoAgentById(id: string): Promise<{ data?: CoAgentInput & { id: string; prefix_th?: string; prefix_en?: string }; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'ไม่ได้เข้าสู่ระบบ' }
+    const { data, error } = await supabase
+      .from('co_agents')
+      .select('*')
+      .eq('id', id)
+      .eq('agent_uid', user.id)
+      .single()
+    if (error) return { error: error.message }
+    return { data }
+  } catch {
+    return { error: 'เกิดข้อผิดพลาด' }
+  }
+}
+
 export async function deleteCoAgent(id: string): Promise<{ error?: string }> {
   try {
     const supabase = await createClient()
