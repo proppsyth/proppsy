@@ -203,10 +203,30 @@ export async function enrichProject(
 
   try {
     const result = await identifyAndEnrichProject(rawName, apiKey)
+    if (result.developer) {
+      result.developer = await resolveExistingDeveloperName(result.developer)
+    }
     return result
   } catch {
     return { error: 'ค้นหาข้อมูลโครงการไม่สำเร็จ กรุณาลองใหม่' }
   }
+}
+
+// Reuse an existing developer name from the DB if it matches (case/whitespace
+// insensitive), so the AI lookup doesn't create near-duplicate developer entries.
+async function resolveExistingDeveloperName(name: string): Promise<string> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('projects')
+    .select('developer')
+    .not('developer', 'is', null)
+
+  const target = name.trim().toLowerCase()
+  const existing = (data ?? [])
+    .map(r => r.developer)
+    .find((d): d is string => !!d && d.trim().toLowerCase() === target)
+
+  return existing ?? name
 }
 
 // ─── Smart Project Search (Feature 5) ────────────────────────
