@@ -119,7 +119,8 @@ ${contactLines}
     await incrementAiUsage()
     return { post: text.trim() }
   } catch (err) {
-    console.error('[ai-post]', err)
-    return { error: 'เกิดข้อผิดพลาด กรุณาลองใหม่' }
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[ai-post] catch:', msg)
+    return { error: `เกิดข้อผิดพลาด: ${msg}` }
   }
 }
