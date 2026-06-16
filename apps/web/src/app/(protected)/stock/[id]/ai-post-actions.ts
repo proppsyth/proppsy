@@ -13,6 +13,16 @@ interface PostResult {
   error?: string
 }
 
+const ROOM_LABELS: Record<string, string> = {
+  Studio: 'ห้อง Studio', '1BR': '1 ห้องนอน', '2BR': '2 ห้องนอน',
+  '3BR': '3 ห้องนอน', Penthouse: 'Penthouse',
+}
+const DIRECTION_LABELS: Record<string, string> = {
+  N: 'ทิศเหนือ', S: 'ทิศใต้', E: 'ทิศตะวันออก', W: 'ทิศตะวันตก',
+  NE: 'ทิศตะวันออกเฉียงเหนือ', NW: 'ทิศตะวันตกเฉียงเหนือ',
+  SE: 'ทิศตะวันออกเฉียงใต้', SW: 'ทิศตะวันตกเฉียงใต้',
+}
+
 export async function generateFacebookPost(input: StockPostInput): Promise<PostResult> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { error: 'ยังไม่ได้ตั้งค่า GEMINI_API_KEY' }
@@ -25,42 +35,36 @@ export async function generateFacebookPost(input: StockPostInput): Promise<PostR
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'ไม่ได้เข้าสู่ระบบ' }
 
-    // Fetch stock + agent profile in parallel
+    // Fetch stock + agent profile in parallel (no join — avoids RLS issue on projects table)
     const [{ data: stock }, { data: agent }] = await Promise.all([
       supabase
         .from('stock')
-        .select(`
-          id, unit_no, room_type, floor, size_sqm, direction,
-          listing_type, rent_price, sale_price,
-          deposit_months, pet_allowed, notes,
-          project_name, project_id,
-          project:projects(name_th, district, province, bts_mrt, address_road)
-        `)
+        .select('id, is_published, unit_no, room_type, floor, size_sqm, direction, listing_type, rent_price, sale_price, deposit_months, pet_allowed, notes, project_name, project_id')
         .eq('id', input.stockId)
         .eq('agent_uid', user.id)
         .single(),
       supabase
         .from('profiles')
-        .select('name, nickname, phone, line_id, first_name_th, last_name_th')
+        .select('name, nickname, phone, line_id, first_name_th')
         .eq('id', user.id)
         .single(),
     ])
 
     if (!stock) return { error: 'ไม่พบข้อมูลทรัพย์' }
+    if (!stock.is_published) return { error: 'ทรัพย์นี้ยังไม่ได้เผยแพร่' }
 
-    const proj = stock.project as { name_th?: string; district?: string; province?: string; bts_mrt?: string[]; address_road?: string } | null
+    // Fetch project separately (service-role-like read via user's accessible projects)
+    let proj: { name_th?: string; district?: string; province?: string; bts_mrt?: string[] } | null = null
+    if (stock.project_id) {
+      const { data: p } = await supabase
+        .from('projects')
+        .select('name_th, district, province, bts_mrt')
+        .eq('id', stock.project_id)
+        .maybeSingle()
+      proj = p
+    }
+
     const fmt = (n: number) => new Intl.NumberFormat('th-TH').format(n)
-
-    const ROOM_LABELS: Record<string, string> = {
-      Studio: 'ห้อง Studio', '1BR': '1 ห้องนอน', '2BR': '2 ห้องนอน',
-      '3BR': '3 ห้องนอน', Penthouse: 'Penthouse',
-    }
-    const DIRECTION_LABELS: Record<string, string> = {
-      N: 'ทิศเหนือ', S: 'ทิศใต้', E: 'ทิศตะวันออก', W: 'ทิศตะวันตก',
-      NE: 'ทิศตะวันออกเฉียงเหนือ', NW: 'ทิศตะวันตกเฉียงเหนือ',
-      SE: 'ทิศตะวันออกเฉียงใต้', SW: 'ทิศตะวันตกเฉียงใต้',
-    }
-
     const agentName = agent?.nickname || agent?.first_name_th || agent?.name || 'เอเจนต์'
     const projectName = proj?.name_th ?? stock.project_name ?? ''
     const location = [proj?.district, proj?.province].filter(Boolean).join(' ')

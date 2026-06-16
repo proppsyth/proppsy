@@ -38,6 +38,24 @@ export interface CustomerSearchResult {
   phone?: string | null
 }
 
+export interface CoAgentSearchResult {
+  kind: 'co_agent'
+  id: string
+  prefix_th?: string | null
+  first_name_th: string
+  last_name_th: string
+  tax_id?: string | null
+  national_id?: string | null
+  address_no?: string | null
+  road?: string | null
+  subdistrict?: string | null
+  district?: string | null
+  province?: string | null
+  bank_name?: string | null
+  bank_account_name?: string | null
+  bank_account_no?: string | null
+}
+
 export interface ContractSearchResult {
   kind: 'contract'
   id: string
@@ -49,7 +67,7 @@ export interface ContractSearchResult {
   end_date?: string | null
 }
 
-export type EntitySearchResult = StockSearchResult | OwnerSearchResult | CustomerSearchResult | ContractSearchResult
+export type EntitySearchResult = StockSearchResult | OwnerSearchResult | CustomerSearchResult | CoAgentSearchResult | ContractSearchResult
 
 export interface ParentContractData {
   id: string
@@ -256,4 +274,56 @@ export async function searchCustomers(query: string): Promise<CustomerSearchResu
 
   const { data } = await req
   return (data ?? []).map(r => ({ kind: 'customer' as const, ...r }))
+}
+
+export interface ProjectSearchResult {
+  kind: 'project'
+  id: string
+  name_th: string
+  name_en?: string | null
+  district?: string | null
+  province?: string | null
+}
+
+export async function searchProjects(query: string): Promise<ProjectSearchResult[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const q = query.trim()
+  let req = supabase
+    .from('projects')
+    .select('id, name_th, name_en, district, province')
+    .order('name_th', { ascending: true })
+    .limit(20)
+
+  if (q) {
+    req = req.or(`name_th.ilike.%${q}%,name_en.ilike.%${q}%,district.ilike.%${q}%`)
+  }
+
+  const { data } = await req
+  return (data ?? []).map(r => ({ kind: 'project' as const, ...r }))
+}
+
+export async function searchCoAgents(query: string): Promise<CoAgentSearchResult[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const q = query.trim()
+  let req = supabase
+    .from('co_agents')
+    .select('id, prefix_th, first_name_th, last_name_th, tax_id, national_id, address_no, road, subdistrict, district, province, bank_name, bank_account_name, bank_account_no')
+    .eq('agent_uid', user.id)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  if (q) {
+    req = req.or(
+      `first_name_th.ilike.%${q}%,last_name_th.ilike.%${q}%,tax_id.ilike.%${q}%,national_id.ilike.%${q}%`
+    )
+  }
+
+  const { data } = await req
+  return (data ?? []).map(r => ({ kind: 'co_agent' as const, ...r }))
 }

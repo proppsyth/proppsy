@@ -183,6 +183,23 @@ export async function createContract(
   if (input.stock_id) {
     await setStockReserved(supabase, input.stock_id, user.id)
     await appendTimelineEvent(supabase, id, null, user.id, 'reservation_created', 'สร้างใบจอง')
+
+    // Auto-link owner to stock if stock has no owner yet
+    if (input.owner_id) {
+      const { data: stockRow } = await supabase
+        .from('stock')
+        .select('owner_id')
+        .eq('id', input.stock_id)
+        .eq('agent_uid', user.id)
+        .single()
+      if (stockRow && !stockRow.owner_id) {
+        await supabase
+          .from('stock')
+          .update({ owner_id: input.owner_id })
+          .eq('id', input.stock_id)
+          .eq('agent_uid', user.id)
+      }
+    }
   }
 
   // ── Commission pipeline record ────────────────────────────────

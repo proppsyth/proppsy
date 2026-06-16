@@ -3,14 +3,14 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Loader2, ChevronRight, ChevronLeft, Check, FileText, X, Globe, Info, AlertCircle, Sparkles,
+  Loader2, ChevronRight, ChevronLeft, Check, FileText, X, Globe, Info, AlertCircle, Sparkles, UserPlus,
 } from 'lucide-react'
 import { DOC_TYPE_LABELS } from '@/types'
 import type { ContractDocType, PaymentMethod } from '@/types'
 import { createContract } from './actions'
 import {
-  searchStocks, searchOwners, searchCustomers,
-  type StockSearchResult, type OwnerSearchResult, type CustomerSearchResult,
+  searchStocks, searchOwners, searchCustomers, searchCoAgents,
+  type StockSearchResult, type OwnerSearchResult, type CustomerSearchResult, type CoAgentSearchResult,
 } from './search-actions'
 import EntityCombobox from '@/components/shared/EntityCombobox'
 import {
@@ -20,6 +20,9 @@ import {
 } from '@/lib/contracts/templateRegistry'
 import { calculateCommission, commissionHint } from '@/lib/contracts/commissionRules'
 import { computeLeaseEndDate } from '@/lib/contracts/leaseFromReservation'
+import QuickCustomerModal from './QuickCustomerModal'
+import QuickOwnerModal from '@/app/(protected)/stock/QuickOwnerModal'
+import QuickStockModal from './QuickStockModal'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -64,6 +67,8 @@ interface WizardState {
   extra_vars: Record<string, string>
   parent_contract_id: string
   parent_contract_label: string
+  co_agent_id: string
+  co_agent_label: string
 }
 
 // Dynamic init: reservation defaults to today's date and 30-day expiry
@@ -89,6 +94,7 @@ function makeInitState(): WizardState {
     commission_rate_pct: '', commission_from_owner: '', commission_from_customer: '',
     extra_vars: {},
     parent_contract_id: '', parent_contract_label: '',
+    co_agent_id: '', co_agent_label: '',
   }
 }
 
@@ -144,6 +150,10 @@ export default function ContractWizard() {
   const [isPending, startTransition] = useTransition()
   const [showErrors, setShowErrors] = useState(false)
   const [stepErrors, setStepErrors] = useState<string[]>([])
+  const [showQuickCustomer, setShowQuickCustomer] = useState(false)
+  const [showQuickOwner, setShowQuickOwner] = useState(false)
+  const [showQuickStock, setShowQuickStock] = useState(false)
+  const [selectedCoAgent, setSelectedCoAgent] = useState<CoAgentSearchResult | null>(null)
 
   const set = (k: keyof WizardState, v: string | boolean | Record<string, string>) =>
     setState(s => ({ ...s, [k]: v }))
@@ -267,6 +277,37 @@ export default function ContractWizard() {
     setState(s => ({ ...s, customer_id: r.id, customer_label: personLabel(r) }))
   }
 
+  function handleQuickStockCreated(id: string, label: string, ownerId?: string, ownerLabel?: string) {
+    setState(s => ({
+      ...s,
+      stock_id: id,
+      stock_label: label,
+      ...(ownerId ? { owner_id: ownerId, owner_label: ownerLabel ?? ownerId } : {}),
+    }))
+    setShowQuickStock(false)
+  }
+
+  function handleQuickOwnerCreated(id: string, label: string) {
+    setState(s => ({ ...s, owner_id: id, owner_label: label }))
+    setShowQuickOwner(false)
+  }
+
+  function handleQuickCustomerCreated(id: string, label: string) {
+    setState(s => ({ ...s, customer_id: id, customer_label: label }))
+    setShowQuickCustomer(false)
+  }
+
+  function handleCoAgentSelect(r: CoAgentSearchResult | null) {
+    if (!r) {
+      setState(s => ({ ...s, co_agent_id: '', co_agent_label: '' }))
+      setSelectedCoAgent(null)
+      return
+    }
+    const label = [r.prefix_th, r.first_name_th, r.last_name_th].filter(Boolean).join(' ') || r.id
+    setState(s => ({ ...s, co_agent_id: r.id, co_agent_label: label }))
+    setSelectedCoAgent(r)
+  }
+
   function computeTemplateSlug(template: TemplateDefinition | undefined): string | undefined {
     return template?.slug
   }
@@ -329,6 +370,19 @@ export default function ContractWizard() {
       const num = (v: string) => v.trim() ? parseFloat(v) || null : null
       const int = (v: string) => v.trim() ? parseInt(v) || null : null
 
+      const coAgentInfo: Record<string, string> | null = selectedCoAgent ? {
+        'ชื่อ':          [selectedCoAgent.prefix_th, selectedCoAgent.first_name_th, selectedCoAgent.last_name_th].filter(Boolean).join(' ') || '',
+        'เลขเสียภาษี':  selectedCoAgent.tax_id || selectedCoAgent.national_id || '',
+        'บ้านเลขที่':   selectedCoAgent.address_no || '',
+        'ถนน':           selectedCoAgent.road || '',
+        'แขวงตำบล':     selectedCoAgent.subdistrict || '',
+        'เขตอำเภอ':     selectedCoAgent.district || '',
+        'จังหวัด':       selectedCoAgent.province || '',
+        'ธนาคาร':       selectedCoAgent.bank_name || '',
+        'ชื่อบัญชี':    selectedCoAgent.bank_account_name || '',
+        'เลขบัญชี':     selectedCoAgent.bank_account_no || '',
+      } : null
+
       const res = await createContract({
         doc_type:          state.doc_type as ContractDocType,
         language_version:  state.language,
@@ -366,6 +420,8 @@ export default function ContractWizard() {
         commission_from_owner: num(state.commission_from_owner),
         commission_from_customer: num(state.commission_from_customer),
         extra_vars: Object.keys(state.extra_vars).length > 0 ? state.extra_vars : null,
+        co_agent_id: state.co_agent_id || null,
+        co_agent_info: coAgentInfo,
         parent_contract_id: null,
         contract_relation_type: null,
       })
@@ -461,10 +517,19 @@ export default function ContractWizard() {
                 placeholder="ค้นหาโครงการ, ห้อง, อาคาร..."
               />
             </div>
-            <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block flex-shrink-0" />
-              แสดงเฉพาะทรัพย์ที่มีสถานะว่าง (available)
-            </p>
+            <div className="flex items-center justify-between mt-1.5">
+              <p className="text-xs text-gray-400 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block flex-shrink-0" />
+                แสดงเฉพาะทรัพย์ที่มีสถานะว่าง (available)
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowQuickStock(true)}
+                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+              >
+                <span className="text-base leading-none">+</span> เพิ่มทรัพย์ใหม่
+              </button>
+            </div>
             {state.stock_id && state.rent_price && (
               <p className="text-xs text-blue-600 mt-1">ค่าเช่า ฿{fmt(parseFloat(state.rent_price))}/เดือน (จากทรัพย์)</p>
             )}
@@ -486,8 +551,16 @@ export default function ContractWizard() {
                 placeholder="ค้นหาเจ้าของทรัพย์..."
               />
             </div>
+            <button
+              type="button"
+              onClick={() => setShowQuickOwner(true)}
+              className="mt-2 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 transition"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              เพิ่มเจ้าของใหม่
+            </button>
             {needsOwner && (
-              <p className="text-xs text-gray-400 mt-1.5">* จำเป็นสำหรับเอกสารประเภทนี้</p>
+              <p className="text-xs text-gray-400 mt-1">* จำเป็นสำหรับเอกสารประเภทนี้</p>
             )}
           </Section>
 
@@ -502,8 +575,30 @@ export default function ContractWizard() {
                 placeholder="ค้นหาลูกค้า / ผู้เช่า..."
               />
             </div>
+            <button
+              type="button"
+              onClick={() => setShowQuickCustomer(true)}
+              className="mt-2 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 transition"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              เพิ่มลูกค้าใหม่
+            </button>
             {needsCustomer && (
-              <p className="text-xs text-gray-400 mt-1.5">* จำเป็นสำหรับเอกสารประเภทนี้</p>
+              <p className="text-xs text-gray-400 mt-1">* จำเป็นสำหรับเอกสารประเภทนี้</p>
+            )}
+          </Section>
+
+          <Section title="Co-Agent ที่ร่วมงาน (ถ้ามี)">
+            <EntityCombobox
+              kind="co_agent"
+              value={state.co_agent_id}
+              selectedLabel={state.co_agent_label}
+              onSelect={handleCoAgentSelect}
+              searchFn={searchCoAgents}
+              placeholder="ค้นหา Co-Agent..."
+            />
+            {selectedCoAgent?.tax_id && (
+              <p className="text-xs text-gray-400 mt-1.5">เลขเสียภาษี: {selectedCoAgent.tax_id}</p>
             )}
           </Section>
         </div>
@@ -818,6 +913,30 @@ export default function ContractWizard() {
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
           {error}
         </div>
+      )}
+
+      {/* Quick stock create modal */}
+      {showQuickStock && (
+        <QuickStockModal
+          onCreated={handleQuickStockCreated}
+          onClose={() => setShowQuickStock(false)}
+        />
+      )}
+
+      {/* Quick owner create modal */}
+      {showQuickOwner && (
+        <QuickOwnerModal
+          onCreated={handleQuickOwnerCreated}
+          onClose={() => setShowQuickOwner(false)}
+        />
+      )}
+
+      {/* Quick customer create modal */}
+      {showQuickCustomer && (
+        <QuickCustomerModal
+          onCreated={handleQuickCustomerCreated}
+          onClose={() => setShowQuickCustomer(false)}
+        />
       )}
 
       {/* Navigation */}

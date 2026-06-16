@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { generateFacebookPost } from './ai-post-actions'
 
-export default function AiPostButton({ stockId }: { stockId: string }) {
+export default function AiPostButton({ stockId, isPublished }: { stockId: string; isPublished: boolean }) {
   const [loading, setLoading] = useState(false)
   const [post, setPost] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -36,15 +36,25 @@ export default function AiPostButton({ stockId }: { stockId: string }) {
           <span className="text-base">✨</span>
           <h3 className="text-sm font-semibold text-gray-700">สร้างโพสต์ Facebook ด้วย AI</h3>
         </div>
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={loading}
-          className="px-3 py-1.5 bg-blue-600 active:bg-blue-800 disabled:bg-blue-300 text-white text-xs font-medium rounded-lg transition-colors"
-        >
-          {loading ? 'กำลังสร้าง...' : 'สร้างโพสต์'}
-        </button>
+        {isPublished ? (
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={loading}
+            className="px-3 py-1.5 bg-blue-600 active:bg-blue-800 disabled:bg-blue-300 text-white text-xs font-medium rounded-lg transition-colors"
+          >
+            {loading ? 'กำลังสร้าง...' : 'สร้างโพสต์'}
+          </button>
+        ) : (
+          <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-lg">
+            ต้องเผยแพร่ก่อน
+          </span>
+        )}
       </div>
+
+      {!isPublished && (
+        <p className="text-xs text-gray-400">เผยแพร่ทรัพย์นี้ก่อนเพื่อสร้างโพสต์ Facebook</p>
+      )}
 
       {loading && (
         <div className="flex items-center gap-2 text-xs text-gray-400 py-3">

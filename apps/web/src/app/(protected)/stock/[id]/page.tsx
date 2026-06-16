@@ -343,7 +343,7 @@ export default async function StockDetailPage({
           </Section>
 
           {/* AI Facebook Post */}
-          <AiPostButton stockId={s.id} />
+          <AiPostButton stockId={s.id} isPublished={s.is_published ?? false} />
 
           {/* กิจกรรม */}
           <ActivityPanel entityType="stock" entityId={s.id} />
