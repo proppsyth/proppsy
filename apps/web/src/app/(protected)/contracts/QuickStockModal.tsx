@@ -3,30 +3,29 @@
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { X, Loader2, Home, ChevronDown, Plus } from 'lucide-react'
 import { createStock } from '@/app/(protected)/stock/actions'
-import { searchProjects, searchOwners } from './search-actions'
+import { searchProjects } from './search-actions'
 import QuickProjectModal from '@/app/(protected)/stock/QuickProjectModal'
-import QuickOwnerModal from '@/app/(protected)/stock/QuickOwnerModal'
 
 // ─── Types ───────────────────────────────────────────────────
 
 interface Props {
-  onCreated: (id: string, label: string, ownerId?: string, ownerLabel?: string) => void
+  onCreated: (id: string, label: string) => void
   onClose: () => void
 }
 
 type ListingType = 'rent' | 'sale' | 'both'
-type RoomType = 'Studio' | '1BR' | '2BR' | '3BR' | 'Penthouse' | ''
 
-const ROOM_TYPES: RoomType[] = ['Studio', '1BR', '2BR', '3BR', 'Penthouse']
-const DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
-const DIRECTION_LABELS: Record<string, string> = {
-  N: 'เหนือ', NE: 'ตอ.น.', E: 'ออก', SE: 'ตอ.ต.',
-  S: 'ใต้', SW: 'ตต.ต.', W: 'ตก', NW: 'ตต.น.',
-}
+const ROOM_TYPES = [
+  { value: 'สตูดิโอ / Studio', label: 'สตูดิโอ / Studio' },
+  { value: '1 ห้องนอน / 1 Bedroom', label: '1 ห้องนอน / 1 Bedroom' },
+  { value: '2 ห้องนอน / 2 Bedrooms', label: '2 ห้องนอน / 2 Bedrooms' },
+  { value: '3 ห้องนอน / 3 Bedrooms', label: '3 ห้องนอน / 3 Bedrooms' },
+  { value: 'เพนต์เฮาส์ / Penthouse', label: 'เพนต์เฮาส์ / Penthouse' },
+]
 
 const INPUT = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition bg-white'
 
-// ─── Simple Combobox (for project + owner search) ─────────────
+// ─── Simple Combobox ──────────────────────────────────────────
 
 function SearchCombobox<T extends { id: string }>({
   placeholder,
@@ -125,17 +124,11 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
   const [projectName, setProjectName] = useState('')
   const [showQuickProject, setShowQuickProject] = useState(false)
 
-  // Owner (optional)
-  const [ownerId, setOwnerId] = useState('')
-  const [ownerLabel, setOwnerLabel] = useState('')
-  const [showQuickOwner, setShowQuickOwner] = useState(false)
-
   // Stock fields
   const [unitNo, setUnitNo] = useState('')
-  const [roomType, setRoomType] = useState<RoomType>('')
+  const [roomType, setRoomType] = useState('')
   const [floor, setFloor] = useState('')
   const [sizeSqm, setSizeSqm] = useState('')
-  const [direction, setDirection] = useState('')
   const [listingType, setListingType] = useState<ListingType>('rent')
   const [rentPrice, setRentPrice] = useState('')
   const [salePrice, setSalePrice] = useState('')
@@ -144,7 +137,7 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const errs: string[] = []
-    if (!projectName.trim()) errs.push('กรุณาเลือกหรือกรอกโครงการ')
+    if (!projectId) errs.push('กรุณาเลือกโครงการ หรือกด "+ สร้างใหม่"')
     if (!roomType) errs.push('กรุณาเลือกประเภทห้อง')
     if (!floor.trim()) errs.push('กรุณาระบุชั้น')
     if (!sizeSqm.trim()) errs.push('กรุณาระบุขนาดห้อง')
@@ -157,12 +150,11 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
       const res = await createStock({
         project_name: projectName.trim(),
         project_id: projectId || null,
-        owner_id: ownerId || null,
+        owner_id: null,
         unit_no: unitNo.trim() || undefined,
         room_type: roomType || undefined,
         floor: floor ? parseInt(floor) : undefined,
         size_sqm: sizeSqm ? parseFloat(sizeSqm) : undefined,
-        view_direction: direction || undefined,
         listing_type: listingType,
         rent_price: rentPrice ? parseInt(rentPrice) : undefined,
         sale_price: salePrice ? parseInt(salePrice) : undefined,
@@ -179,7 +171,7 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
       if (res.error) { setError(res.error); return }
 
       const label = [projectName.trim(), unitNo.trim(), roomType].filter(Boolean).join(' · ')
-      onCreated(res.id!, label, ownerId || undefined, ownerLabel || undefined)
+      onCreated(res.id!, label)
     })
   }
 
@@ -210,7 +202,7 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
               <div className="flex gap-2">
                 <div className="flex-1">
                   <SearchCombobox
-                    placeholder="ค้นหาหรือพิมพ์ชื่อโครงการ..."
+                    placeholder="ค้นหาโครงการ..."
                     selectedId={projectId}
                     selectedLabel={projectName}
                     onSelect={(item: { id: string; name_th: string }) => {
@@ -228,15 +220,6 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
                       </span>
                     )}
                   />
-                  {/* ถ้ายังไม่ได้เลือก ให้พิมพ์ชื่อโครงการใหม่ได้เลย */}
-                  {!projectId && (
-                    <input
-                      value={projectName}
-                      onChange={e => setProjectName(e.target.value)}
-                      placeholder="หรือพิมพ์ชื่อโครงการใหม่..."
-                      className={`${INPUT} mt-2`}
-                    />
-                  )}
                 </div>
                 <button
                   type="button"
@@ -249,45 +232,7 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
               </div>
             </div>
 
-            {/* เจ้าของ (optional) */}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                เจ้าของทรัพย์ <span className="text-gray-400 font-normal">(ไม่บังคับ)</span>
-              </label>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <SearchCombobox
-                    placeholder="ค้นหาเจ้าของ..."
-                    selectedId={ownerId}
-                    selectedLabel={ownerLabel}
-                    onSelect={(item: { id: string; nickname?: string | null; first_name_th?: string | null; last_name_th?: string | null }) => {
-                      setOwnerId(item.id)
-                      setOwnerLabel(item.nickname || [item.first_name_th, item.last_name_th].filter(Boolean).join(' ') || item.id)
-                    }}
-                    onClear={() => { setOwnerId(''); setOwnerLabel('') }}
-                    searchFn={searchOwners}
-                    renderResult={(item: { id: string; nickname?: string | null; first_name_th?: string | null; last_name_th?: string | null; phone?: string | null }) => (
-                      <span>
-                        <span className="font-medium text-gray-800">
-                          {item.nickname || [item.first_name_th, item.last_name_th].filter(Boolean).join(' ') || item.id}
-                        </span>
-                        {item.phone && <span className="text-xs text-gray-400 ml-1">· {item.phone}</span>}
-                      </span>
-                    )}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowQuickOwner(true)}
-                  className="flex-shrink-0 flex items-center gap-1 px-3 py-2.5 border border-gray-200 rounded-xl text-xs text-gray-600 hover:bg-gray-50 transition"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  สร้างใหม่
-                </button>
-              </div>
-            </div>
-
-            {/* ประเภทห้อง + ชั้น */}
+            {/* ประเภทห้อง */}
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">
                 ประเภทห้อง <span className="text-red-400">*</span>
@@ -295,20 +240,18 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
               <div className="flex gap-2 flex-wrap">
                 {ROOM_TYPES.map(r => (
                   <button
-                    key={r}
+                    key={r.value}
                     type="button"
-                    onClick={() => setRoomType(r === roomType ? '' : r)}
-                    className={`px-3 py-1.5 text-sm rounded-lg border transition ${roomType === r ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
-                  >{r}</button>
+                    onClick={() => setRoomType(r.value === roomType ? '' : r.value)}
+                    className={`px-3 py-1.5 text-xs rounded-lg border transition ${roomType === r.value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                  >{r.label}</button>
                 ))}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  เลขห้อง / ยูนิต
-                </label>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">เลขห้อง / ยูนิต</label>
                 <input value={unitNo} onChange={e => setUnitNo(e.target.value)} placeholder="เช่น 12A, 305" className={INPUT} />
               </div>
               <div>
@@ -317,24 +260,11 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
                 </label>
                 <input value={floor} onChange={e => setFloor(e.target.value.replace(/\D/g, ''))} placeholder="เช่น 12" className={INPUT} inputMode="numeric" />
               </div>
-              <div>
+              <div className="col-span-2">
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
                   ขนาด (ตร.ม.) <span className="text-red-400">*</span>
                 </label>
                 <input value={sizeSqm} onChange={e => setSizeSqm(e.target.value)} placeholder="เช่น 35.5" className={INPUT} inputMode="decimal" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">ทิศ</label>
-                <div className="flex gap-1.5 flex-wrap">
-                  {DIRECTIONS.map(d => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setDirection(direction === d ? '' : d)}
-                      className={`px-2 py-1 text-xs rounded-lg border transition ${direction === d ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                    >{DIRECTION_LABELS[d]}</button>
-                  ))}
-                </div>
               </div>
             </div>
 
@@ -409,16 +339,6 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
             setShowQuickProject(false)
           }}
           onClose={() => setShowQuickProject(false)}
-        />
-      )}
-      {showQuickOwner && (
-        <QuickOwnerModal
-          onCreated={(id, label) => {
-            setOwnerId(id)
-            setOwnerLabel(label)
-            setShowQuickOwner(false)
-          }}
-          onClose={() => setShowQuickOwner(false)}
         />
       )}
     </>

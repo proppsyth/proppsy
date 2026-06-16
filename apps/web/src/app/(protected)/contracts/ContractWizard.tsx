@@ -277,13 +277,8 @@ export default function ContractWizard() {
     setState(s => ({ ...s, customer_id: r.id, customer_label: personLabel(r) }))
   }
 
-  function handleQuickStockCreated(id: string, label: string, ownerId?: string, ownerLabel?: string) {
-    setState(s => ({
-      ...s,
-      stock_id: id,
-      stock_label: label,
-      ...(ownerId ? { owner_id: ownerId, owner_label: ownerLabel ?? ownerId } : {}),
-    }))
+  function handleQuickStockCreated(id: string, label: string) {
+    setState(s => ({ ...s, stock_id: id, stock_label: label }))
     setShowQuickStock(false)
   }
 

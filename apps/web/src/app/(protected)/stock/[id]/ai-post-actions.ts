@@ -39,7 +39,7 @@ export async function generateFacebookPost(input: StockPostInput): Promise<PostR
     const [{ data: stock }, { data: agent }] = await Promise.all([
       supabase
         .from('stock')
-        .select('id, is_published, unit_no, room_type, floor, size_sqm, direction, listing_type, rent_price, sale_price, deposit_months, pet_allowed, notes, project_name, project_id')
+        .select('id, is_published, unit_no, room_type, floor, size_sqm, view_direction, listing_type, rent_price, sale_price, deposit, pet_allowed, notes, project_name, project_id')
         .eq('id', input.stockId)
         .eq('agent_uid', user.id)
         .single(),
@@ -70,7 +70,7 @@ export async function generateFacebookPost(input: StockPostInput): Promise<PostR
     const location = [proj?.district, proj?.province].filter(Boolean).join(' ')
     const bts = (proj?.bts_mrt ?? []).slice(0, 2).join(', ')
     const roomLabel = stock.room_type ? (ROOM_LABELS[stock.room_type] ?? stock.room_type) : ''
-    const dirLabel = stock.direction ? (DIRECTION_LABELS[stock.direction] ?? '') : ''
+    const dirLabel = stock.view_direction ? (DIRECTION_LABELS[stock.view_direction] ?? '') : ''
 
     const facts = [
       projectName && `โครงการ: ${projectName}`,
@@ -82,7 +82,7 @@ export async function generateFacebookPost(input: StockPostInput): Promise<PostR
       dirLabel && `ทิศ: ${dirLabel}`,
       stock.listing_type !== 'sale' && stock.rent_price && `ราคาเช่า: ${fmt(stock.rent_price)} บาท/เดือน`,
       stock.listing_type !== 'rent' && stock.sale_price && `ราคาขาย: ${fmt(stock.sale_price)} บาท`,
-      stock.deposit_months && `เงินมัดจำ: ${stock.deposit_months} เดือน`,
+      stock.deposit && `เงินมัดจำ: ${stock.deposit} เดือน`,
       stock.pet_allowed ? 'เลี้ยงสัตว์ได้' : null,
       stock.notes && `หมายเหตุ: ${stock.notes}`,
     ].filter(Boolean).join('\n')
