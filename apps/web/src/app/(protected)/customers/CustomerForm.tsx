@@ -143,9 +143,11 @@ function toInput(f: FormState): CustomerInput {
 interface Props {
   initialData?: Customer
   customerId?: string
+  onCreated?: (id: string, label: string) => void
+  onCancel?: () => void
 }
 
-export default function CustomerForm({ initialData, customerId }: Props) {
+export default function CustomerForm({ initialData, customerId, onCreated, onCancel }: Props) {
   const router = useRouter()
   const [form, setForm] = useState<FormState>(
     initialData ? customerToForm(initialData) : DEFAULT
@@ -250,7 +252,12 @@ export default function CustomerForm({ initialData, customerId }: Props) {
       } else {
         const res = await createCustomer(input)
         if (res.error) { setError(res.error); return }
-        router.push(`/customers/${res.id}`)
+        if (onCreated) {
+          const label = input.nickname || [input.first_name_th, input.last_name_th].filter(Boolean).join(' ') || res.id!
+          onCreated(res.id!, label)
+        } else {
+          router.push(`/customers/${res.id}`)
+        }
       }
     })
   }
@@ -527,12 +534,15 @@ export default function CustomerForm({ initialData, customerId }: Props) {
 
       {/* Actions */}
       <div className="flex gap-3 pb-8">
-        <Link
-          href={customerId ? `/customers/${customerId}` : '/customers'}
-          className="px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition"
-        >
-          ยกเลิก
-        </Link>
+        {onCancel ? (
+          <button type="button" onClick={onCancel} className="px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition">
+            ยกเลิก
+          </button>
+        ) : (
+          <Link href={customerId ? `/customers/${customerId}` : '/customers'} className="px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition">
+            ยกเลิก
+          </Link>
+        )}
         <button
           type="button"
           onClick={handleSubmit}

@@ -20,9 +20,10 @@ import {
 } from '@/lib/contracts/templateRegistry'
 import { calculateCommission, commissionHint } from '@/lib/contracts/commissionRules'
 import { computeLeaseEndDate } from '@/lib/contracts/leaseFromReservation'
-import QuickCustomerModal from './QuickCustomerModal'
-import QuickOwnerModal from '@/app/(protected)/stock/QuickOwnerModal'
 import QuickStockModal from './QuickStockModal'
+import OwnerDrawer from './OwnerDrawer'
+import CustomerDrawer from './CustomerDrawer'
+import CoAgentDrawer from './CoAgentDrawer'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -153,6 +154,7 @@ export default function ContractWizard() {
   const [showQuickCustomer, setShowQuickCustomer] = useState(false)
   const [showQuickOwner, setShowQuickOwner] = useState(false)
   const [showQuickStock, setShowQuickStock] = useState(false)
+  const [showQuickCoAgent, setShowQuickCoAgent] = useState(false)
   const [selectedCoAgent, setSelectedCoAgent] = useState<CoAgentSearchResult | null>(null)
 
   const set = (k: keyof WizardState, v: string | boolean | Record<string, string>) =>
@@ -290,6 +292,11 @@ export default function ContractWizard() {
   function handleQuickCustomerCreated(id: string, label: string) {
     setState(s => ({ ...s, customer_id: id, customer_label: label }))
     setShowQuickCustomer(false)
+  }
+
+  function handleQuickCoAgentCreated(id: string, label: string) {
+    setState(s => ({ ...s, co_agent_id: id, co_agent_label: label }))
+    setShowQuickCoAgent(false)
   }
 
   function handleCoAgentSelect(r: CoAgentSearchResult | null) {
@@ -595,6 +602,14 @@ export default function ContractWizard() {
             {selectedCoAgent?.tax_id && (
               <p className="text-xs text-gray-400 mt-1.5">เลขเสียภาษี: {selectedCoAgent.tax_id}</p>
             )}
+            <button
+              type="button"
+              onClick={() => setShowQuickCoAgent(true)}
+              className="mt-2 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 transition"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              เพิ่ม Co-Agent ใหม่
+            </button>
           </Section>
         </div>
       )}
@@ -918,19 +933,27 @@ export default function ContractWizard() {
         />
       )}
 
-      {/* Quick owner create modal */}
+      {/* Owner full-screen drawer */}
       {showQuickOwner && (
-        <QuickOwnerModal
+        <OwnerDrawer
           onCreated={handleQuickOwnerCreated}
           onClose={() => setShowQuickOwner(false)}
         />
       )}
 
-      {/* Quick customer create modal */}
+      {/* Customer full-screen drawer */}
       {showQuickCustomer && (
-        <QuickCustomerModal
+        <CustomerDrawer
           onCreated={handleQuickCustomerCreated}
           onClose={() => setShowQuickCustomer(false)}
+        />
+      )}
+
+      {/* Co-Agent full-screen drawer */}
+      {showQuickCoAgent && (
+        <CoAgentDrawer
+          onCreated={handleQuickCoAgentCreated}
+          onClose={() => setShowQuickCoAgent(false)}
         />
       )}
 

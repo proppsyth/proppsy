@@ -121,9 +121,11 @@ function toInput(f: FormState): OwnerInput {
 interface Props {
   initialData?: Owner
   ownerId?: string
+  onCreated?: (id: string, label: string) => void
+  onCancel?: () => void
 }
 
-export default function OwnerForm({ initialData, ownerId }: Props) {
+export default function OwnerForm({ initialData, ownerId, onCreated, onCancel }: Props) {
   const router = useRouter()
   const [form, setForm] = useState<FormState>(
     initialData ? ownerToForm(initialData) : DEFAULT
@@ -288,7 +290,12 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
       } else {
         const res = await createOwner(input)
         if (res.error) { setError(res.error); return }
-        router.push(`/owners/${res.id}`)
+        if (onCreated) {
+          const label = input.nickname || [input.first_name_th, input.last_name_th].filter(Boolean).join(' ') || res.id!
+          onCreated(res.id!, label)
+        } else {
+          router.push(`/owners/${res.id}`)
+        }
       }
     })
   }
@@ -587,12 +594,15 @@ export default function OwnerForm({ initialData, ownerId }: Props) {
 
       {/* Actions */}
       <div className="flex gap-3 pb-8">
-        <Link
-          href={ownerId ? `/owners/${ownerId}` : '/owners'}
-          className="px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition"
-        >
-          ยกเลิก
-        </Link>
+        {onCancel ? (
+          <button type="button" onClick={onCancel} className="px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition">
+            ยกเลิก
+          </button>
+        ) : (
+          <Link href={ownerId ? `/owners/${ownerId}` : '/owners'} className="px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition">
+            ยกเลิก
+          </Link>
+        )}
         <button
           type="button"
           onClick={handleSubmit}

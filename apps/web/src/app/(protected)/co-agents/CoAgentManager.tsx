@@ -25,7 +25,7 @@ const BANK_OPTIONS = [
 
 // ─── Types ───────────────────────────────────────────────────
 
-interface CoAgent {
+export interface CoAgent {
   id: string
   prefix_th: string | null
   prefix_en: string | null
@@ -113,7 +113,7 @@ function agentToForm(p: CoAgent): FormState {
 
 // ─── Inner form component (has its own upload state) ─────────
 
-function CoAgentForm({
+export function CoAgentForm({
   editingAgent,
   onSaved,
   onCancel,
