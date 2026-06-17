@@ -22,6 +22,7 @@ const ROOM_TYPES = [
   { value: '3 ห้องนอน / 3 Bedrooms', label: '3 ห้องนอน / 3 Bedrooms' },
   { value: 'เพนต์เฮาส์ / Penthouse', label: 'เพนต์เฮาส์ / Penthouse' },
 ]
+const CUSTOM_ROOM_TYPES_KEY = 'proppsy_custom_room_types'
 
 const INPUT = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition bg-white'
 
@@ -133,6 +134,30 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
   const [rentPrice, setRentPrice] = useState('')
   const [salePrice, setSalePrice] = useState('')
   const [deposit, setDeposit] = useState('')
+  const [customRoomTypes, setCustomRoomTypes] = useState<string[]>([])
+  const [addingRoomType, setAddingRoomType] = useState(false)
+  const [newRoomTypeText, setNewRoomTypeText] = useState('')
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOM_ROOM_TYPES_KEY)
+      if (raw) setCustomRoomTypes(JSON.parse(raw))
+    } catch { /* ignore */ }
+  }, [])
+
+  function handleAddCustomRoomType() {
+    const val = newRoomTypeText.trim()
+    if (!val) { setAddingRoomType(false); return }
+    setCustomRoomTypes(prev => {
+      if (prev.includes(val) || ROOM_TYPES.some(r => r.value === val)) return prev
+      const next = [...prev, val]
+      try { localStorage.setItem(CUSTOM_ROOM_TYPES_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+    setRoomType(val)
+    setNewRoomTypeText('')
+    setAddingRoomType(false)
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -153,7 +178,7 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
         owner_id: null,
         unit_no: unitNo.trim() || undefined,
         room_type: roomType || undefined,
-        floor: floor ? parseInt(floor) : undefined,
+        floor: floor.trim() || undefined,
         size_sqm: sizeSqm ? parseFloat(sizeSqm) : undefined,
         listing_type: listingType,
         rent_price: rentPrice ? parseInt(rentPrice) : undefined,
@@ -240,16 +265,44 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
               <label className="block text-xs font-medium text-gray-600 mb-1.5">
                 ประเภทห้อง <span className="text-red-400">*</span>
               </label>
-              <div className="flex gap-2 flex-wrap">
-                {ROOM_TYPES.map(r => (
+              {addingRoomType ? (
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    value={newRoomTypeText}
+                    onChange={e => setNewRoomTypeText(e.target.value)}
+                    placeholder="เช่น Duplex / ดูเพล็กซ์"
+                    className={INPUT}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddCustomRoomType() } }}
+                  />
+                  <button type="button" onClick={handleAddCustomRoomType} className="px-3 rounded-xl bg-blue-600 text-white text-sm font-medium shrink-0">เพิ่ม</button>
+                  <button type="button" onClick={() => { setAddingRoomType(false); setNewRoomTypeText('') }} className="px-3 rounded-xl border border-gray-200 text-gray-500 text-sm shrink-0">ยกเลิก</button>
+                </div>
+              ) : (
+                <div className="flex gap-2 flex-wrap">
+                  {ROOM_TYPES.map(r => (
+                    <button
+                      key={r.value}
+                      type="button"
+                      onClick={() => setRoomType(r.value === roomType ? '' : r.value)}
+                      className={`px-3 py-1.5 text-xs rounded-lg border transition ${roomType === r.value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                    >{r.label}</button>
+                  ))}
+                  {customRoomTypes.map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setRoomType(t === roomType ? '' : t)}
+                      className={`px-3 py-1.5 text-xs rounded-lg border transition ${roomType === t ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                    >{t}</button>
+                  ))}
                   <button
-                    key={r.value}
                     type="button"
-                    onClick={() => setRoomType(r.value === roomType ? '' : r.value)}
-                    className={`px-3 py-1.5 text-xs rounded-lg border transition ${roomType === r.value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
-                  >{r.label}</button>
-                ))}
-              </div>
+                    onClick={() => setAddingRoomType(true)}
+                    className="px-3 py-1.5 text-xs rounded-lg border border-dashed border-gray-300 text-gray-500 hover:bg-gray-50 transition"
+                  >+ เพิ่มประเภทใหม่</button>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -261,7 +314,7 @@ export default function QuickStockModal({ onCreated, onClose }: Props) {
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
                   ชั้น <span className="text-red-400">*</span>
                 </label>
-                <input value={floor} onChange={e => setFloor(e.target.value.replace(/\D/g, ''))} placeholder="เช่น 12" className={INPUT} inputMode="numeric" />
+                <input value={floor} onChange={e => setFloor(e.target.value)} placeholder="เช่น 12 หรือ 12A" className={INPUT} />
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
