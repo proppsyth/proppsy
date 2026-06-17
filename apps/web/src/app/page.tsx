@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import { createServiceClient } from '@/lib/supabase/server'
+import { createServiceClient, createClient } from '@/lib/supabase/server'
 import PublicNav from '@/components/shared/PublicNav'
 import PublicFooter from '@/components/shared/PublicFooter'
 import CompareBar from '@/components/shared/CompareBar'
@@ -57,6 +57,10 @@ export default async function HomePage() {
   const supabase = createServiceClient()
   const today = new Date().toISOString().split('T')[0]!
 
+  // Auth-aware client (cookies) just to tailor the CTA for logged-in users
+  const authClient = await createClient()
+  const { data: { user: currentUser } } = await authClient.auth.getUser()
+
   const [
     { data: projectRows },
     { data: bkkDistrictRows },
@@ -102,7 +106,7 @@ export default async function HomePage() {
       .limit(8),
     supabase.from('contracts').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('account_status', 'approved'),
-    supabase.from('stock').select('*', { count: 'exact', head: true }).eq('is_published', true),
+    supabase.from('stock').select('*', { count: 'exact', head: true }),
   ])
 
   const premiumStocks  = (premiumStocksRaw  ?? []) as unknown as StockWithProject[]
@@ -361,11 +365,11 @@ export default async function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href="/register"
+              href={currentUser ? '/dashboard' : '/register'}
               className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-blue-700 font-bold rounded-2xl transition hover:bg-blue-50 active:scale-95 text-sm shadow-lg"
             >
               <Star className="w-4 h-4" />
-              ลงทะเบียนฟรี
+              {currentUser ? 'ไปที่แดชบอร์ด' : 'ลงทะเบียนฟรี'}
             </Link>
             <Link
               href="/services"

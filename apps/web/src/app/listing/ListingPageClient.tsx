@@ -191,11 +191,12 @@ function FilterPanel({ currentFilters, filterOptions, onFilter, onClear }: Filte
         </div>
       )}
 
-      {/* Price range (only when listing type is set) */}
-      {(currentFilters.listing_type === 'rent' || currentFilters.listing_type === 'sale') && (
-        <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">ราคา</p>
-          <div className="flex gap-1.5 flex-wrap">
+      {/* Price range */}
+      <div>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+          ราคา{currentFilters.listing_type === 'sale' ? ' (ขาย)' : ' (เช่า/เดือน)'}
+        </p>
+        <div className="flex gap-1.5 flex-wrap">
             {priceBuckets.map(b => (
               <button key={b.value} onClick={() => onFilter({ price_bucket: b.value })}
                 className={`px-3 py-1.5 text-xs rounded-full font-medium transition ${
@@ -205,9 +206,8 @@ function FilterPanel({ currentFilters, filterOptions, onFilter, onClear }: Filte
                 {b.label}
               </button>
             ))}
-          </div>
         </div>
-      )}
+      </div>
 
       {/* Status */}
       <div>

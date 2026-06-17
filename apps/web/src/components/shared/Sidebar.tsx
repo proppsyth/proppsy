@@ -35,10 +35,11 @@ const NAV_ITEMS: { href: string; icon: LucideIcon; label: string; permission: st
 
 // Public nav items for the hamburger dropdown
 const DROPDOWN_NAV = [
+  { href: '/listing',  label: 'ทรัพย์' },
   { href: '/services', label: 'บริการ' },
   { href: '/news',     label: 'ข่าวสาร' },
   { href: '/about',    label: 'เกี่ยวกับเรา' },
-  { href: '/help',     label: 'คู่มือ & FAQ' },
+  { href: '/faq',      label: 'คู่มือ & FAQ' },
   { href: '/contact',  label: 'ติดต่อเรา' },
 ]
 

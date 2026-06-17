@@ -427,7 +427,7 @@ export function customerDisplayName(customer: Partial<Customer>): string {
 }
 
 export function stockDisplayTitle(stock: Partial<Stock>): string {
-  return [stock.project_name, stock.unit_no, stock.room_type].filter(Boolean).join(' · ') || 'ทรัพย์ไม่ระบุ'
+  return [stock.project_name, stock.unit_no, formatRoomTypeEn(stock.room_type)].filter(Boolean).join(' · ') || 'ทรัพย์ไม่ระบุ'
 }
 
 export const DOC_TYPE_LABELS: Record<ContractDocType, string> = {
@@ -502,4 +502,19 @@ export const ROOM_TYPE_LABELS: Record<string, string> = {
 export function formatRoomType(rt: string | null | undefined): string {
   if (!rt) return ''
   return ROOM_TYPE_LABELS[rt] ?? rt
+}
+
+// English-only full labels (no abbreviations) for compact contexts like titles
+export const ROOM_TYPE_EN: Record<string, string> = {
+  'Studio':   'Studio',
+  '1BR':      '1 Bedroom',
+  '2BR':      '2 Bedrooms',
+  '3BR':      '3 Bedrooms',
+  'Penthouse':'Penthouse',
+  'อื่นๆ':    'อื่นๆ',
+}
+
+export function formatRoomTypeEn(rt: string | null | undefined): string {
+  if (!rt) return ''
+  return ROOM_TYPE_EN[rt] ?? rt
 }
