@@ -135,6 +135,7 @@ export default async function StockDetailPage({
               isPremium={s.is_premium ?? false}
               status={s.status}
               currentBalance={creditBalance}
+              accountPending={agentProfile?.account_status === 'pending'}
             />
             <Link
               href={`/stock/${s.id}/edit`}

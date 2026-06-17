@@ -80,7 +80,7 @@ const DEFAULT: FormState = {
   unit_no: '', unit_name: '', building: '', floor: '',
   room_type: '', size_sqm: '', view_direction: '',
   listing_type: 'rent', rent_price: '', sale_price: '',
-  deposit: '2', contract_term: '12',
+  deposit: '1', contract_term: '12',
   furniture: [], facilities: [], co_agent_accepted: false,
   status: 'available', notes: '', contract_end_date: '',
 }

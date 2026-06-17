@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Search, LayoutGrid, List, Home, Globe } from 'lucide-react'
+import { Search, LayoutGrid, List, Home, Globe, Table2, ArrowUpDown } from 'lucide-react'
 import { ownerDisplayName, stockDisplayTitle } from '@/types'
 import type { Stock, StockStatus, ListingType } from '@/types'
 import StorageImage from '@/components/shared/StorageImage'
@@ -35,15 +35,28 @@ function formatPrice(n: number): string {
   return new Intl.NumberFormat('th-TH').format(n)
 }
 
+function formatDate(d?: string | null): string {
+  if (!d) return '—'
+  return new Date(d).toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric' })
+}
+
+type SortKey = 'latest' | 'soon_available'
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'latest', label: 'ล่าสุด' },
+  { value: 'soon_available', label: 'ใกล้ว่าง' },
+]
+
 interface Props {
   stocks: Stock[]
 }
 
 export default function StockList({ stocks }: Props) {
   const [search, setSearch] = useState('')
-  const [view, setView] = useState<'grid' | 'list'>('grid')
+  const [view, setView] = useState<'grid' | 'list' | 'table'>('grid')
+  const [sort, setSort] = useState<SortKey>('latest')
 
-  const filtered = search.trim()
+  const searched = search.trim()
     ? stocks.filter(s => {
         const q = search.toLowerCase()
         return (
@@ -56,6 +69,18 @@ export default function StockList({ stocks }: Props) {
         )
       })
     : stocks
+
+  const filtered = [...searched].sort((a, b) => {
+    if (sort === 'soon_available') {
+      // Nearest upcoming contract-end date first; units with no end date last.
+      const ae = a.contract_end_date ? new Date(a.contract_end_date).getTime() : Infinity
+      const be = b.contract_end_date ? new Date(b.contract_end_date).getTime() : Infinity
+      if (ae !== be) return ae - be
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    }
+    // latest
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })
 
   return (
     <div>
@@ -86,6 +111,29 @@ export default function StockList({ stocks }: Props) {
           >
             <List className="w-4 h-4" />
           </button>
+          <button
+            onClick={() => setView('table')}
+            className={`px-3 py-2.5 transition ${view === 'table' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+            aria-label="Table view"
+          >
+            <Table2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Sort */}
+      <div className="flex items-center gap-2 mb-4">
+        <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+        <div className="flex gap-1.5 flex-wrap">
+          {SORT_OPTIONS.map(o => (
+            <button
+              key={o.value}
+              onClick={() => setSort(o.value)}
+              className={`px-3 py-1.5 text-xs rounded-full border transition ${sort === o.value ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+            >
+              {o.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -115,6 +163,51 @@ export default function StockList({ stocks }: Props) {
       {filtered.length > 0 && view === 'list' && (
         <div className="space-y-2">
           {filtered.map(s => <StockListRow key={s.id} stock={s} />)}
+        </div>
+      )}
+
+      {/* Table view */}
+      {filtered.length > 0 && view === 'table' && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
+                <th className="px-3 py-2.5 font-medium">รหัส</th>
+                <th className="px-3 py-2.5 font-medium">ทรัพย์</th>
+                <th className="px-3 py-2.5 font-medium">สถานะ</th>
+                <th className="px-3 py-2.5 font-medium text-right">ราคา</th>
+                <th className="px-3 py-2.5 font-medium text-center">ชั้น</th>
+                <th className="px-3 py-2.5 font-medium">สิ้นสุดสัญญา</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(s => {
+                const price = s.listing_type === 'sale' ? s.sale_price : s.rent_price
+                return (
+                  <tr key={s.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition">
+                    <td className="px-3 py-2.5 whitespace-nowrap text-xs text-gray-400">
+                      <Link href={`/stock/${s.id}`} className="hover:text-blue-600">{s.id}</Link>
+                    </td>
+                    <td className="px-3 py-2.5 min-w-[180px]">
+                      <Link href={`/stock/${s.id}`} className="font-medium text-gray-900 hover:text-blue-600 line-clamp-1">
+                        {stockDisplayTitle(s)}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[s.status]}`}>
+                        {STATUS_LABELS[s.status]}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-right text-blue-600 font-semibold">
+                      {price ? `฿${formatPrice(price)}` : '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-center text-gray-600">{s.floor ?? '—'}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-gray-600">{formatDate(s.contract_end_date)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

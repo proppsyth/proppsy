@@ -14,9 +14,10 @@ interface Props {
   isPremium: boolean
   status: string
   currentBalance: number
+  accountPending?: boolean
 }
 
-export default function PublishActions({ stockId, isPublished, isPremium, status, currentBalance }: Props) {
+export default function PublishActions({ stockId, isPublished, isPremium, status, currentBalance, accountPending = false }: Props) {
   const router = useRouter()
   const [showPublish, setShowPublish] = useState(false)
   const [showUpsell, setShowUpsell] = useState(false)
@@ -43,6 +44,16 @@ export default function PublishActions({ stockId, isPublished, isPremium, status
           <GlobeLock className="w-3.5 h-3.5" />
           {unpublishing ? '...' : 'ถอดออก'}
         </button>
+      </div>
+    )
+  }
+
+  if (accountPending) {
+    return (
+      <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium rounded-lg cursor-not-allowed"
+        title="บัญชีของคุณยังอยู่ระหว่างรอการอนุมัติจากแอดมิน">
+        <AlertCircle className="w-3.5 h-3.5" />
+        เผยแพร่ได้เมื่ออนุมัติ
       </div>
     )
   }
