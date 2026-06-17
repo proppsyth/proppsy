@@ -17,9 +17,31 @@ export default async function NewContractPage() {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
 
   const [{ data: profile }, { count: contractsThisMonth }] = await Promise.all([
-    supabase.from('profiles').select('plan').eq('id', user.id).single(),
+    supabase.from('profiles').select('plan, account_status').eq('id', user.id).single(),
     supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).gte('created_at', startOfMonth),
   ])
+
+  // Pending accounts can prepare data but cannot create contracts yet.
+  if (profile?.account_status === 'pending') {
+    return (
+      <div className="p-4 lg:p-8 pt-6 max-w-3xl">
+        <h1 className="text-xl font-bold text-gray-900 mb-6">สร้างใบจอง</h1>
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center">
+          <p className="text-3xl mb-3">⏳</p>
+          <h2 className="text-lg font-bold text-amber-800 mb-2">บัญชีอยู่ระหว่างรอการอนุมัติ</h2>
+          <p className="text-sm text-amber-700 mb-1">
+            คุณสามารถเพิ่มข้อมูลทรัพย์ ลูกค้า เจ้าของ และโครงการได้ตามปกติ
+          </p>
+          <p className="text-sm text-amber-600 mb-6">
+            แต่ยังไม่สามารถออกเอกสารสัญญาได้จนกว่าแอดมินจะอนุมัติบัญชีของคุณ
+          </p>
+          <Link href="/dashboard" className="inline-block px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition">
+            กลับหน้าหลัก
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   const plan = resolvePlan(profile?.plan)
   const limits = await getPlanLimitsByUserPlan(profile?.plan)

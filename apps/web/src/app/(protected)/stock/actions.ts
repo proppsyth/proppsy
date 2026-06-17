@@ -84,9 +84,7 @@ export async function createStock(
     supabase.from('stock').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
   ])
 
-  if (profile?.account_status === 'pending') {
-    return { error: 'บัญชีของคุณรอการอนุมัติจากแอดมิน กรุณารอการอนุมัติก่อนเพิ่มทรัพย์' }
-  }
+  // Pending accounts may still add draft stock — they just can't publish.
 
   const limits = await getPlanLimitsByUserPlan(profile?.plan)
   if (limits.maxStock !== null && (stockCount ?? 0) >= limits.maxStock) {
@@ -103,12 +101,7 @@ export async function createStock(
     owner_id: input.owner_id || null,
   })
 
-  if (error) {
-    if (error.code === '42501' || error.message.includes('row-level security')) {
-      return { error: 'บัญชีของคุณรอการอนุมัติจากแอดมิน กรุณารอการอนุมัติก่อนเพิ่มทรัพย์' }
-    }
-    return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
-  }
+  if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
 
   await logActivity({
     userId: user.id,
