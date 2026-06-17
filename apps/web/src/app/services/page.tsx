@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import PublicNav from '@/components/shared/PublicNav'
 import PublicFooter from '@/components/shared/PublicFooter'
 import { getAllPlanLimits } from '@/lib/planLimits'
+import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'บริการของเรา — Proppsy' }
 
@@ -26,6 +27,13 @@ const FEATURES = [
 export default async function ServicesPage() {
   const allLimits = await getAllPlanLimits()
 
+  // Logged-in agents shouldn't be sent to /register again — point free CTAs
+  // at the dashboard instead.
+  const authClient = await createClient()
+  const { data: { user: currentUser } } = await authClient.auth.getUser()
+  const freeHref = currentUser ? '/dashboard' : '/register'
+  const freeLabel = currentUser ? 'ไปที่แดชบอร์ด' : 'สมัครฟรี'
+
   const str = allLimits.starter
   const pro = allLimits.professional
   const biz = allLimits.business
@@ -44,8 +52,8 @@ export default async function ServicesPage() {
         ? str.feature_list
         : ['10 ทรัพย์', 'AI 10 ครั้ง/เดือน'],
       missing: ['ออกสัญญา PDF', 'AI Smart Paste', 'AI OCR บัตรประชาชน', 'ลายเซ็นอิเล็กทรอนิกส์', 'รายงานคอมมิชชัน'],
-      cta: 'สมัครฟรี',
-      ctaHref: '/register',
+      cta: freeLabel,
+      ctaHref: freeHref,
       ctaStyle: 'border border-gray-200 text-gray-700 hover:bg-gray-50',
     },
     {
@@ -258,8 +266,8 @@ export default async function ServicesPage() {
           <h2 className="text-xl font-bold text-gray-900 mb-2">พร้อมเริ่มใช้งาน?</h2>
           <p className="text-sm text-gray-500 mb-6">ลงทะเบียนวันนี้ ใช้งานได้ทันที ฟรีไม่มีค่าใช้จ่าย ไม่ต้องใช้บัตรเครดิต</p>
           <div className="flex gap-3 justify-center flex-wrap">
-            <Link href="/register" className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition text-sm">
-              ลงทะเบียนฟรี
+            <Link href={freeHref} className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition text-sm">
+              {currentUser ? 'ไปที่แดชบอร์ด' : 'ลงทะเบียนฟรี'}
             </Link>
             <Link href="/contact" className="px-8 py-3 border border-gray-200 text-gray-700 hover:bg-gray-50 font-medium rounded-xl transition text-sm">
               ติดต่อสอบถาม
