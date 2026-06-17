@@ -313,12 +313,12 @@ export function computeVariables(
   }
 
   // ─── Reservation financial model ─────────────────────────────
-  // booking_amount  = reservation fee paid today (new dedicated field)
-  // deposit_amount  = security deposit (rent × deposit_months)
-  // contract_day_payment = security deposit + 1 month advance rent − booking fee
+  // booking_amount  = เงินมัดจำจอง / เดือนแรก (first-month deposit, from stock)
+  // deposit_amount  = เงินประกัน (security deposit, rent × deposit_months, default 2)
+  // contract_day_payment = เงินประกัน + เงินมัดจำจอง
   const bookingAmt = (contract as { booking_amount?: number | null }).booking_amount ?? 0
   const depositMths = contract.deposit_months ?? 2
-  const contractDayPayment = deposit + rent - bookingAmt
+  const contractDayPayment = deposit + bookingAmt
 
   v['เงินจอง']               = withCommas(bookingAmt)
   v['เงินจองตัวอักษร']        = bahtText(bookingAmt)

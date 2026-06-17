@@ -268,11 +268,14 @@ export default function ContractWizard() {
       }
       if (r.rent_price) {
         const rent = r.rent_price
-        const depositMult = (r.deposit != null ? r.deposit : null) ?? (parseFloat(s.deposit_months) || 2)
+        // เงินประกัน (security deposit) — fixed at 2 months (auto-fill default)
+        const securityMonths = parseFloat(s.deposit_months) || 2
+        // เงินมัดจำจอง / เดือนแรก — pulled from the stock's deposit (months), default 1
+        const bookingMonths = r.deposit != null ? r.deposit : 1
         next.rent_price = String(rent)
-        next.deposit_months = String(depositMult)
-        next.deposit_amount = String(rent * depositMult)
-        next.booking_amount = String(rent)
+        next.deposit_months = String(securityMonths)
+        next.deposit_amount = String(rent * securityMonths)
+        next.booking_amount = String(rent * bookingMonths)
       }
       return next
     })
@@ -780,11 +783,17 @@ export default function ContractWizard() {
                           <span className="font-semibold text-gray-800">฿{fmt(parseFloat(state.deposit_amount))}</span>
                         </div>
                       )}
-                      {state.booking_amount && state.deposit_amount && (
-                        <div className="flex justify-between text-xs text-blue-700">
-                          <span>ยอดชำระวันทำสัญญาเช่า = ประกัน + เดือนแรก − จอง</span>
+                      {state.booking_amount && (
+                        <div className="flex justify-between text-xs text-gray-600">
+                          <span>เงินมัดจำจอง / เดือนแรก</span>
+                          <span className="font-semibold text-gray-800">฿{fmt(parseFloat(state.booking_amount))}</span>
+                        </div>
+                      )}
+                      {state.deposit_amount && state.booking_amount && (
+                        <div className="flex justify-between text-xs text-blue-700 border-t border-blue-100 pt-1.5">
+                          <span>ยอดชำระวันทำสัญญาเช่า = เงินประกัน + เงินมัดจำจอง</span>
                           <span className="font-semibold">
-                            ฿{fmt(parseFloat(state.deposit_amount) + parseFloat(state.rent_price || '0') - parseFloat(state.booking_amount))}
+                            ฿{fmt(parseFloat(state.deposit_amount) + parseFloat(state.booking_amount))}
                           </span>
                         </div>
                       )}
@@ -1207,7 +1216,7 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
       }`}
     >
       <div className={`relative flex-shrink-0 w-9 h-5 rounded-full transition-colors ${checked ? 'bg-blue-600' : 'bg-gray-200'}`}>
-        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-4' : 'translate-x-0.5'}`} />
+        <span className={`absolute top-1/2 -translate-y-1/2 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${checked ? 'translate-x-4' : ''}`} />
       </div>
       {label}
     </button>
