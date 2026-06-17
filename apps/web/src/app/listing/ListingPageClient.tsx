@@ -284,8 +284,9 @@ export default function ListingPageClient({
   }
 
   function handleFilter(overrides: Partial<FilterState>) {
+    // Keep the mobile drawer open so multiple filters can be picked in a row;
+    // results update live behind it and the user closes it via "ดูผลลัพธ์"/X.
     router.push(buildUrl({ ...currentFilters, ...overrides, page: '1' }))
-    setDrawerOpen(false)
   }
 
   function handleClear() {
@@ -453,6 +454,14 @@ export default function ListingPageClient({
                 onFilter={handleFilter}
                 onClear={handleClear}
               />
+            </div>
+            <div className="flex-shrink-0 border-t border-gray-100 p-3">
+              <button
+                onClick={() => setDrawerOpen(false)}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition"
+              >
+                ดูผลลัพธ์ ({totalCount.toLocaleString('th-TH')} รายการ)
+              </button>
             </div>
           </div>
         </>
