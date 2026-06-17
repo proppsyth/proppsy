@@ -2,6 +2,7 @@
 
 import { createServiceClient } from '@/lib/supabase/server'
 import { pushLineMessage, buildInquiryNotification } from '@/lib/lineOa'
+import { sendEmail, buildInquiryEmail, siteUrl } from '@/lib/email'
 
 export interface InquiryInput {
   stock_id: string
@@ -138,6 +139,33 @@ export async function submitInquiry(
       isReturning: !!existing,
     })
     await pushLineMessage(agentLineUserId, message)
+  }
+
+  // Email notification — best-effort, non-blocking
+  try {
+    const { data: agentUser } = await supabase.auth.admin.getUserById(input.agent_uid)
+    const agentEmail = agentUser?.user?.email
+    if (agentEmail) {
+      const { subject, html } = buildInquiryEmail({
+        projectName: input.project_name,
+        unitNo: input.unit_no,
+        rentPrice: input.rent_price,
+        salePrice: input.sale_price,
+        listingType: input.listing_type,
+        listingUrl: `${siteUrl()}/listing/${input.stock_id}`,
+        nickname: input.nickname.trim(),
+        phone: phone || undefined,
+        lineId: line_id || undefined,
+        budget: input.budget,
+        moveInDate: input.move_in_date,
+        gender: input.gender,
+        occupation: input.occupation,
+        isReturning: !!existing,
+      })
+      await sendEmail({ to: agentEmail, subject, html })
+    }
+  } catch (err) {
+    console.error('inquiry email error:', err)
   }
 
   return { id: customerId, returning: !!existing }

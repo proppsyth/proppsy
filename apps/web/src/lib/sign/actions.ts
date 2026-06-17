@@ -7,6 +7,14 @@ import { createHash } from 'crypto'
 import type { SignerRole, ContractSigner } from '@/types'
 import { handleAllSignedIfComplete } from '@/lib/contracts/signingEngine'
 import { logActivity } from '@/lib/activity/log'
+import { sendEmail, buildSignedEmail, siteUrl } from '@/lib/email'
+
+const SIGNER_ROLE_TH: Record<string, string> = {
+  tenant: 'ผู้เช่า',
+  owner: 'เจ้าของ',
+  co_agent: 'Co-Agent',
+  witness: 'พยาน',
+}
 
 // ─── Public: fetch signer + contract for sign page ────────────────────────
 
@@ -128,10 +136,10 @@ export async function submitSignature(params: {
     })
     .eq('id', signer.id)
 
-  // Fetch contract for profile auto-save + consent log
+  // Fetch contract for profile auto-save + consent log + notifications
   const { data: contract } = await supabase
     .from('contracts')
-    .select('id, doc_type, owner_id, customer_id')
+    .select('id, doc_type, owner_id, customer_id, agent_uid, stock:stock(project_name, unit_no)')
     .eq('id', signer.contract_id)
     .single()
 
@@ -185,6 +193,38 @@ export async function submitSignature(params: {
     })
   } catch {
     // Log failure must never block the signing flow
+  }
+
+  // Email notification to the agent — best-effort, non-blocking
+  try {
+    const agentUid = (contract as { agent_uid?: string } | null)?.agent_uid
+    if (agentUid) {
+      // All signed if no remaining signer is still pending/viewed
+      const { count: remaining } = await supabase
+        .from('contract_signers')
+        .select('id', { count: 'exact', head: true })
+        .eq('contract_id', signer.contract_id)
+        .neq('status', 'signed')
+      const allSigned = (remaining ?? 0) === 0
+
+      const { data: agentUser } = await supabase.auth.admin.getUserById(agentUid)
+      const agentEmail = agentUser?.user?.email
+      if (agentEmail) {
+        const stock = (contract as { stock?: { project_name?: string | null; unit_no?: string | null } | null }).stock
+        const propertyLabel = [stock?.project_name, stock?.unit_no].filter(Boolean).join(' · ') || undefined
+        const { subject, html } = buildSignedEmail({
+          contractId: signer.contract_id,
+          signerName: signerName || undefined,
+          signerRoleLabel: signer.signer_role ? SIGNER_ROLE_TH[signer.signer_role] : undefined,
+          propertyLabel,
+          allSigned,
+          contractUrl: `${siteUrl()}/contracts/${signer.contract_id}`,
+        })
+        await sendEmail({ to: agentEmail, subject, html })
+      }
+    }
+  } catch (err) {
+    console.error('signed email error:', err)
   }
 
   return { success: true }
