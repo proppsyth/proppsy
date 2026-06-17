@@ -11,6 +11,7 @@ import AgentListingsSection from './AgentListingsSection'
 
 interface AgentPublic {
   id: string
+  name?: string | null
   first_name_th?: string | null
   last_name_th?: string | null
   nickname?: string | null
@@ -42,7 +43,7 @@ export async function generateMetadata({
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('profiles')
-    .select('first_name_th, last_name_th, nickname, bio')
+    .select('name, first_name_th, last_name_th, nickname, bio')
     .eq('public_slug', slug)
     .eq('account_status', 'approved')
     .single()
@@ -50,6 +51,7 @@ export async function generateMetadata({
   if (!data) return { title: 'ไม่พบเอเจนต์ — Proppsy' }
 
   const name = data.nickname
+    || data.name
     || [data.first_name_th, data.last_name_th].filter(Boolean).join(' ')
     || 'เอเจนต์'
 
@@ -87,7 +89,7 @@ export default async function AgentProfilePage({
   const { data: agentRaw } = await supabase
     .from('profiles')
     .select(`
-      id, first_name_th, last_name_th, nickname,
+      id, name, first_name_th, last_name_th, nickname,
       position, company_name, team_name,
       bio, avatar_url, logo_url,
       line_id, phone, show_phone,
@@ -120,6 +122,7 @@ export default async function AgentProfilePage({
   const stocks = (stocksRaw ?? []) as unknown as StockCard[]
 
   const displayName = agent.nickname
+    || agent.name
     || [agent.first_name_th, agent.last_name_th].filter(Boolean).join(' ')
     || 'เอเจนต์'
 
