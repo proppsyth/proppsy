@@ -163,6 +163,20 @@ export default async function PublicPropertyDetailPage({
   const canonicalSlug = buildListingSlug({ id: stock.id, room_type: stock.room_type, listing_type: stock.listing_type, project_name: stock.project_name })
 
   const supabase = createServiceClient()
+
+  // Fall back to the agent's Google/OAuth avatar when they have no uploaded
+  // photo (OAuth picture lives in auth.user_metadata, not profiles.avatar_url)
+  if (stock.agent && !stock.agent.avatar_url && stock.agent_uid) {
+    try {
+      const { data: authUser } = await supabase.auth.admin.getUserById(stock.agent_uid)
+      const meta = authUser?.user?.user_metadata as { avatar_url?: string; picture?: string } | undefined
+      const googleAvatar = meta?.avatar_url ?? meta?.picture
+      if (googleAvatar) stock.agent.avatar_url = googleAvatar
+    } catch {
+      // best-effort — avatar fallback should never break the page
+    }
+  }
+
   // Sibling units in same project
   const siblingRes = stock.project_id
     ? await supabase
