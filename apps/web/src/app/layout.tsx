@@ -11,6 +11,11 @@ const ibmPlexSansThai = IBM_Plex_Sans_Thai({
   weight: ['300', '400', '500', '600', '700'],
   variable: '--font-thai',
   display: 'swap',
+  // next/font derives the fallback's size-adjust from Latin metrics, which
+  // horizontally compresses Thai glyphs into an overlapping mess during the
+  // font-load/swap window (visible whenever a spinner button shows a loading
+  // label). Disable it so the fallback renders Thai at natural width.
+  adjustFontFallback: false,
 })
 
 const ibmPlexSans = IBM_Plex_Sans({
