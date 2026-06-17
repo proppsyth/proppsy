@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { sendEmail, buildCreditGrantedEmail, siteUrl } from '@/lib/email'
 
 async function assertAdmin(): Promise<string> {
   const supabase = await createClient()
@@ -32,6 +33,26 @@ export async function adminAdjustCredits(params: {
         p_is_reset:    false,
       })
       if (!data?.ok) return { error: data?.error ?? 'ล้มเหลว' }
+
+      // Notify the agent that admin added credits — best-effort, non-blocking
+      try {
+        const { data: authUser } = await admin.auth.admin.getUserById(params.userId)
+        const email = authUser?.user?.email
+        if (email) {
+          const { data: prof } = await admin.from('profiles').select('name').eq('id', params.userId).maybeSingle()
+          const { subject, html } = buildCreditGrantedEmail({
+            name: (prof as { name?: string } | null)?.name ?? undefined,
+            amount: params.amount,
+            note: params.note || undefined,
+            newBalance: data.balance,
+            creditsUrl: `${siteUrl()}/credits`,
+          })
+          await sendEmail({ to: email, subject, html })
+        }
+      } catch (err) {
+        console.error('credit grant email error:', err)
+      }
+
       revalidatePath('/admin/credits')
       return { newBalance: data.balance }
     } else {

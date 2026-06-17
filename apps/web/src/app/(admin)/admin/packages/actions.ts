@@ -3,6 +3,7 @@
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { bustPlanLimitsCache } from '@/lib/planLimits'
+import { sendEmail, buildPlanChangedEmail, siteUrl } from '@/lib/email'
 import type { Plan } from '@/types'
 
 export type PlanLimitsInput = {
@@ -66,6 +67,25 @@ export async function setUserPlan(
       .update({ plan, plan_expires_at: planExpiresAt })
       .eq('id', userId)
     if (error) return { error: error.message }
+
+    // Notify the agent that admin changed their plan — best-effort, non-blocking
+    try {
+      const { data: authUser } = await admin.auth.admin.getUserById(userId)
+      const email = authUser?.user?.email
+      if (email) {
+        const { data: prof } = await admin.from('profiles').select('name').eq('id', userId).maybeSingle()
+        const { subject, html } = buildPlanChangedEmail({
+          name: (prof as { name?: string } | null)?.name ?? undefined,
+          plan,
+          planExpiresAt,
+          profileUrl: `${siteUrl()}/profile`,
+        })
+        await sendEmail({ to: email, subject, html })
+      }
+    } catch (err) {
+      console.error('plan change email error:', err)
+    }
+
     revalidatePath('/admin/packages')
     revalidatePath('/admin/users')
     return {}
