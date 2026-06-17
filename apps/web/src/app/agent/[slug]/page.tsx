@@ -102,6 +102,19 @@ export default async function AgentProfilePage({
   if (!agentRaw) notFound()
   const agent = agentRaw as AgentPublic
 
+  // Fall back to the agent's Google/OAuth avatar when they have no uploaded
+  // photo (OAuth picture lives in auth.user_metadata, not profiles.avatar_url)
+  if (!agent.avatar_url) {
+    try {
+      const { data: authUser } = await supabase.auth.admin.getUserById(agent.id)
+      const meta = authUser?.user?.user_metadata as { avatar_url?: string; picture?: string } | undefined
+      const googleAvatar = meta?.avatar_url ?? meta?.picture
+      if (googleAvatar) agent.avatar_url = googleAvatar
+    } catch {
+      // best-effort — avatar fallback should never break the page
+    }
+  }
+
   // Fetch published available listings by this agent
   const { data: stocksRaw } = await supabase
     .from('stock')
