@@ -3,7 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { grantStarterCredits } from '@/lib/credits/actions'
-import { sendEmail, buildApprovedEmail, siteUrl } from '@/lib/email'
+import { sendEmail, buildApprovedEmail, buildPlanChangedEmail, siteUrl } from '@/lib/email'
 import type { Role, AccountStatus, Plan } from '@/types'
 
 async function assertAdmin(): Promise<void> {
@@ -79,8 +79,47 @@ export async function updateUser(userId: string, data: {
   try {
     await assertAdmin()
     const admin = await createAdminClient()
+
+    // Snapshot current state to detect meaningful transitions for notifications
+    const { data: before } = await admin
+      .from('profiles')
+      .select('account_status, plan, name')
+      .eq('id', userId)
+      .maybeSingle()
+
     const { error } = await admin.from('profiles').update(data).eq('id', userId)
     if (error) return { error: error.message }
+
+    const prevPlan = (before as { plan?: string | null } | null)?.plan ?? 'starter'
+    const prevStatus = (before as { account_status?: string } | null)?.account_status
+    const name = (before as { name?: string } | null)?.name ?? undefined
+    const justApproved = data.account_status === 'approved' && prevStatus !== 'approved'
+    const planChanged = data.plan != null && data.plan !== prevPlan
+
+    if (justApproved || planChanged) {
+      try {
+        const { data: authUser } = await admin.auth.admin.getUserById(userId)
+        const email = authUser?.user?.email
+        if (email) {
+          if (justApproved) {
+            const { subject, html } = buildApprovedEmail({ name, dashboardUrl: `${siteUrl()}/dashboard` })
+            await sendEmail({ to: email, subject, html })
+          }
+          if (planChanged && data.plan) {
+            const { subject, html } = buildPlanChangedEmail({
+              name,
+              plan: data.plan,
+              planExpiresAt: data.plan_expires_at ?? null,
+              profileUrl: `${siteUrl()}/profile`,
+            })
+            await sendEmail({ to: email, subject, html })
+          }
+        }
+      } catch (err) {
+        console.error('updateUser email error:', err)
+      }
+    }
+
     revalidatePath('/admin/users')
     return {}
   } catch {
