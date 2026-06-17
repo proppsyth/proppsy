@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { grantStarterCredits } from '@/lib/credits/actions'
+import { sendEmail, buildApprovedEmail, siteUrl } from '@/lib/email'
 import type { Role, AccountStatus, Plan } from '@/types'
 
 async function assertAdmin(): Promise<void> {
@@ -17,15 +18,34 @@ export async function approveUser(userId: string): Promise<void> {
   await assertAdmin()
   const admin = await createAdminClient()
   const [{ data: profile }, { data: credits }] = await Promise.all([
-    admin.from('profiles').select('account_status').eq('id', userId).single(),
+    admin.from('profiles').select('account_status, name').eq('id', userId).single(),
     admin.from('credits').select('total_earned').eq('user_id', userId).maybeSingle(),
   ])
+  const wasApproved = profile?.account_status === 'approved'
   await admin.from('profiles').update({ account_status: 'approved' }).eq('id', userId)
   // Only grant starter credits if the user hasn't received any yet
   // (credits are granted at registration — this prevents double-granting)
-  if (profile?.account_status !== 'approved' && !(credits && credits.total_earned > 0)) {
+  if (!wasApproved && !(credits && credits.total_earned > 0)) {
     await grantStarterCredits(userId)
   }
+
+  // Notify the agent by email — only on the transition into approved
+  if (!wasApproved) {
+    try {
+      const { data: authUser } = await admin.auth.admin.getUserById(userId)
+      const email = authUser?.user?.email
+      if (email) {
+        const { subject, html } = buildApprovedEmail({
+          name: (profile as { name?: string } | null)?.name ?? undefined,
+          dashboardUrl: `${siteUrl()}/dashboard`,
+        })
+        await sendEmail({ to: email, subject, html })
+      }
+    } catch (err) {
+      console.error('approval email error:', err)
+    }
+  }
+
   revalidatePath('/admin/users')
 }
 

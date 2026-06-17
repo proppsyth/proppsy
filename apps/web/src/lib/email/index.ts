@@ -152,3 +152,23 @@ export function buildSignedEmail(args: {
     html: shell({ heading, accent: args.allSigned ? '#16a34a' : '#2563eb', bodyHtml }),
   }
 }
+
+// ─── Account-approved notification ──────────────────────────────────────────
+export function buildApprovedEmail(args: {
+  name?: string
+  dashboardUrl: string
+}): { subject: string; html: string } {
+  const greeting = args.name ? `สวัสดีคุณ ${esc(args.name)}` : 'สวัสดีครับ'
+  const bodyHtml = `
+    <p style="margin:0 0 12px;font-size:15px;font-weight:600;color:#111827;">${greeting} 🎉</p>
+    <p style="margin:0 0 12px;">บัญชี Proppsy ของคุณได้รับการ <strong>อนุมัติ</strong> เรียบร้อยแล้ว</p>
+    <p style="margin:0 0 20px;">ตอนนี้คุณสามารถ <strong>เผยแพร่ทรัพย์</strong> และ <strong>ออกเอกสารสัญญา</strong> ได้เต็มรูปแบบ</p>
+    <a href="${args.dashboardUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 20px;border-radius:10px;">
+      เริ่มใช้งาน
+    </a>`
+
+  return {
+    subject: '🎉 บัญชี Proppsy ของคุณได้รับการอนุมัติแล้ว',
+    html: shell({ heading: 'บัญชีได้รับการอนุมัติ', accent: '#16a34a', bodyHtml }),
+  }
+}
