@@ -286,7 +286,14 @@ export default function OwnerForm({ initialData, ownerId, onCreated, onCancel }:
       if (ownerId) {
         const res = await updateOwner(ownerId, input)
         if (res.error) { setError(res.error); return }
-        router.push(`/owners/${ownerId}`)
+        // When embedded (e.g. contract wizard drawer), hand control back instead
+        // of navigating away to the owner detail page.
+        if (onCreated) {
+          const label = input.nickname || [input.first_name_th, input.last_name_th].filter(Boolean).join(' ') || ownerId
+          onCreated(ownerId, label)
+        } else {
+          router.push(`/owners/${ownerId}`)
+        }
       } else {
         const res = await createOwner(input)
         if (res.error) { setError(res.error); return }

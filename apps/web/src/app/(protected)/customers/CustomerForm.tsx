@@ -248,7 +248,14 @@ export default function CustomerForm({ initialData, customerId, onCreated, onCan
       if (customerId) {
         const res = await updateCustomer(customerId, input)
         if (res.error) { setError(res.error); return }
-        router.push(`/customers/${customerId}`)
+        // When embedded (e.g. contract wizard drawer), hand control back instead
+        // of navigating away to the customer detail page.
+        if (onCreated) {
+          const label = input.nickname || [input.first_name_th, input.last_name_th].filter(Boolean).join(' ') || customerId
+          onCreated(customerId, label)
+        } else {
+          router.push(`/customers/${customerId}`)
+        }
       } else {
         const res = await createCustomer(input)
         if (res.error) { setError(res.error); return }

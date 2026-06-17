@@ -3,11 +3,13 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Loader2, ChevronRight, ChevronLeft, Check, FileText, X, Globe, Info, AlertCircle, Sparkles, UserPlus,
+  Loader2, ChevronRight, ChevronLeft, Check, FileText, X, Globe, Info, AlertCircle, Sparkles, UserPlus, Pencil,
 } from 'lucide-react'
 import { DOC_TYPE_LABELS } from '@/types'
-import type { ContractDocType, PaymentMethod } from '@/types'
+import type { ContractDocType, PaymentMethod, Owner, Customer } from '@/types'
 import { createContract } from './actions'
+import { getOwnerById } from '@/app/(protected)/owners/actions'
+import { getCustomerById } from '@/app/(protected)/customers/actions'
 import {
   searchStocks, searchOwners, searchCustomers, searchCoAgents,
   type StockSearchResult, type OwnerSearchResult, type CustomerSearchResult, type CoAgentSearchResult,
@@ -156,6 +158,12 @@ export default function ContractWizard() {
   const [showQuickStock, setShowQuickStock] = useState(false)
   const [showQuickCoAgent, setShowQuickCoAgent] = useState(false)
   const [selectedCoAgent, setSelectedCoAgent] = useState<CoAgentSearchResult | null>(null)
+  // Inline edit of the selected owner/customer (fill missing contract fields)
+  const [editOwnerData, setEditOwnerData] = useState<Owner | null>(null)
+  const [editCustomerData, setEditCustomerData] = useState<Customer | null>(null)
+  const [loadingEdit, setLoadingEdit] = useState<'owner' | 'customer' | null>(null)
+  const [ownerNeedsInfo, setOwnerNeedsInfo] = useState(false)
+  const [customerNeedsInfo, setCustomerNeedsInfo] = useState(false)
 
   const set = (k: keyof WizardState, v: string | boolean | Record<string, string>) =>
     setState(s => ({ ...s, [k]: v }))
@@ -256,6 +264,7 @@ export default function ContractWizard() {
           || [r.owner_first_name_th, r.owner_last_name_th].filter(Boolean).join(' ')
           || r.owner_id
         next.owner_label = ownerName
+        setOwnerNeedsInfo(!(r.owner_first_name_th && r.owner_last_name_th))
       }
       if (r.rent_price) {
         const rent = r.rent_price
@@ -270,13 +279,43 @@ export default function ContractWizard() {
   }
 
   function handleOwnerSelect(r: OwnerSearchResult | null) {
-    if (!r) { setState(s => ({ ...s, owner_id: '', owner_label: '' })); return }
+    if (!r) { setState(s => ({ ...s, owner_id: '', owner_label: '' })); setOwnerNeedsInfo(false); return }
     setState(s => ({ ...s, owner_id: r.id, owner_label: personLabel(r) }))
+    setOwnerNeedsInfo(!(r.first_name_th && r.last_name_th))
   }
 
   function handleCustomerSelect(r: CustomerSearchResult | null) {
-    if (!r) { setState(s => ({ ...s, customer_id: '', customer_label: '' })); return }
+    if (!r) { setState(s => ({ ...s, customer_id: '', customer_label: '' })); setCustomerNeedsInfo(false); return }
     setState(s => ({ ...s, customer_id: r.id, customer_label: personLabel(r) }))
+    setCustomerNeedsInfo(!(r.first_name_th && r.last_name_th))
+  }
+
+  // ─── Inline edit of selected owner/customer ─────────────────
+  async function openEditOwner() {
+    if (!state.owner_id || loadingEdit) return
+    setLoadingEdit('owner')
+    const res = await getOwnerById(state.owner_id)
+    setLoadingEdit(null)
+    if (res.data) setEditOwnerData(res.data)
+    else setError(res.error ?? 'โหลดข้อมูลเจ้าของไม่สำเร็จ')
+  }
+  function handleOwnerEdited(_id: string, label: string) {
+    setState(s => ({ ...s, owner_label: label }))
+    setOwnerNeedsInfo(false)
+    setEditOwnerData(null)
+  }
+  async function openEditCustomer() {
+    if (!state.customer_id || loadingEdit) return
+    setLoadingEdit('customer')
+    const res = await getCustomerById(state.customer_id)
+    setLoadingEdit(null)
+    if (res.data) setEditCustomerData(res.data)
+    else setError(res.error ?? 'โหลดข้อมูลลูกค้าไม่สำเร็จ')
+  }
+  function handleCustomerEdited(_id: string, label: string) {
+    setState(s => ({ ...s, customer_label: label }))
+    setCustomerNeedsInfo(false)
+    setEditCustomerData(null)
   }
 
   function handleQuickStockCreated(id: string, label: string) {
@@ -286,11 +325,13 @@ export default function ContractWizard() {
 
   function handleQuickOwnerCreated(id: string, label: string) {
     setState(s => ({ ...s, owner_id: id, owner_label: label }))
+    setOwnerNeedsInfo(false)
     setShowQuickOwner(false)
   }
 
   function handleQuickCustomerCreated(id: string, label: string) {
     setState(s => ({ ...s, customer_id: id, customer_label: label }))
+    setCustomerNeedsInfo(false)
     setShowQuickCustomer(false)
   }
 
@@ -553,14 +594,35 @@ export default function ContractWizard() {
                 placeholder="ค้นหาเจ้าของทรัพย์..."
               />
             </div>
-            <button
-              type="button"
-              onClick={() => setShowQuickOwner(true)}
-              className="mt-2 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 transition"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              เพิ่มเจ้าของใหม่
-            </button>
+            <div className="mt-2 flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => setShowQuickOwner(true)}
+                className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 transition"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                เพิ่มเจ้าของใหม่
+              </button>
+              {state.owner_id && (
+                <button
+                  type="button"
+                  onClick={openEditOwner}
+                  disabled={loadingEdit === 'owner'}
+                  className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-800 transition disabled:opacity-50"
+                >
+                  {loadingEdit === 'owner' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pencil className="w-3.5 h-3.5" />}
+                  แก้ไข / เพิ่มข้อมูล
+                </button>
+              )}
+            </div>
+            {state.owner_id && ownerNeedsInfo && (
+              <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">
+                  ข้อมูลเจ้าของยังไม่ครบสำหรับสัญญา (เช่น ชื่อ-สกุล, ที่อยู่) — กด “แก้ไข / เพิ่มข้อมูล” เพื่อเติมให้ครบก่อนออกเอกสาร
+                </p>
+              </div>
+            )}
             {needsOwner && (
               <p className="text-xs text-gray-400 mt-1">* จำเป็นสำหรับเอกสารประเภทนี้</p>
             )}
@@ -577,14 +639,35 @@ export default function ContractWizard() {
                 placeholder="ค้นหาลูกค้า / ผู้เช่า..."
               />
             </div>
-            <button
-              type="button"
-              onClick={() => setShowQuickCustomer(true)}
-              className="mt-2 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 transition"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              เพิ่มลูกค้าใหม่
-            </button>
+            <div className="mt-2 flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => setShowQuickCustomer(true)}
+                className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 transition"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                เพิ่มลูกค้าใหม่
+              </button>
+              {state.customer_id && (
+                <button
+                  type="button"
+                  onClick={openEditCustomer}
+                  disabled={loadingEdit === 'customer'}
+                  className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-800 transition disabled:opacity-50"
+                >
+                  {loadingEdit === 'customer' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pencil className="w-3.5 h-3.5" />}
+                  แก้ไข / เพิ่มข้อมูล
+                </button>
+              )}
+            </div>
+            {state.customer_id && customerNeedsInfo && (
+              <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">
+                  ข้อมูลลูกค้ายังไม่ครบสำหรับสัญญา (เช่น ชื่อ-สกุล, ที่อยู่) — กด “แก้ไข / เพิ่มข้อมูล” เพื่อเติมให้ครบก่อนออกเอกสาร
+                </p>
+              </div>
+            )}
             {needsCustomer && (
               <p className="text-xs text-gray-400 mt-1">* จำเป็นสำหรับเอกสารประเภทนี้</p>
             )}
@@ -946,6 +1029,26 @@ export default function ContractWizard() {
         <CustomerDrawer
           onCreated={handleQuickCustomerCreated}
           onClose={() => setShowQuickCustomer(false)}
+        />
+      )}
+
+      {/* Owner edit drawer (fill missing contract fields inline) */}
+      {editOwnerData && (
+        <OwnerDrawer
+          ownerId={editOwnerData.id}
+          initialData={editOwnerData}
+          onCreated={handleOwnerEdited}
+          onClose={() => setEditOwnerData(null)}
+        />
+      )}
+
+      {/* Customer edit drawer (fill missing contract fields inline) */}
+      {editCustomerData && (
+        <CustomerDrawer
+          customerId={editCustomerData.id}
+          initialData={editCustomerData}
+          onCreated={handleCustomerEdited}
+          onClose={() => setEditCustomerData(null)}
         />
       )}
 

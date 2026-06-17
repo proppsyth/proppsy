@@ -115,6 +115,24 @@ export async function updateOwner(
   return {}
 }
 
+export async function getOwnerById(
+  ownerId: string
+): Promise<{ data?: import('@/types').Owner; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { data, error } = await supabase
+    .from('owners')
+    .select('*')
+    .eq('id', ownerId)
+    .eq('agent_uid', user.id)
+    .single()
+
+  if (error) return { error: error.message }
+  return { data: data as import('@/types').Owner }
+}
+
 // ─── Archive / Restore ───────────────────────────────────────
 
 export async function archiveOwner(ownerId: string): Promise<{ error?: string }> {

@@ -115,6 +115,24 @@ export async function updateCustomer(
   return {}
 }
 
+export async function getCustomerById(
+  customerId: string
+): Promise<{ data?: import('@/types').Customer; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { data, error } = await supabase
+    .from('customers')
+    .select('*')
+    .eq('id', customerId)
+    .eq('agent_uid', user.id)
+    .single()
+
+  if (error) return { error: error.message }
+  return { data: data as import('@/types').Customer }
+}
+
 // ─── Archive / Restore ───────────────────────────────────────
 
 export async function archiveCustomer(customerId: string): Promise<{ error?: string }> {
