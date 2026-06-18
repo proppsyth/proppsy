@@ -66,6 +66,7 @@ export default async function CalendarPage({
       .from('contracts')
       .select('id, end_date, doc_type, status')
       .eq('agent_uid', user.id)
+      .is('deleted_at', null)
       .gte('end_date', monthStartStr)
       .lte('end_date', monthEndStr)
       .neq('status', 'cancelled'),
@@ -73,6 +74,7 @@ export default async function CalendarPage({
       .from('contracts')
       .select('id, move_in_date, doc_type, status')
       .eq('agent_uid', user.id)
+      .is('deleted_at', null)
       .gte('move_in_date', monthStartStr)
       .lte('move_in_date', monthEndStr)
       .neq('status', 'cancelled'),

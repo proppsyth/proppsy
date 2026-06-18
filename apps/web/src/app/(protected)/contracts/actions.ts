@@ -110,7 +110,7 @@ export async function createContract(
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   const [{ data: profile }, { count: contractsThisMonth }] = await Promise.all([
     supabase.from('profiles').select('plan, account_status').eq('id', user.id).single(),
-    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).gte('created_at', startOfMonth),
+    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).is('deleted_at', null).gte('created_at', startOfMonth),
   ])
 
   // Block contract creation for pending users — must be approved first

@@ -90,10 +90,10 @@ export default async function DashboardPage() {
     supabase.from('stock').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).eq('status', 'sold'),
     supabase.from('owners').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
     supabase.from('customers').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
-    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
+    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).is('deleted_at', null),
     supabase.from('contracts')
       .select('id, doc_type, status, created_at')
-      .eq('agent_uid', user.id).order('created_at', { ascending: false }).limit(5),
+      .eq('agent_uid', user.id).is('deleted_at', null).order('created_at', { ascending: false }).limit(5),
     supabase.from('appointments')
       .select('id, title, start_time')
       .eq('agent_uid', user.id).gte('start_time', now.toISOString())
@@ -101,6 +101,7 @@ export default async function DashboardPage() {
     supabase.from('contracts')
       .select('id, end_date, doc_type')
       .eq('agent_uid', user.id)
+      .is('deleted_at', null)
       .gte('end_date', todayStr)
       .lte('end_date', in30Days)
       .neq('status', 'cancelled')
@@ -108,6 +109,7 @@ export default async function DashboardPage() {
     supabase.from('contracts')
       .select('commission_net')
       .eq('agent_uid', user.id)
+      .is('deleted_at', null)
       .eq('status', 'signed')
       .gte('created_at', thisMonthStart)
       .not('commission_net', 'is', null),
@@ -124,6 +126,7 @@ export default async function DashboardPage() {
     supabase.from('contracts')
       .select('customer_id')
       .eq('agent_uid', user.id)
+      .is('deleted_at', null)
       .or('status.eq.signed,status.eq.completed,is_finalized.eq.true')
       .not('customer_id', 'is', null),
     // CRM: upcoming appointment count
