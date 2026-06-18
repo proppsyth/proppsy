@@ -709,20 +709,19 @@ export async function createChildDocument(
     }
   }
 
-  // Ending docs: update master lease status + stock
-  if (endingTypes.includes(docType) && input.effectiveEndDate) {
-    const newStatus = docType === 'cancellation' ? 'cancelled' : 'terminated'
-    await supabase.from('contracts')
-      .update({ effective_end_date: input.effectiveEndDate, terminated_at: new Date().toISOString(), status: newStatus })
-      .eq('id', masterId)
-      .eq('agent_uid', user.id)
-
-    const today = new Date().toISOString().split('T')[0]!
-    if (input.effectiveEndDate <= today && (lease as { stock_id?: string | null }).stock_id) {
-      await setStockAvailable(supabase, (lease as { stock_id: string }).stock_id, user.id)
+  // Ending docs: do NOT terminate the master lease at draft creation. Store the
+  // intended effective date on the ending document; the master lease is only
+  // terminated (and the stock released) when this document is finalized/locked.
+  // This lets the agent delete a draft ending doc without leaving the lease and
+  // stock stuck in a terminated state.
+  if (endingTypes.includes(docType)) {
+    if (input.effectiveEndDate) {
+      await supabase.from('contracts')
+        .update({ effective_end_date: input.effectiveEndDate })
+        .eq('id', id).eq('agent_uid', user.id)
     }
     await appendTimelineEvent(supabase, id, masterId, user.id, docType,
-      `${docType === 'cancellation' ? 'ยกเลิก' : 'บอกเลิก/สิ้นสุด'}สัญญา มีผลวันที่ ${input.effectiveEndDate}`, id)
+      `สร้างร่างเอกสาร${docType === 'cancellation' ? 'ยกเลิก' : 'สิ้นสุด'}สัญญา (จะมีผลเมื่อกดล็อก)`, id)
   } else {
     await appendTimelineEvent(supabase, id, masterId, user.id, docType, `สร้างเอกสาร ${docType}`)
   }
@@ -877,7 +876,7 @@ export async function finalizeManually(
 
   const { data: contract } = await supabase
     .from('contracts')
-    .select('is_finalized, status, docx_url, pdf_url, contract_category, stock_id')
+    .select('is_finalized, status, docx_url, pdf_url, contract_category, stock_id, doc_type, master_contract_id, effective_end_date')
     .eq('id', contractId)
     .eq('agent_uid', user.id)
     .single()
@@ -911,8 +910,35 @@ export async function finalizeManually(
     await createLeasePackage(supabase, contractId, user.id)
   }
 
+  // Ending docs take effect only now (on lock): terminate the master lease and
+  // release the stock. Done here — not at draft creation — so a draft can be
+  // deleted without stranding the lease/stock.
+  const endingTypes = ['termination', 'cancellation', 'end_contract']
+  const cDocType = (contract as { doc_type?: string }).doc_type ?? ''
+  if (endingTypes.includes(cDocType)) {
+    const masterId = (contract as { master_contract_id?: string | null }).master_contract_id
+    const effectiveEnd = (contract as { effective_end_date?: string | null }).effective_end_date
+    if (masterId) {
+      const newStatus = cDocType === 'cancellation' ? 'cancelled' : 'terminated'
+      const { data: master } = await supabase
+        .from('contracts')
+        .select('stock_id')
+        .eq('id', masterId).eq('agent_uid', user.id).single()
+      await supabase.from('contracts')
+        .update({ effective_end_date: effectiveEnd ?? now, terminated_at: now, status: newStatus })
+        .eq('id', masterId).eq('agent_uid', user.id)
+      const today = new Date().toISOString().split('T')[0]!
+      const masterStockId = (master as { stock_id?: string | null } | null)?.stock_id
+      if (masterStockId && (!effectiveEnd || effectiveEnd <= today)) {
+        await setStockAvailable(supabase, masterStockId, user.id)
+      }
+    }
+  }
+
   await addTimelineEvent(contractId, 'finalized_manually',
-    isLease ? 'ล็อกและเปิดใช้งานสัญญาเช่า (ลงนามออฟไลน์)' : 'ล็อกสัญญาด้วยตนเอง (ลงนามออฟไลน์)')
+    isLease ? 'ล็อกและเปิดใช้งานสัญญาเช่า (ลงนามออฟไลน์)'
+      : endingTypes.includes(cDocType) ? 'ล็อกเอกสารสิ้นสุดสัญญา — สัญญาเช่าสิ้นสุดแล้ว'
+      : 'ล็อกสัญญาด้วยตนเอง (ลงนามออฟไลน์)')
 
   revalidatePath(`/contracts/${contractId}`)
   revalidatePath('/contracts')
@@ -1896,7 +1922,7 @@ export async function generateSignToken(
 
 // ─── Soft Delete ──────────────────────────────────────────────
 
-const DELETABLE_STATUSES = new Set(['draft', 'cancelled', 'terminated'])
+const DELETABLE_STATUSES = new Set(['draft', 'cancelled', 'terminated', 'converted_to_lease'])
 
 export async function deleteContract(
   contractId: string,
@@ -1916,7 +1942,7 @@ export async function deleteContract(
   if (!contract) return { error: 'ไม่พบสัญญา' }
   if (contract.is_finalized) return { error: 'ไม่สามารถลบสัญญาที่ล็อกแล้ว' }
   if (!DELETABLE_STATUSES.has(contract.status)) {
-    return { error: `ลบได้เฉพาะสัญญาสถานะ ร่าง / ยกเลิก / บอกเลิก เท่านั้น (ปัจจุบัน: ${contract.status})` }
+    return { error: `ลบได้เฉพาะสัญญาสถานะ ร่าง / ยกเลิก / บอกเลิก / แปลงเป็นสัญญาเช่าแล้ว เท่านั้น (ปัจจุบัน: ${contract.status})` }
   }
 
   const { error } = await supabase
