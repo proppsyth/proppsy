@@ -268,6 +268,12 @@ export default async function CustomerDetailPage({
                   src={idCardSignedUrl}
                   alt="บัตรประชาชน"
                   className="w-full h-full object-cover"
+                  width={256}
+                  height={160}
+                  loading="eager"
+                  decoding="async"
+                  // @ts-expect-error fetchPriority is valid HTML but not yet in React types
+                  fetchpriority="high"
                 />
               </div>
             </Section>

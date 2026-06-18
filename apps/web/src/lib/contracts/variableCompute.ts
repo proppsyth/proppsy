@@ -253,6 +253,10 @@ export function computeVariables(
     v['ชื่อโครงการภาษาอังกฤษ'] = proj?.name_en ?? stock.project_name ?? '-'
     v['ซอย']                   = extra['ซอย'] ?? '-'
     v['ถนนโครงการ']            = proj?.address_road ?? extra['ถนนโครงการ'] ?? '-'
+    // Combined road + soi that drops a missing part instead of printing "-"
+    // (avoids "ถนนเพชรเกษม -" when there is no soi).
+    v['ถนนซอยโครงการ']        = [proj?.address_road?.trim(), (extra['ซอย'] ?? '').trim()]
+      .filter(Boolean).join(' ') || '-'
     v['thถนน']                 = proj?.address_road ?? extra['thถนน'] ?? '-'
     v['แขวงตำบลห้องชุด']       = proj?.subdistrict ?? extra['แขวงตำบลห้องชุด'] ?? '-'
     v['thแขวงตำบล']            = proj?.subdistrict ?? extra['thแขวงตำบล'] ?? '-'
@@ -328,7 +332,14 @@ export function computeVariables(
   //        8000×3 − 3000 = 21000
   const bookingAmt = (contract as { booking_amount?: number | null }).booking_amount ?? 0
   const depositMths = contract.deposit_months ?? 2
-  const contractDayPayment = Math.max(0, rent * (depositMths + 1) - bookingAmt)
+  // Reservation doc estimates the lease-day total (deposit + first month −
+  // booking already paid). The LEASE document itself collects only the
+  // security deposit on signing day = rent × deposit_months.
+  const _isReservationDoc = contract.doc_type === 'reservation'
+    || (contract as { contract_category?: string }).contract_category === 'reservation'
+  const contractDayPayment = _isReservationDoc
+    ? Math.max(0, rent * (depositMths + 1) - bookingAmt)
+    : rent * depositMths
 
   v['เงินจอง']               = withCommas(bookingAmt)
   v['เงินจองตัวอักษร']        = bahtText(bookingAmt)

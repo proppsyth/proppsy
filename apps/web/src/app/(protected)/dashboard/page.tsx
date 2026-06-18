@@ -90,7 +90,7 @@ export default async function DashboardPage() {
     supabase.from('stock').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).eq('status', 'sold'),
     supabase.from('owners').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
     supabase.from('customers').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
-    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).is('deleted_at', null),
+    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
     supabase.from('contracts')
       .select('id, doc_type, status, created_at')
       .eq('agent_uid', user.id).is('deleted_at', null).order('created_at', { ascending: false }).limit(5),

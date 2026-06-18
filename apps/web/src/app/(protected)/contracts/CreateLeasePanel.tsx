@@ -178,7 +178,7 @@ export default function CreateLeasePanel({ reservation }: Props) {
                 value={form.rentPrice} onChange={handleRentChange} type="number"
                 hint={reservation.rentPrice ? `จากใบจอง: ฿${fmt(reservation.rentPrice)}` : undefined}
               />
-              <Field label="เดือนมัดจำ/จอง" value={form.depositMonths} onChange={handleDepositMonthsChange} type="number" />
+              <Field label="เดือนเงินประกัน" value={form.depositMonths} onChange={handleDepositMonthsChange} type="number" />
               <Field label="เงินมัดจำ/จอง (บาท)" hint="เงินจองที่เก็บตอนจอง"
                 value={form.depositAmount} onChange={v => set('depositAmount', v)} type="number" />
               <Field label="เงินประกัน (บาท)" hint="ค่าประกัน 2 เดือนค่าเช่า (ค่าเริ่มต้น)"

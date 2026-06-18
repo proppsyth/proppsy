@@ -254,7 +254,7 @@ export default async function ContractDetailPage({
                 )}
                 {!isReservation && contract.deposit_amount != null && (
                   <FinRow
-                    label={`เงินมัดจำ/จอง${contract.deposit_months ? ` (${contract.deposit_months} เดือน)` : ''}`}
+                    label="เงินมัดจำ/จอง"
                     value={`฿${fmt(contract.deposit_amount)}`}
                   />
                 )}

@@ -18,7 +18,7 @@ export default async function NewContractPage() {
 
   const [{ data: profile }, { count: contractsThisMonth }] = await Promise.all([
     supabase.from('profiles').select('plan, account_status').eq('id', user.id).single(),
-    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).is('deleted_at', null).gte('created_at', startOfMonth),
+    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).gte('created_at', startOfMonth),
   ])
 
   // Pending accounts can prepare data but cannot create contracts yet.

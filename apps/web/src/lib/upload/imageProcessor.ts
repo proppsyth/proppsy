@@ -3,6 +3,20 @@
 const WEBP_QUALITY = 0.8
 const WATERMARK_TEXT = 'ใช้สำหรับ Proppsy เท่านั้น'
 
+// Ensure the watermark font is actually loaded before drawing to canvas.
+// Without this, the canvas falls back to a default font that lacks proper Thai
+// metrics — the watermark text renders cut off / misaligned.
+async function ensureFont(fontSize: number): Promise<void> {
+  try {
+    if (typeof document !== 'undefined' && document.fonts) {
+      await document.fonts.load(`bold ${fontSize}px Sarabun`)
+      await document.fonts.ready
+    }
+  } catch {
+    // Font loading is best-effort; fall back to whatever is available.
+  }
+}
+
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new window.Image()
@@ -60,6 +74,7 @@ export async function applyBankBookWatermark(file: File): Promise<Blob> {
   const pad = Math.round(fontSize * 0.5)
   const text = 'Proppsy'
 
+  await ensureFont(fontSize)
   ctx.font = `bold ${fontSize}px 'Sarabun', sans-serif`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
@@ -93,6 +108,7 @@ export async function applyIdCardWatermark(file: File): Promise<Blob> {
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
 
   const fontSize = Math.max(14, Math.round(canvas.width * 0.045))
+  await ensureFont(fontSize)
   ctx.font = `bold ${fontSize}px 'Sarabun', sans-serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
