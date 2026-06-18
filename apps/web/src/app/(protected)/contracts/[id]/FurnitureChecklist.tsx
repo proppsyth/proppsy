@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { Plus, Trash2, Loader2, Check, ChevronDown, Search, X } from 'lucide-react'
-import { saveFurnitureItems, type FurnitureItemInput } from '../actions'
+import { useState, useEffect, useMemo, useTransition } from 'react'
+import { Plus, Trash2, Loader2, Check, ChevronDown, Search, X, Sparkles } from 'lucide-react'
+import { saveFurnitureItems, translateFurnitureNames, type FurnitureItemInput } from '../actions'
 import { useEditableRows } from '@/hooks/useEditableRows'
 
 const FURNITURE_PRESETS_KEY = 'proppsy_furniture_presets'
@@ -126,6 +126,25 @@ export default function FurnitureChecklist({ contractId, initialItems = [], move
     const next = customPresets.filter(c => c.th.trim().toLowerCase() !== th.trim().toLowerCase())
     setCustomPresets(next)
     try { localStorage.setItem(FURNITURE_PRESETS_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+  }
+
+  // AI translate: fill blank English names from the Thai names (1 AI use).
+  const [isTranslating, startTranslate] = useTransition()
+  const [translateMsg, setTranslateMsg] = useState('')
+  function handleTranslate() {
+    const targets = items.filter(r => r.item_name.trim() && !(r.item_name_en ?? '').trim())
+    if (targets.length === 0) { setTranslateMsg('ไม่มีรายการที่ต้องแปล'); return }
+    setTranslateMsg('')
+    startTranslate(async () => {
+      const res = await translateFurnitureNames(targets.map(r => r.item_name))
+      if (res.error) { setTranslateMsg(res.error); return }
+      const translations = res.translations ?? []
+      targets.forEach((r, i) => {
+        const en = translations[i]?.trim()
+        if (en) updateRow(r.id, { item_name_en: en })
+      })
+      setTranslateMsg(res.quota ? `แปลแล้ว · AI ${res.quota.used}/${res.quota.limit}` : 'แปลแล้ว ✓')
+    })
   }
 
   // On save, remember any newly typed item names for next time.
@@ -383,15 +402,27 @@ export default function FurnitureChecklist({ contractId, initialItems = [], move
         </table>
       </div>
 
-      {/* Add row */}
-      <button
-        type="button"
-        onClick={() => addRow()}
-        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition"
-      >
-        <Plus className="w-3.5 h-3.5" />
-        เพิ่มรายการ
-      </button>
+      {/* Add row + AI translate */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <button
+          type="button"
+          onClick={() => addRow()}
+          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          เพิ่มรายการ
+        </button>
+        <button
+          type="button"
+          onClick={handleTranslate}
+          disabled={isTranslating}
+          className="flex items-center gap-1.5 text-xs text-violet-600 hover:text-violet-800 transition disabled:opacity-50"
+        >
+          {isTranslating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+          {isTranslating ? 'กำลังแปล...' : 'เติมภาษาอังกฤษด้วย AI'}
+        </button>
+        {translateMsg && <span className="text-xs text-gray-500">{translateMsg}</span>}
+      </div>
 
       {/* Save */}
       <div className="flex items-center gap-3 pt-1">

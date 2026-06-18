@@ -1787,6 +1787,55 @@ export type FurnitureItemInput = {
   move_out_notes?: string | null
 }
 
+// Translate Thai furniture names → English in one AI call (counts as 1 AI use).
+export async function translateFurnitureNames(
+  names: string[]
+): Promise<{ error?: string; translations?: string[]; quota?: { used: number; limit: number } }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const clean = names.map(n => (n ?? '').trim())
+  if (clean.every(n => !n)) return { translations: clean }
+
+  const { checkAiQuota, incrementAiUsage } = await import('@/lib/aiQuota')
+  const quota = await checkAiQuota()
+  if (!quota.allowed) return { error: quota.error ?? 'เกินโควต้า AI', quota: { used: quota.used, limit: quota.limit } }
+
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) return { error: 'ไม่พบ Gemini API key' }
+
+  try {
+    const prompt = `แปลรายการเฟอร์นิเจอร์/อุปกรณ์ภายในห้องเช่าต่อไปนี้จากภาษาไทยเป็นภาษาอังกฤษ สั้นกระชับเป็นคำนาม
+ตอบเป็น JSON เท่านั้น รูปแบบ {"translations": ["...", "..."]} เรียงตามลำดับเดิม ถ้ารายการใดว่างให้ใส่ "" :
+${JSON.stringify(clean)}`
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.1, responseMimeType: 'application/json' },
+        }),
+      }
+    )
+    if (!res.ok) return { error: `แปลไม่สำเร็จ (Gemini ${res.status})` }
+    const data = await res.json()
+    const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+    const parsed = JSON.parse(text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim())
+    const translations: string[] = Array.isArray(parsed?.translations) ? parsed.translations : []
+
+    const inc = await incrementAiUsage()
+    return {
+      translations: clean.map((_, i) => translations[i] ?? ''),
+      quota: { used: inc.used ?? quota.used + 1, limit: inc.limit ?? quota.limit },
+    }
+  } catch {
+    return { error: 'แปลไม่สำเร็จ กรุณาลองใหม่' }
+  }
+}
+
 export async function saveFurnitureItems(
   contractId: string,
   items: FurnitureItemInput[]
