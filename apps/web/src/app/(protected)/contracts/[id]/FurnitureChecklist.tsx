@@ -134,8 +134,14 @@ export default function FurnitureChecklist({ contractId, initialItems = [] }: Pr
                   <input
                     type="number"
                     min={1}
-                    value={row.quantity}
-                    onChange={e => updateRow(row.id, { quantity: parseInt(e.target.value) || 1 })}
+                    value={row.quantity === 0 ? '' : row.quantity}
+                    onChange={e => {
+                      const v = e.target.value
+                      if (v === '') { updateRow(row.id, { quantity: 0 }); return }
+                      const n = parseInt(v)
+                      if (!Number.isNaN(n)) updateRow(row.id, { quantity: n })
+                    }}
+                    onBlur={() => { if (!row.quantity || row.quantity < 1) updateRow(row.id, { quantity: 1 }) }}
                     className="w-full px-2 py-1 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 text-center"
                   />
                 </td>

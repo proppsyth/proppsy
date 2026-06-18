@@ -25,7 +25,6 @@ interface Props {
 const ROLE_OPTIONS: { value: SignerRole; label: string }[] = [
   { value: 'tenant',   label: 'ผู้เช่า' },
   { value: 'owner',    label: 'เจ้าของ' },
-  { value: 'co_agent', label: 'Co-Agent' },
   { value: 'witness',  label: 'พยาน' },
 ]
 

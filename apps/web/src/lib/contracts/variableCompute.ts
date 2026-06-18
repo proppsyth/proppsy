@@ -393,10 +393,23 @@ export function computeVariables(
   v['รวมทคสอและลอตัวอักษร']   = bahtText(mgmt)
 
   // ─── VAT / WHT calculations ──────────────────────────────────
+  // Invoice/receipt base amount depends on the document type:
+  //   reservation → booking deposit, deposit → security deposit,
+  //   commission  → commission_net (the only type where VAT/WHT applies).
+  const _docTypeForInvoice = contract.doc_type ?? ''
+  const _securityForInvoice = (contract as { security_deposit?: number | null }).security_deposit ?? deposit
+  let invoiceBase: number
+  if (_docTypeForInvoice.includes('reservation')) {
+    invoiceBase = bookingAmt > 0 ? bookingAmt : rent
+  } else if (_docTypeForInvoice.includes('deposit')) {
+    invoiceBase = _securityForInvoice
+  } else {
+    invoiceBase = contract.commission_net ?? 0
+  }
   // VAT/WHT only applies to commission amounts — NEVER to deposit, rent, or tenant-facing amounts.
-  const invoiceBase = contract.commission_net ?? 0
-  const vat7Amt  = contract.vat_7 ? Math.round(invoiceBase * 0.07 * 100) / 100 : 0
-  const wht3Amt  = contract.wht_3 ? Math.round(invoiceBase * 0.03 * 100) / 100 : 0
+  const _isCommissionDoc = _docTypeForInvoice.includes('commission')
+  const vat7Amt  = (_isCommissionDoc && contract.vat_7) ? Math.round(invoiceBase * 0.07 * 100) / 100 : 0
+  const wht3Amt  = (_isCommissionDoc && contract.wht_3) ? Math.round(invoiceBase * 0.03 * 100) / 100 : 0
   const netTotal = invoiceBase + vat7Amt - wht3Amt
 
   // Templates use both suffix-less and suffix "2" versions for same values
