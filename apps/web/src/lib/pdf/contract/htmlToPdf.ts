@@ -143,36 +143,47 @@ if (!FONT_REG_URL || !FONT_BOLD_URL) {
 // or slow Supabase signed URL block Chromium's render loop.
 
 async function urlToDataUrl(url: string): Promise<string | null> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 5000) // 5s max per image
-  try {
-    const res = await fetch(url, { signal: controller.signal })
-    if (!res.ok) return null
-    const contentType = res.headers.get('content-type') ?? 'image/png'
-    const buf = Buffer.from(await res.arrayBuffer())
-    return `data:${contentType};base64,${buf.toString('base64')}`
-  } catch {
-    return null
-  } finally {
-    clearTimeout(timer)
+  // Retry once — a single transient failure (throttle/reset) must not silently
+  // drop one signer's signature from the document.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 8000) // 8s max per image
+    try {
+      const res = await fetch(url, { signal: controller.signal, cache: 'no-store' })
+      if (!res.ok) { clearTimeout(timer); continue }
+      const contentType = res.headers.get('content-type') ?? 'image/png'
+      const buf = Buffer.from(await res.arrayBuffer())
+      clearTimeout(timer)
+      return `data:${contentType};base64,${buf.toString('base64')}`
+    } catch {
+      clearTimeout(timer)
+      // fall through to retry
+    }
   }
+  return null
 }
 
+// Inline signatures SEQUENTIALLY (not Promise.all): parallel fetches to the same
+// Supabase storage host on serverless can get one connection throttled/reset,
+// which previously dropped a single signer's signature at random.
 async function inlineSignerImages(signers: PdfSigner[]): Promise<PdfSigner[]> {
-  return Promise.all(signers.map(async sig => {
-    if (!sig.signatureUrl) return sig
-    if (sig.signatureUrl.startsWith('data:')) return sig
+  const out: PdfSigner[] = []
+  for (const sig of signers) {
+    if (!sig.signatureUrl || sig.signatureUrl.startsWith('data:')) {
+      out.push(sig)
+      continue
+    }
     pdfLog('sig.inline.start', { label: sig.label, url: sig.signatureUrl.substring(0, 60) })
     const dataUrl = await urlToDataUrl(sig.signatureUrl)
     if (!dataUrl) {
-      // Inlining failed — drop the image rather than passing the external URL
-      // to Puppeteer's footer context where it would trigger a network stall.
       pdfLog('sig.inline.failed', { label: sig.label })
-      return { ...sig, signatureUrl: null }
+      out.push({ ...sig, signatureUrl: null })
+    } else {
+      pdfLog('sig.inline.done', { label: sig.label })
+      out.push({ ...sig, signatureUrl: dataUrl })
     }
-    pdfLog('sig.inline.done', { label: sig.label })
-    return { ...sig, signatureUrl: dataUrl }
-  }))
+  }
+  return out
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
