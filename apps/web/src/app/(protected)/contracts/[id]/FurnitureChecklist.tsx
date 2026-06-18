@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Trash2, Loader2, Check, ChevronDown } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Plus, Trash2, Loader2, Check, ChevronDown, Search, X } from 'lucide-react'
 import { saveFurnitureItems, type FurnitureItemInput } from '../actions'
 import { useEditableRows } from '@/hooks/useEditableRows'
+
+const FURNITURE_PRESETS_KEY = 'proppsy_furniture_presets'
 
 const PRESET_ITEMS: Array<{ th: string; en: string }> = [
   { th: 'เตียง',              en: 'Bed' },
@@ -88,6 +90,59 @@ export default function FurnitureChecklist({ contractId, initialItems = [], move
       move_out_condition: r.move_out_condition || null,
       move_out_notes:     r.move_out_notes || null,
     })))
+  }
+
+  // ── Saved custom presets (localStorage, per device) ──────────
+  const [presetSearch, setPresetSearch] = useState('')
+  const [customPresets, setCustomPresets] = useState<{ th: string; en: string }[]>([])
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FURNITURE_PRESETS_KEY)
+      if (raw) setCustomPresets(JSON.parse(raw))
+    } catch { /* ignore */ }
+  }, [])
+
+  // Built-in presets first, then the agent's saved customs (deduped by Thai name)
+  const allPresets = useMemo(() => {
+    const seen = new Set(PRESET_ITEMS.map(p => p.th.trim().toLowerCase()))
+    const merged = PRESET_ITEMS.map(p => ({ ...p, custom: false }))
+    for (const c of customPresets) {
+      const k = c.th.trim().toLowerCase()
+      if (k && !seen.has(k)) { seen.add(k); merged.push({ th: c.th, en: c.en, custom: true }) }
+    }
+    return merged
+  }, [customPresets])
+
+  const filteredPresets = useMemo(() => {
+    const q = presetSearch.trim().toLowerCase()
+    if (!q) return allPresets
+    return allPresets.filter(p => p.th.toLowerCase().includes(q) || (p.en ?? '').toLowerCase().includes(q))
+  }, [allPresets, presetSearch])
+
+  const addedNames = new Set(items.map(it => it.item_name.trim().toLowerCase()))
+
+  function removeCustomPreset(th: string) {
+    const next = customPresets.filter(c => c.th.trim().toLowerCase() !== th.trim().toLowerCase())
+    setCustomPresets(next)
+    try { localStorage.setItem(FURNITURE_PRESETS_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+  }
+
+  // On save, remember any newly typed item names for next time.
+  function persistNewPresets(rows: FurnitureRow[]) {
+    const existing = new Set(allPresets.map(p => p.th.trim().toLowerCase()))
+    const additions: { th: string; en: string }[] = []
+    for (const r of rows) {
+      const th = r.item_name.trim()
+      if (!th) continue
+      const k = th.toLowerCase()
+      if (!existing.has(k)) { existing.add(k); additions.push({ th, en: (r.item_name_en ?? '').trim() }) }
+    }
+    if (additions.length) {
+      const next = [...customPresets, ...additions]
+      setCustomPresets(next)
+      try { localStorage.setItem(FURNITURE_PRESETS_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+    }
   }
 
   // ── Move-out inspection mode (compares against the move-in snapshot) ──
@@ -182,18 +237,62 @@ export default function FurnitureChecklist({ contractId, initialItems = [], move
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showPresets ? 'rotate-180' : ''}`} />
         </button>
         {showPresets && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {PRESET_ITEMS.map(p => (
+          <div className="mt-2 p-2.5 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={presetSearch}
+                  onChange={e => setPresetSearch(e.target.value)}
+                  placeholder="ค้นหา / พิมพ์ชื่อเฟอร์นิเจอร์..."
+                  className="w-full pl-8 pr-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                />
+              </div>
               <button
-                key={p.th}
                 type="button"
-                onClick={() => { addRow(makeRow(p.th, p.en)); setShowPresets(false) }}
-                className="px-2.5 py-1 text-xs bg-gray-100 hover:bg-blue-50 hover:text-blue-700 rounded-full transition text-left"
+                onClick={() => { setShowPresets(false); setPresetSearch('') }}
+                className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex-shrink-0"
               >
-                <span>{p.th}</span>
-                <span className="text-gray-400 ml-1">/ {p.en}</span>
+                เสร็จ
               </button>
-            ))}
+            </div>
+            <div className="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto">
+              {filteredPresets.map(p => {
+                const added = addedNames.has(p.th.trim().toLowerCase())
+                return (
+                  <span
+                    key={p.th}
+                    className={`inline-flex items-center rounded-full text-xs transition border ${
+                      added ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-white border-gray-200 hover:bg-blue-50 hover:text-blue-700'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => addRow(makeRow(p.th, p.en))}
+                      className="pl-2.5 pr-1.5 py-1 flex items-center gap-1"
+                    >
+                      {added && <Check className="w-3 h-3" />}
+                      <span>{p.th}</span>
+                      {p.en && <span className="text-gray-400">/ {p.en}</span>}
+                    </button>
+                    {p.custom && (
+                      <button
+                        type="button"
+                        onClick={() => removeCustomPreset(p.th)}
+                        title="ลบออกจากคลัง"
+                        className="pr-2 pl-0.5 text-gray-300 hover:text-red-500"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </span>
+                )
+              })}
+              {filteredPresets.length === 0 && (
+                <p className="text-xs text-gray-400 py-1">ไม่พบ — พิมพ์ชื่อในตารางด้านล่างแล้วกดบันทึก ระบบจะจำไว้ให้</p>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -298,7 +397,7 @@ export default function FurnitureChecklist({ contractId, initialItems = [], move
       <div className="flex items-center gap-3 pt-1">
         <button
           type="button"
-          onClick={() => handleSave(saveAll)}
+          onClick={() => { persistNewPresets(items); handleSave(saveAll) }}
           disabled={isPending}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
         >
