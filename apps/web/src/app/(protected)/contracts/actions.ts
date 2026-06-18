@@ -681,8 +681,35 @@ export async function createChildDocument(
     }
   }
 
-  // Ending docs: update master lease status + stock
+  // Ending docs: snapshot the lease's furniture inventory for move-out inspection.
+  // The signed lease's items are NEVER modified — we copy them into the new
+  // ending document so the agent can record move-out condition separately.
   const endingTypes = ['termination', 'cancellation', 'end_contract']
+  if (endingTypes.includes(docType)) {
+    const { data: leaseItems } = await supabase
+      .from('contract_furniture_items')
+      .select('item_name, item_name_en, quantity, condition, notes, serial_no, sort_order')
+      .eq('contract_id', masterId)
+      .order('sort_order', { ascending: true })
+    if (leaseItems && leaseItems.length > 0) {
+      const snapshot = leaseItems.map(it => ({
+        contract_id: id,
+        agent_uid: user.id,
+        item_name: it.item_name,
+        item_name_en: it.item_name_en,
+        quantity: it.quantity,
+        condition: it.condition,        // move-in condition (read-only reference)
+        notes: it.notes,
+        serial_no: it.serial_no,
+        sort_order: it.sort_order,
+        move_out_condition: null,
+        move_out_notes: null,
+      }))
+      await supabase.from('contract_furniture_items').insert(snapshot)
+    }
+  }
+
+  // Ending docs: update master lease status + stock
   if (endingTypes.includes(docType) && input.effectiveEndDate) {
     const newStatus = docType === 'cancellation' ? 'cancelled' : 'terminated'
     await supabase.from('contracts')
