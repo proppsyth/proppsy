@@ -43,7 +43,7 @@ const STATUS_LABELS_TH: Record<ContractStatus, string> = {
   sent_for_sign:      'รอลงนาม',
   viewed:             'เปิดดูแล้ว',
   partially_signed:   'ลงนามบางส่วน',
-  signed:             'ลงนามครบแล้ว',
+  signed:             'ลงนามแล้ว',
   finalized:          'ล็อกแล้ว',
   active:             'ใช้งาน',
   completed:          'เสร็จสมบูรณ์',
@@ -139,9 +139,6 @@ export default async function ContractDetailPage({
   const isMasterLease    = contract.doc_type === 'rental'
   const isChildDoc       = contractMeta.contract_category === 'child'
   const isActive         = !['cancelled', 'terminated', 'completed', 'renewed'].includes(contract.status)
-  // "ลงนามครบแล้ว" only when BOTH tenant AND owner roles have signed
-  const signedRoles = new Set((signers ?? []).filter(s => s.status === 'signed').map(s => s.signer_role))
-  const fullySignedBothSides = signedRoles.has('tenant') && signedRoles.has('owner')
   const effectiveEndDate = contractMeta.effective_end_date
   const masterContractId = contractMeta.master_contract_id
   const reservationId    = contractMeta.reservation_id
@@ -166,13 +163,9 @@ export default async function ContractDetailPage({
               </h1>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                  contract.status === 'signed' && !fullySignedBothSides
-                    ? 'bg-orange-100 text-orange-700'
-                    : STATUS_COLORS[contract.status as ContractStatus] ?? 'bg-gray-100 text-gray-600'
+                  STATUS_COLORS[contract.status as ContractStatus] ?? 'bg-gray-100 text-gray-600'
                 }`}>
-                  {contract.status === 'signed' && !fullySignedBothSides
-                    ? 'ลงนามบางส่วน'
-                    : STATUS_LABELS_TH[contract.status as ContractStatus] ?? contract.status}
+                  {STATUS_LABELS_TH[contract.status as ContractStatus] ?? contract.status}
                 </span>
                 {isFinalized && (
                   <span className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-100 text-emerald-700">

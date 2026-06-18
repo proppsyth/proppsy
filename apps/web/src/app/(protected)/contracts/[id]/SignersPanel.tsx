@@ -80,12 +80,6 @@ function SignerRow({
     setTimeout(() => setCopiedId(false), 2000)
   }
 
-  function shareViaLine() {
-    const link = getSignLink()
-    const text = `กรุณาลงนามเอกสาร ${contractId}: ${link}`
-    window.open(`https://line.me/R/share?text=${encodeURIComponent(text)}`, '_blank')
-  }
-
   async function shareNative() {
     if (!navigator.share) return
     try {
@@ -158,15 +152,6 @@ function SignerRow({
           >
             {copiedId ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
             {copiedId ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์'}
-          </button>
-
-          <button
-            type="button"
-            onClick={shareViaLine}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#00B900] text-white hover:bg-[#00a300] transition flex-shrink-0"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-            LINE
           </button>
 
           {hasNativeShare && (

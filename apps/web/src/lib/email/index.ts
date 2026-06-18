@@ -188,13 +188,12 @@ export function buildInquiryEmail(args: {
   }
 }
 
-// ─── Signature-completed notification ───────────────────────────────────────
+// ─── Signature notification (one email per signer, no "all signed" wording) ──
 export function buildSignedEmail(args: {
   contractId: string
   signerName?: string
   signerRoleLabel?: string
   propertyLabel?: string
-  allSigned: boolean
   contractUrl: string
 }): { subject: string; html: string } {
   const who = [args.signerRoleLabel, args.signerName].filter(Boolean).join(' · ') || 'ผู้ลงนาม'
@@ -205,13 +204,13 @@ export function buildSignedEmail(args: {
   ].filter(Boolean).join('')
 
   const bodyHtml = `
-    ${intro(args.allSigned ? 'ทุกฝ่ายลงนามในสัญญาครบถ้วนแล้ว สามารถดำเนินการขั้นต่อไปได้' : `${esc(who)} ได้ลงนามในสัญญาเรียบร้อยแล้ว`)}
+    ${intro(`${esc(who)} ได้ลงนามในสัญญาเรียบร้อยแล้ว`)}
     ${infoBox(rows)}
     ${button(args.contractUrl, 'ดูสัญญา')}`
 
   return {
-    subject: `${args.allSigned ? '✅ ลงนามครบ' : '✍️ มีผู้ลงนาม'}: สัญญา ${args.contractId}`,
-    html: shell({ title: args.allSigned ? 'ลงนามครบแล้ว' : 'มีผู้ลงนาม', heading: args.allSigned ? '✅ สัญญาลงนามครบแล้ว' : '✍️ มีผู้ลงนามสัญญา', bodyHtml }),
+    subject: `✍️ มีผู้ลงนาม: สัญญา ${args.contractId}`,
+    html: shell({ title: 'มีผู้ลงนาม', heading: '✍️ มีผู้ลงนามสัญญา', bodyHtml }),
   }
 }
 

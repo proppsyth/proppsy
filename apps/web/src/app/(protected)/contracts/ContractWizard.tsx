@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Loader2, ChevronRight, ChevronLeft, Check, FileText, X, Globe, Info, AlertCircle, Sparkles, UserPlus, Pencil,
 } from 'lucide-react'
-import { DOC_TYPE_LABELS } from '@/types'
+import { DOC_TYPE_LABELS, formatRoomType } from '@/types'
 import type { ContractDocType, PaymentMethod, Owner, Customer } from '@/types'
 import { createContract } from './actions'
 import { getOwnerById } from '@/app/(protected)/owners/actions'
@@ -135,7 +135,7 @@ function fmt(n: number): string {
 }
 
 function stockLabel(r: StockSearchResult): string {
-  return [r.project_name, r.unit_no, r.room_type].filter(Boolean).join(' · ') || r.id
+  return [r.project_name, r.unit_no, formatRoomType(r.room_type)].filter(Boolean).join(' · ') || r.id
 }
 
 function personLabel(r: OwnerSearchResult | CustomerSearchResult): string {
@@ -622,7 +622,7 @@ export default function ContractWizard() {
               <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
                 <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700">
-                  ข้อมูลเจ้าของยังไม่ครบสำหรับสัญญา (เช่น ชื่อ-สกุล, ที่อยู่) — กด “แก้ไข / เพิ่มข้อมูล” เพื่อเติมให้ครบก่อนออกเอกสาร
+                  ข้อมูลเจ้าของยังไม่ครบสำหรับสัญญา — กด “แก้ไข / เพิ่มข้อมูล” เพื่อเติม ชื่อ-สกุล, ที่อยู่, เอกสารแนบ (บัตร ปชช.) และบัญชีธนาคาร ให้ครบก่อนออกเอกสาร
                 </p>
               </div>
             )}
@@ -667,7 +667,7 @@ export default function ContractWizard() {
               <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
                 <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700">
-                  ข้อมูลลูกค้ายังไม่ครบสำหรับสัญญา (เช่น ชื่อ-สกุล, ที่อยู่) — กด “แก้ไข / เพิ่มข้อมูล” เพื่อเติมให้ครบก่อนออกเอกสาร
+                  ข้อมูลลูกค้ายังไม่ครบสำหรับสัญญา — กด “แก้ไข / เพิ่มข้อมูล” เพื่อเติม ชื่อ-สกุล, ที่อยู่, เอกสารแนบ (บัตร ปชช.) และบัญชีธนาคาร ให้ครบก่อนออกเอกสาร
                 </p>
               </div>
             )}
@@ -785,16 +785,14 @@ export default function ContractWizard() {
                       )}
                       {state.booking_amount && (
                         <div className="flex justify-between text-xs text-gray-600">
-                          <span>เงินมัดจำจอง / เดือนแรก</span>
+                          <span>เงินมัดจำจอง / เดือนแรก (ชำระแล้ววันจอง)</span>
                           <span className="font-semibold text-gray-800">฿{fmt(parseFloat(state.booking_amount))}</span>
                         </div>
                       )}
-                      {state.deposit_amount && state.booking_amount && (
+                      {state.deposit_amount && (
                         <div className="flex justify-between text-xs text-blue-700 border-t border-blue-100 pt-1.5">
-                          <span>ยอดชำระวันทำสัญญาเช่า = เงินประกัน + เงินมัดจำจอง</span>
-                          <span className="font-semibold">
-                            ฿{fmt(parseFloat(state.deposit_amount) + parseFloat(state.booking_amount))}
-                          </span>
+                          <span>ยอดชำระวันทำสัญญาเช่า (เงินประกัน {state.deposit_months || '2'} เดือน)</span>
+                          <span className="font-semibold">฿{fmt(parseFloat(state.deposit_amount))}</span>
                         </div>
                       )}
                     </div>

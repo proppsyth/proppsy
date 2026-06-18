@@ -238,10 +238,16 @@ export function computeVariables(
     v['ขนาด']                  = stock.size_sqm != null ? String(stock.size_sqm) : '-'
     v['ชั้น']                  = stock.floor != null ? String(stock.floor) : '-'
     v['ตึก']                   = stock.building ?? extra['ตึก'] ?? '-'
-    v['ประเภทห้อง']            = stock.room_type ?? '-'
     const _roomBilingual = ROOM_TYPE_BILINGUAL[stock.room_type ?? '']
-    v['ประเภทห้องภาษาไทย']    = _roomBilingual?.th ?? stock.room_type ?? '-'
-    v['ประเภทห้องภาษาอังกฤษ'] = _roomBilingual?.en ?? stock.room_type ?? '-'
+    const _roomTh = _roomBilingual?.th ?? stock.room_type ?? '-'
+    const _roomEn = _roomBilingual?.en ?? stock.room_type ?? '-'
+    // ประเภทห้อง: Thai-only contract → Thai label; otherwise bilingual "EN / TH"
+    const _thaiOnly = (template.language ?? contract.language_version) === 'th'
+    v['ประเภทห้อง']            = _roomTh === '-' ? '-'
+      : _thaiOnly ? _roomTh
+      : _roomEn !== _roomTh ? `${_roomEn} / ${_roomTh}` : _roomTh
+    v['ประเภทห้องภาษาไทย']    = _roomTh
+    v['ประเภทห้องภาษาอังกฤษ'] = _roomEn
     // Address from linked project (joined as project?)
     const proj = (stock as Stock & { project?: { name_en?: string; address_road?: string; subdistrict?: string; district?: string; province?: string; zip?: string } }).project
     v['ชื่อโครงการภาษาอังกฤษ'] = proj?.name_en ?? stock.project_name ?? '-'
@@ -313,12 +319,14 @@ export function computeVariables(
   }
 
   // ─── Reservation financial model ─────────────────────────────
-  // booking_amount  = เงินมัดจำจอง / เดือนแรก (first-month deposit, from stock)
+  // booking_amount  = เงินมัดจำจอง / เดือนแรก (paid at reservation, from stock)
   // deposit_amount  = เงินประกัน (security deposit, rent × deposit_months, default 2)
-  // contract_day_payment = เงินประกัน + เงินมัดจำจอง
+  // contract_day_payment = ยอดชำระวันทำสัญญาเช่า = ค่าเช่า × จำนวนเดือนเงินประกัน
+  //   (the booking deposit was already paid at reservation, so on lease-signing
+  //    day only the security deposit is due)
   const bookingAmt = (contract as { booking_amount?: number | null }).booking_amount ?? 0
   const depositMths = contract.deposit_months ?? 2
-  const contractDayPayment = deposit + bookingAmt
+  const contractDayPayment = rent * depositMths
 
   v['เงินจอง']               = withCommas(bookingAmt)
   v['เงินจองตัวอักษร']        = bahtText(bookingAmt)

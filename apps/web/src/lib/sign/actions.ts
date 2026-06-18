@@ -199,14 +199,6 @@ export async function submitSignature(params: {
   try {
     const agentUid = (contract as { agent_uid?: string } | null)?.agent_uid
     if (agentUid) {
-      // All signed if no remaining signer is still pending/viewed
-      const { count: remaining } = await supabase
-        .from('contract_signers')
-        .select('id', { count: 'exact', head: true })
-        .eq('contract_id', signer.contract_id)
-        .neq('status', 'signed')
-      const allSigned = (remaining ?? 0) === 0
-
       const { data: agentUser } = await supabase.auth.admin.getUserById(agentUid)
       const agentEmail = agentUser?.user?.email
       if (agentEmail) {
@@ -217,7 +209,6 @@ export async function submitSignature(params: {
           signerName: signerName || undefined,
           signerRoleLabel: signer.signer_role ? SIGNER_ROLE_TH[signer.signer_role] : undefined,
           propertyLabel,
-          allSigned,
           contractUrl: `${siteUrl()}/contracts/${signer.contract_id}`,
         })
         await sendEmail({ to: agentEmail, subject, html })

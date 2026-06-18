@@ -28,7 +28,7 @@ const STATUS_LABELS_TH: Record<ContractStatus, string> = {
   sent_for_sign:      'ส่งเซ็นแล้ว',
   viewed:             'เปิดดูแล้ว',
   partially_signed:   'ลงนามบางส่วน',
-  signed:             'ลงนามครบแล้ว',
+  signed:             'ลงนามแล้ว',
   finalized:          'ล็อกแล้ว',
   active:             'มีผลแล้ว',
   completed:          'เสร็จสมบูรณ์',
