@@ -347,6 +347,40 @@ export default function ContractActions({
         </div>
       </div>
 
+      {/* Move-out inspection document — ending contracts only */}
+      {isEndingDoc && (
+        <div className="bg-white rounded-xl border border-amber-100 shadow-sm overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-amber-100 bg-amber-50/60">
+            <div className="flex items-center gap-2">
+              <ClipboardCheck className="w-3.5 h-3.5 text-amber-600" />
+              <h2 className="text-sm font-semibold text-amber-800">เอกสารตรวจสภาพ (ขาออก)</h2>
+            </div>
+          </div>
+          <div className="p-4 space-y-2">
+            {currentAttUrl && (
+              <a href={currentAttUrl} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-sm text-amber-600 hover:underline mb-2">
+                <ExternalLink className="w-3.5 h-3.5" />
+                เปิดเอกสารตรวจขาออกล่าสุด
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={handleGenerateMoveOut}
+              disabled={isAttPending}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 text-sm font-medium rounded-xl transition disabled:opacity-50"
+            >
+              {isAttPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ClipboardCheck className="w-4 h-4" />}
+              {isAttPending ? 'กำลังสร้าง...' : currentAttUrl ? 'สร้างเอกสารตรวจขาออกใหม่' : 'สร้างเอกสารตรวจขาออก'}
+            </button>
+            {attError && <p className="text-xs text-red-600">{attError}</p>}
+            <p className="text-xs text-gray-400 leading-relaxed">
+              เทียบสภาพทรัพย์สิน เข้าอยู่ → ขาออก · กรอกสภาพขาออกในรายการทรัพย์สินก่อนสร้าง
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Lease Attachments — separate handover document, rental contracts only */}
       {isRental && (
         <div className="bg-white rounded-xl border border-teal-100 shadow-sm overflow-hidden">
