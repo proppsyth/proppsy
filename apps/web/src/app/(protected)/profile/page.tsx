@@ -38,7 +38,7 @@ export default async function ProfilePage() {
 
   const [{ count: stockCount }, { count: contractsThisMonth }] = await Promise.all([
     supabase.from('stock').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
-    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).gte('created_at', startOfMonth),
+    supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).is('deleted_at', null).gte('created_at', startOfMonth),
   ])
 
   const planExpired = profile.plan_expires_at && new Date(profile.plan_expires_at) < now
