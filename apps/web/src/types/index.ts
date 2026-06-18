@@ -377,6 +377,7 @@ export interface ContractSigner {
   signature_type: 'drawn' | 'typed' | null
   signed_name: string | null
   sort_order: number
+  notify_email?: boolean
   created_at: string
   updated_at: string
 }

@@ -97,7 +97,7 @@ export async function submitSignature(params: {
 
   const { data: signer } = await supabase
     .from('contract_signers')
-    .select('id, contract_id, status, signer_role')
+    .select('id, contract_id, status, signer_role, notify_email')
     .eq('sign_token', token)
     .single()
 
@@ -195,10 +195,11 @@ export async function submitSignature(params: {
     // Log failure must never block the signing flow
   }
 
-  // Email notification to the agent — best-effort, non-blocking
+  // Email notification to the agent — best-effort, non-blocking.
+  // Skipped when this signer was set to "no email" (e.g. signing in person).
   try {
     const agentUid = (contract as { agent_uid?: string } | null)?.agent_uid
-    if (agentUid) {
+    if (agentUid && (signer as { notify_email?: boolean }).notify_email !== false) {
       const { data: agentUser } = await supabase.auth.admin.getUserById(agentUid)
       const agentEmail = agentUser?.user?.email
       if (agentEmail) {
@@ -228,6 +229,7 @@ export async function addContractSigner(
   signerRole: SignerRole,
   signerName: string,
   signerPhone: string,
+  notifyEmail: boolean = true,
 ): Promise<{ error?: string; signer?: ContractSigner }> {
   const authClient = await createClient()
   const { data: { user } } = await authClient.auth.getUser()
@@ -263,6 +265,7 @@ export async function addContractSigner(
       signer_name: signerName.trim() || null,
       signer_phone: signerPhone.trim() || null,
       sort_order: sortOrder,
+      notify_email: notifyEmail,
     })
     .select()
     .single()

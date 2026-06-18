@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import {
   Plus, Check, Link2, Share2, Trash2, Loader2, RefreshCw,
-  UserCheck, Clock, Eye, AlertCircle, ChevronDown, ChevronUp,
+  UserCheck, Clock, Eye, AlertCircle, ChevronDown, ChevronUp, BellOff,
 } from 'lucide-react'
 import type { ContractSigner, SignerRole } from '@/types'
 import {
@@ -120,6 +120,12 @@ function SignerRow({
           {signer.signer_phone && (
             <p className="text-xs text-gray-400">{signer.signer_phone}</p>
           )}
+          {signer.notify_email === false && (
+            <p className="flex items-center gap-1 text-[11px] text-gray-400 mt-0.5">
+              <BellOff className="w-3 h-3" />
+              ไม่แจ้งอีเมล
+            </p>
+          )}
         </div>
         <div className={`flex items-center gap-1 text-xs font-medium flex-shrink-0 ${statusCfg.color}`}>
           <StatusIcon className="w-3.5 h-3.5" />
@@ -202,6 +208,7 @@ export default function SignersPanel({ contractId, initialSigners, owner, custom
   const [role, setRole] = useState<SignerRole>('tenant')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [notifyEmail, setNotifyEmail] = useState(true)
   const [addError, setAddError] = useState('')
   const [isAdding, startAdd] = useTransition()
 
@@ -221,12 +228,13 @@ export default function SignersPanel({ contractId, initialSigners, owner, custom
   function handleAdd() {
     setAddError('')
     startAdd(async () => {
-      const res = await addContractSigner(contractId, role, name, phone)
+      const res = await addContractSigner(contractId, role, name, phone, notifyEmail)
       if (res.error) { setAddError(res.error); return }
       if (res.signer) {
         setSigners(prev => [...prev, res.signer!])
         setName('')
         setPhone('')
+        setNotifyEmail(true)
         setShowForm(false)
       }
     })
@@ -328,6 +336,19 @@ export default function SignersPanel({ contractId, initialSigners, owner, custom
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
               />
             )}
+
+            <label className="flex items-start gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={notifyEmail}
+                onChange={e => setNotifyEmail(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded accent-blue-600 flex-shrink-0"
+              />
+              <span className="text-xs text-gray-600 leading-snug">
+                แจ้งเตือนอีเมลถึงฉันเมื่อผู้ลงนามคนนี้เซ็น
+                <span className="block text-[11px] text-gray-400">ปิดได้ถ้าเซ็นพร้อมกันต่อหน้า ไม่ต้องการอีเมลแจ้ง</span>
+              </span>
+            </label>
 
             {addError && (
               <p className="text-xs text-red-600">{addError}</p>
