@@ -10,6 +10,14 @@ const PLAN_OPTS: { value: Plan; label: string }[] = [
   { value: 'business', label: 'Business' },
 ]
 
+// Quick period presets — compute an expiry date relative to today.
+function dateFromNow({ months = 0, years = 0 }: { months?: number; years?: number }): string {
+  const d = new Date()
+  if (months) d.setMonth(d.getMonth() + months)
+  if (years) d.setFullYear(d.getFullYear() + years)
+  return d.toISOString().slice(0, 10)
+}
+
 interface Props {
   userId: string
   currentPlan: Plan
@@ -59,6 +67,27 @@ export default function UserPlanActions({ userId, currentPlan, currentExpiry }: 
             className="w-full text-xs px-2 py-1.5 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-300"
           />
         </div>
+      </div>
+      {/* Quick period presets (for direct/manual payments, not via Omise) */}
+      <div className="flex gap-1.5 flex-wrap">
+        {[
+          { label: 'รายเดือน', value: dateFromNow({ months: 1 }) },
+          { label: 'รายปี', value: dateFromNow({ years: 1 }) },
+          { label: 'ไม่มีกำหนด', value: '' },
+        ].map(p => (
+          <button
+            key={p.label}
+            type="button"
+            onClick={() => setExpiry(p.value)}
+            className={`px-2.5 py-1 text-[11px] rounded-full border transition ${
+              expiry === p.value
+                ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium'
+                : 'border-gray-200 text-gray-500 hover:bg-white'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
       {error && <p className="text-[11px] text-red-500">{error}</p>}
       <div className="flex gap-1.5">
