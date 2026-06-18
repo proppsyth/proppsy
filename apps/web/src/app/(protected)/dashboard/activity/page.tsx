@@ -5,36 +5,9 @@ import { ArrowLeft, Activity } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getUserActivity } from '@/lib/activity/log'
 import type { EntityType, ActivityLogEntry } from '@/lib/activity/log'
+import ActivityIcon from '@/components/shared/ActivityIcon'
 
 export const metadata: Metadata = { title: 'กิจกรรม — Proppsy' }
-
-const ENTITY_ICON: Record<EntityType, string> = {
-  stock:       '🏠',
-  project:     '🏗️',
-  owner:       '👤',
-  tenant:      '👤',
-  booking:     '📋',
-  lease:       '📄',
-  renewal:     '🔄',
-  termination: '📝',
-  esign:       '✍️',
-  invoice:     '🧾',
-  receipt:     '🧾',
-  commission:  '💰',
-  coagent:     '🤝',
-}
-
-const ACTION_ICON: Record<string, string> = {
-  created:     '✨',
-  updated:     '✏️',
-  published:   '🌐',
-  unpublished: '🔒',
-  signed:      '✍️',
-  opened:      '👁️',
-  sent:        '📤',
-  cancelled:   '❌',
-  alias_added: '🏷️',
-}
 
 const ENTITY_LABEL: Record<EntityType, string> = {
   stock:       'ทรัพย์สิน',
@@ -76,14 +49,13 @@ function timeAgo(iso: string): string {
 }
 
 function ActivityRow({ entry }: { entry: ActivityLogEntry }) {
-  const icon = ACTION_ICON[entry.action] ?? ENTITY_ICON[entry.entity_type] ?? '📌'
   const href = ENTITY_HREF[entry.entity_type]?.(entry.entity_id)
   const categoryLabel = ENTITY_LABEL[entry.entity_type]
 
   const inner = (
     <div className="flex items-start gap-3 py-3.5 px-4">
-      <div className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0 text-lg">
-        {icon}
+      <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+        <ActivityIcon action={entry.action} entityType={entry.entity_type} className="w-4 h-4 text-gray-500" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">

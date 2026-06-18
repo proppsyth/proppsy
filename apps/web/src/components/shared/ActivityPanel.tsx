@@ -1,33 +1,6 @@
 import type { EntityType, ActivityLogEntry } from '@/lib/activity/log'
 import { getEntityActivity } from '@/lib/activity/log'
-
-const ENTITY_ICON: Record<EntityType, string> = {
-  stock:       '🏠',
-  project:     '🏗️',
-  owner:       '👤',
-  tenant:      '👤',
-  booking:     '📋',
-  lease:       '📄',
-  renewal:     '🔄',
-  termination: '📝',
-  esign:       '✍️',
-  invoice:     '🧾',
-  receipt:     '🧾',
-  commission:  '💰',
-  coagent:     '🤝',
-}
-
-const ACTION_ICON: Record<string, string> = {
-  created:     '✨',
-  updated:     '✏️',
-  published:   '🌐',
-  unpublished: '🔒',
-  signed:      '✍️',
-  opened:      '👁️',
-  sent:        '📤',
-  cancelled:   '❌',
-  alias_added: '🏷️',
-}
+import ActivityIcon from './ActivityIcon'
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -43,11 +16,10 @@ function timeAgo(iso: string): string {
 }
 
 function ActivityItem({ entry }: { entry: ActivityLogEntry }) {
-  const icon = ACTION_ICON[entry.action] ?? ENTITY_ICON[entry.entity_type] ?? '📌'
   return (
     <div className="flex items-start gap-3 py-3 border-b border-gray-50 last:border-0">
-      <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0 text-base">
-        {icon}
+      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+        <ActivityIcon action={entry.action} entityType={entry.entity_type} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-gray-800 font-medium leading-snug">{entry.title}</p>
