@@ -122,6 +122,14 @@ export default function FurnitureChecklist({ contractId, initialItems = [], move
 
   const addedNames = new Set(items.map(it => it.item_name.trim().toLowerCase()))
 
+  // Click a preset to add it; click again (while highlighted) to remove it.
+  function togglePreset(th: string, en: string) {
+    const key = th.trim().toLowerCase()
+    const existing = items.filter(it => it.item_name.trim().toLowerCase() === key)
+    if (existing.length > 0) existing.forEach(r => removeRow(r.id))
+    else addRow(makeRow(th, en))
+  }
+
   function removeCustomPreset(th: string) {
     const next = customPresets.filter(c => c.th.trim().toLowerCase() !== th.trim().toLowerCase())
     setCustomPresets(next)
@@ -288,7 +296,7 @@ export default function FurnitureChecklist({ contractId, initialItems = [], move
                   >
                     <button
                       type="button"
-                      onClick={() => addRow(makeRow(p.th, p.en))}
+                      onClick={() => togglePreset(p.th, p.en)}
                       className="pl-2.5 pr-1.5 py-1 flex items-center gap-1"
                     >
                       {added && <Check className="w-3 h-3" />}
