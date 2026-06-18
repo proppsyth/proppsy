@@ -1647,6 +1647,106 @@ export async function generateLeaseAttachmentsPdf(
   }
 }
 
+// ─── Move-out Inspection Attachment PDF ───────────────────────
+// Standalone document for ending contracts (termination/cancellation/
+// end_contract) comparing the move-in condition with the move-out condition.
+
+export async function generateMoveOutAttachmentPdf(
+  contractId: string
+): Promise<{ error?: string; url?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const [{ data: contract }, { data: profile }, { data: items }] = await Promise.all([
+    supabase
+      .from('contracts')
+      .select('*, stock:stock(*, project:projects(*)), owner:owners(*), customer:customers(*)')
+      .eq('id', contractId).eq('agent_uid', user.id).single(),
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('contract_furniture_items').select('*')
+      .eq('contract_id', contractId).eq('agent_uid', user.id).order('sort_order'),
+  ])
+
+  if (!contract) return { error: 'ไม่พบเอกสาร' }
+  if (!['termination', 'cancellation', 'end_contract'].includes(contract.doc_type)) {
+    return { error: 'เอกสารตรวจขาออกใช้ได้เฉพาะเอกสารบอกเลิก/สิ้นสุด/ยกเลิก' }
+  }
+
+  try {
+    const { htmlToPdfBuffer } = await import('@/lib/pdf/contract/htmlToPdf')
+    const { toThaiDateFull }  = await import('@/lib/contracts/formatters')
+
+    const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const condLabel: Record<string, string> = {
+      good: 'ปกติ / Good', fair: 'เสื่อมสภาพ / Fair',
+      damaged: 'ชำรุด / Damaged', missing: 'สูญหาย / Missing', '': '—',
+    }
+    const stock = contract.stock as { unit_no?: string | null; project_name?: string | null } | null
+    const ownerName = [contract.owner?.prefix, contract.owner?.first_name_th, contract.owner?.last_name_th].filter(Boolean).join(' ') || '-'
+    const customerName = [contract.customer?.prefix, contract.customer?.first_name_th, contract.customer?.last_name_th].filter(Boolean).join(' ') || '-'
+    const dateStr = toThaiDateFull(new Date((contract as { effective_end_date?: string | null }).effective_end_date ?? contract.created_at ?? new Date()))
+
+    const rows = (items ?? []).map((it, i) => `
+      <tr>
+        <td style="text-align:center">${i + 1}</td>
+        <td>${esc(it.item_name)}${it.item_name_en ? `<br><span style="color:#888;font-size:9pt">${esc(it.item_name_en)}</span>` : ''}</td>
+        <td style="text-align:center">${esc(it.quantity ?? 1)}</td>
+        <td style="text-align:center">${esc(condLabel[it.condition ?? ''] ?? it.condition)}</td>
+        <td style="text-align:center">${esc(condLabel[(it as { move_out_condition?: string | null }).move_out_condition ?? ''] ?? (it as { move_out_condition?: string }).move_out_condition)}</td>
+        <td>${esc((it as { move_out_notes?: string | null }).move_out_notes ?? '')}</td>
+      </tr>`).join('')
+
+    const bodyHtml = `
+      <h1 style="text-align:center;font-size:16pt;margin:0 0 4pt">เอกสารตรวจสภาพทรัพย์สิน (ขาออก)</h1>
+      <p style="text-align:center;color:#666;margin:0 0 12pt">Move-out Inspection Report</p>
+      <table style="width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:10pt">
+        <tr><td style="width:25%;color:#666">เลขที่เอกสาร / No.</td><td>${esc(contract.id)}</td>
+            <td style="width:18%;color:#666">วันที่ / Date</td><td>${esc(dateStr)}</td></tr>
+        <tr><td style="color:#666">ทรัพย์ / Property</td><td colspan="3">${esc([stock?.project_name, stock?.unit_no].filter(Boolean).join(' · ') || '-')}</td></tr>
+        <tr><td style="color:#666">ผู้ให้เช่า / Lessor</td><td>${esc(ownerName)}</td>
+            <td style="color:#666">ผู้เช่า / Lessee</td><td>${esc(customerName)}</td></tr>
+      </table>
+      <table style="width:100%;border-collapse:collapse;font-size:10pt" border="1">
+        <thead>
+          <tr style="background:#f3f4f6">
+            <th style="padding:5pt;width:6%">#</th>
+            <th style="padding:5pt;text-align:left">รายการ / Item</th>
+            <th style="padding:5pt;width:9%">จำนวน</th>
+            <th style="padding:5pt;width:18%">สภาพเข้าอยู่</th>
+            <th style="padding:5pt;width:18%">สภาพขาออก</th>
+            <th style="padding:5pt;width:22%;text-align:left">หมายเหตุ</th>
+          </tr>
+        </thead>
+        <tbody>${rows || '<tr><td colspan="6" style="text-align:center;padding:10pt;color:#888">ไม่มีรายการทรัพย์สิน</td></tr>'}</tbody>
+      </table>
+      <table style="width:100%;margin-top:36pt;font-size:10pt"><tr>
+        <td style="text-align:center;width:50%">..................................................<br>ผู้ให้เช่า / Lessor<br>(${esc(ownerName)})</td>
+        <td style="text-align:center;width:50%">..................................................<br>ผู้เช่า / Lessee<br>(${esc(customerName)})</td>
+      </tr></table>`
+
+    const buffer = await htmlToPdfBuffer({
+      bodyHtml,
+      contractId,
+      docTypeLabel: 'เอกสารตรวจสภาพทรัพย์สิน (ขาออก)',
+      agentName:    profile?.company_name ?? profile?.name ?? '',
+      agentPhone:   (profile as { phone?: string | null } | null)?.phone ?? '',
+      statusText:   'ตรวจขาออก',
+      signers:      [],
+      features:     { pageNumbers: true, miniSignatures: false, finalSignature: false },
+    })
+
+    const uploadResult = await uploadPdfToStorage(supabase, user.id, `${contractId}_moveout`, buffer)
+    if ('error' in uploadResult) return uploadResult
+    await supabase.from('contracts').update({ attachment_pdf_url: uploadResult.url } as Record<string, unknown>).eq('id', contractId)
+    revalidatePath(`/contracts/${contractId}`)
+    return { url: uploadResult.url }
+  } catch (err) {
+    console.error('[MOVEOUT] error:', err)
+    return { error: 'สร้างเอกสารตรวจขาออกไม่สำเร็จ กรุณาลองใหม่' }
+  }
+}
+
 // ─── Furniture Items ──────────────────────────────────────────
 
 export type FurnitureItemInput = {
