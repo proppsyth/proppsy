@@ -21,6 +21,7 @@ interface Props {
   tenantFullName: string
   docxUrl: string | null
   pdfUrl: string | null
+  attachmentUrl?: string | null
   rentPrice: number | null
   depositAmount: number | null
   depositMonths: number | null
@@ -44,7 +45,7 @@ export default function SigningClient({
   contractId, docLabel,
   projectName, unitNo, floor, roomType,
   ownerFullName, tenantFullName,
-  docxUrl, pdfUrl,
+  docxUrl, pdfUrl, attachmentUrl,
   rentPrice, depositAmount, depositMonths, contractMonths,
   moveInDate, endDate,
 }: Props) {
@@ -339,6 +340,20 @@ export default function SigningClient({
           >
             <FileText className="w-4 h-4 flex-shrink-0" />
             ดูเอกสารฉบับเต็ม{pdfUrl ? ' (PDF)' : ' (.docx)'}
+            <ExternalLink className="w-4 h-4 ml-auto opacity-70" />
+          </a>
+        )}
+
+        {/* ── View attachments (furniture list etc.) if generated ── */}
+        {attachmentUrl && (
+          <a
+            href={attachmentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-4 py-3.5 bg-white border border-blue-200 hover:bg-blue-50 rounded-2xl text-blue-700 text-sm font-semibold transition shadow-sm"
+          >
+            <FileText className="w-4 h-4 flex-shrink-0" />
+            ดูเอกสารแนบ (บัญชีทรัพย์สิน ฯลฯ)
             <ExternalLink className="w-4 h-4 ml-auto opacity-70" />
           </a>
         )}
