@@ -143,6 +143,23 @@ export default async function ContractDetailPage({
   const masterContractId = contractMeta.master_contract_id
   const reservationId    = contractMeta.reservation_id
 
+  // Cross-reference: the document this one refers to (lease→reservation,
+  // invoice→parent, receipt→matching invoice).
+  const parentId = (contract as { parent_contract_id?: string | null }).parent_contract_id ?? masterContractId ?? null
+  let referenceId: string | null = null
+  if (!isReservation && parentId) {
+    if (contract.doc_type === 'receipt_reservation' || contract.doc_type === 'receipt_deposit') {
+      const invType = contract.doc_type === 'receipt_reservation' ? 'invoice_reservation' : 'invoice_deposit'
+      const { data: sib } = await supabase
+        .from('contracts').select('id')
+        .eq('parent_contract_id', parentId).eq('doc_type', invType).is('deleted_at', null)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle()
+      referenceId = sib?.id ?? parentId
+    } else {
+      referenceId = parentId
+    }
+  }
+
   return (
     <div className="w-full p-4 lg:p-8 pt-6 max-w-4xl overflow-x-hidden">
       {/* Header */}
@@ -174,6 +191,12 @@ export default async function ContractDetailPage({
                   </span>
                 )}
                 <span className="text-xs text-gray-400">{docDate}</span>
+                {referenceId && (
+                  <Link href={`/contracts/${referenceId}`}
+                    className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition">
+                    อ้างอิง {referenceId}
+                  </Link>
+                )}
                 {contract.language_version && (
                   <span className="text-xs px-2 py-0.5 bg-purple-50 text-purple-600 rounded-full">
                     {contract.language_version === 'th' ? 'ไทย' : contract.language_version === 'th_en' ? 'ไทย+EN' : 'ไทย+EN+จีน'}

@@ -937,6 +937,48 @@ export async function updateContractStatus(
   return {}
 }
 
+// ─── Document cross-reference ─────────────────────────────────
+// Resolves the document a given contract references:
+//   lease/invoice → its parent (reservation / lease)
+//   receipt       → the matching invoice (sibling under the same parent)
+//   reservation   → none
+async function resolveReferenceId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  contract: { doc_type?: string | null; parent_contract_id?: string | null; master_contract_id?: string | null },
+): Promise<string | null> {
+  const dt = contract.doc_type ?? ''
+  const parent = contract.parent_contract_id ?? contract.master_contract_id ?? null
+  if (dt === 'reservation') return null
+  if (dt === 'receipt_reservation' || dt === 'receipt_deposit') {
+    const invType = dt === 'receipt_reservation' ? 'invoice_reservation' : 'invoice_deposit'
+    if (parent) {
+      const { data } = await supabase
+        .from('contracts')
+        .select('id')
+        .eq('parent_contract_id', parent)
+        .eq('doc_type', invType)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      return data?.id ?? parent
+    }
+    return null
+  }
+  return parent
+}
+
+// Injects the cross-reference variables into a computed variable map.
+async function injectReferenceVars(
+  variables: Record<string, string>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  contract: { doc_type?: string | null; parent_contract_id?: string | null; master_contract_id?: string | null },
+): Promise<void> {
+  const refId = await resolveReferenceId(supabase, contract)
+  variables['เลขที่อ้างอิง'] = refId ?? '-'
+  variables['บรรทัดอ้างอิง'] = refId ? `เอกสารอ้างอิงเลขที่ / Ref. No.: ${refId}` : ''
+}
+
 // ─── Generate .docx ───────────────────────────────────────────
 
 export async function generateContractDocx(
@@ -982,6 +1024,7 @@ export async function generateContractDocx(
       customer: contract.customer ?? null,
       agent:    profile ?? null,
     }, template)
+    await injectReferenceVars(variables, supabase, contract as Record<string, unknown>)
 
     const validation = validateVariables(variables, template)
     if (!validation.valid) {
@@ -1084,6 +1127,7 @@ export async function getContractPreviewHtml(
       customer: contract.customer ?? null,
       agent:    profile ?? null,
     }, template)
+    await injectReferenceVars(variables, supabase, contract as Record<string, unknown>)
 
     const validation = validateVariables(variables, template)
     if (!validation.valid) {
@@ -1287,6 +1331,7 @@ export async function generateContractPdf(
         customer: contract.customer ?? null,
         agent:    profile ?? null,
       }, template)
+      await injectReferenceVars(variables, supabase, contract as Record<string, unknown>)
 
       const ownerName = [contract.owner?.prefix, contract.owner?.first_name_th, contract.owner?.last_name_th]
         .filter(Boolean).join(' ') || ''
