@@ -40,6 +40,16 @@ interface FurnitureRow extends FurnitureItemInput {
 interface Props {
   contractId: string
   initialItems?: FurnitureRow[]
+  /** Move-out inspection mode: record exit condition vs. the move-in snapshot. */
+  moveOut?: boolean
+}
+
+const MOVE_OUT_OPTIONS: Record<string, string> = {
+  '':        '— เลือกสภาพ —',
+  good:      'ปกติ / Good',
+  fair:      'เสื่อมสภาพ / Fair',
+  damaged:   'ชำรุด / Damaged',
+  missing:   'สูญหาย / Missing',
 }
 
 function makeRow(th = '', en = ''): FurnitureRow {
@@ -51,10 +61,12 @@ function makeRow(th = '', en = ''): FurnitureRow {
     condition: 'good',
     notes: '',
     serial_no: '',
+    move_out_condition: '',
+    move_out_notes: '',
   }
 }
 
-export default function FurnitureChecklist({ contractId, initialItems = [] }: Props) {
+export default function FurnitureChecklist({ contractId, initialItems = [], moveOut = false }: Props) {
   const [showPresets, setShowPresets] = useState(false)
 
   const { items, saved, saveError, isPending, addRow, removeRow, updateRow, handleSave } =
@@ -63,6 +75,98 @@ export default function FurnitureChecklist({ contractId, initialItems = [] }: Pr
       makeEmpty: makeRow,
       keyField: 'id',
     })
+
+  function saveAll(rows: FurnitureRow[]) {
+    return saveFurnitureItems(contractId, rows.filter(r => r.item_name.trim()).map((r, i) => ({
+      item_name:    r.item_name,
+      item_name_en: r.item_name_en || null,
+      quantity:     r.quantity,
+      condition:    r.condition,
+      notes:        r.notes || null,
+      serial_no:    r.serial_no || null,
+      sort_order:   i,
+      move_out_condition: r.move_out_condition || null,
+      move_out_notes:     r.move_out_notes || null,
+    })))
+  }
+
+  // ── Move-out inspection mode (compares against the move-in snapshot) ──
+  if (moveOut) {
+    return (
+      <div className="space-y-3">
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          ตรวจสภาพทรัพย์สินตอนผู้เช่าย้ายออก — “สภาพเข้าอยู่” คือสภาพตอนเริ่มสัญญา (อ้างอิง) กรอก “สภาพขาออก” และหมายเหตุของแต่ละรายการ
+        </p>
+        <div className="overflow-x-auto -mx-4 px-4">
+          <table className="w-full text-sm min-w-[720px]">
+            <thead>
+              <tr className="border-b border-gray-200 text-xs text-gray-500">
+                <th className="text-left py-2 pr-2 font-medium w-7">#</th>
+                <th className="text-left py-2 pr-2 font-medium">รายการ</th>
+                <th className="text-left py-2 pr-2 font-medium w-14">จำนวน</th>
+                <th className="text-left py-2 pr-2 font-medium w-28">สภาพเข้าอยู่</th>
+                <th className="text-left py-2 pr-2 font-medium w-36">สภาพขาออก</th>
+                <th className="text-left py-2 font-medium">หมายเหตุขาออก</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {items.map((row, i) => (
+                <tr key={row.id} className="hover:bg-gray-50/50">
+                  <td className="py-2 pr-2 text-xs text-gray-400">{i + 1}</td>
+                  <td className="py-2 pr-2">
+                    <p className="text-gray-800">{row.item_name}</p>
+                    {row.item_name_en && <p className="text-xs text-gray-400">{row.item_name_en}</p>}
+                  </td>
+                  <td className="py-2 pr-2 text-center text-gray-600">{row.quantity}</td>
+                  <td className="py-2 pr-2">
+                    <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-medium border ${CONDITION_LABELS[row.condition]?.color ?? 'text-gray-500 bg-gray-50 border-gray-200'}`}>
+                      {CONDITION_LABELS[row.condition]?.label ?? row.condition}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-2">
+                    <select
+                      value={row.move_out_condition ?? ''}
+                      onChange={e => updateRow(row.id, { move_out_condition: e.target.value })}
+                      className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    >
+                      {Object.entries(MOVE_OUT_OPTIONS).map(([v, label]) => (
+                        <option key={v} value={v}>{label}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="py-2">
+                    <input
+                      type="text"
+                      value={row.move_out_notes ?? ''}
+                      onChange={e => updateRow(row.id, { move_out_notes: e.target.value })}
+                      placeholder="เช่น มีรอยขีดข่วน, ใช้งานได้ปกติ"
+                      className="w-full px-2 py-1 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </td>
+                </tr>
+              ))}
+              {items.length === 0 && (
+                <tr><td colSpan={6} className="py-6 text-center text-gray-400 text-sm">ไม่มีรายการทรัพย์สินจากสัญญาเช่า</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex items-center gap-3 pt-1">
+          <button
+            type="button"
+            onClick={() => handleSave(saveAll)}
+            disabled={isPending}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
+          >
+            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            {isPending ? 'กำลังบันทึก...' : 'บันทึกผลตรวจขาออก'}
+          </button>
+          {saved     && <span className="text-xs text-green-600 font-medium">บันทึกแล้ว ✓</span>}
+          {saveError && <span className="text-xs text-red-600">{saveError}</span>}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-3">
@@ -194,15 +298,7 @@ export default function FurnitureChecklist({ contractId, initialItems = [] }: Pr
       <div className="flex items-center gap-3 pt-1">
         <button
           type="button"
-          onClick={() => handleSave(rows => saveFurnitureItems(contractId, rows.filter(r => r.item_name.trim()).map((r, i) => ({
-            item_name:    r.item_name,
-            item_name_en: r.item_name_en || null,
-            quantity:     r.quantity,
-            condition:    r.condition,
-            notes:        r.notes || null,
-            serial_no:    r.serial_no || null,
-            sort_order:   i,
-          }))))}
+          onClick={() => handleSave(saveAll)}
           disabled={isPending}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
         >

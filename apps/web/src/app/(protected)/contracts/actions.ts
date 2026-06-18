@@ -1657,6 +1657,8 @@ export type FurnitureItemInput = {
   notes?: string | null
   serial_no?: string | null
   sort_order?: number
+  move_out_condition?: string | null
+  move_out_notes?: string | null
 }
 
 export async function saveFurnitureItems(
@@ -1687,6 +1689,8 @@ export async function saveFurnitureItems(
     notes:        item.notes ?? null,
     serial_no:    item.serial_no ?? null,
     sort_order:   item.sort_order ?? i,
+    move_out_condition: item.move_out_condition ?? null,
+    move_out_notes:     item.move_out_notes ?? null,
   }))
 
   const { error } = await supabase.from('contract_furniture_items').insert(rows)

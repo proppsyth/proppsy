@@ -133,6 +133,7 @@ export default async function ContractDetailPage({
   const isReceipt        = contract.doc_type === 'receipt_rent' || contract.doc_type === 'receipt_book'
   const isCommission     = contract.doc_type === 'commission'
   const isReservation    = contract.doc_type === 'reservation'
+  const isEndingDoc      = ['termination', 'cancellation', 'end_contract'].includes(contract.doc_type)
   const hasTemplate      = TEMPLATE_SUPPORTED_TYPES.has(contract.doc_type)
   const isFinalized      = !!contractMeta.is_finalized
   // ONLY rental (doc_type='rental') is a master lease — reservations and renewals are NOT
@@ -328,10 +329,11 @@ export default async function ContractDetailPage({
             </Section>
           )}
 
-          {isRental && (
-            <Section title="รายการเฟอร์นิเจอร์และอุปกรณ์">
+          {(isRental || isEndingDoc) && (
+            <Section title={isEndingDoc ? 'ตรวจสภาพทรัพย์สิน (ขาออก)' : 'รายการเฟอร์นิเจอร์และอุปกรณ์'}>
               <FurnitureChecklist
                 contractId={id}
+                moveOut={isEndingDoc}
                 initialItems={(furnitureItems ?? []).map(item => ({
                   id: item.id,
                   item_name: item.item_name,
@@ -340,6 +342,8 @@ export default async function ContractDetailPage({
                   condition: item.condition ?? 'good',
                   notes: item.notes ?? '',
                   serial_no: item.serial_no ?? '',
+                  move_out_condition: (item as { move_out_condition?: string | null }).move_out_condition ?? '',
+                  move_out_notes: (item as { move_out_notes?: string | null }).move_out_notes ?? '',
                 }))}
               />
             </Section>
