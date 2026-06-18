@@ -1294,9 +1294,28 @@ export async function generateContractPdf(
       const ownerSigUrl    = (contract.owner    as { signature_url?: string | null } | null)?.signature_url ?? undefined
       const customerSigUrl = (contract.customer as { signature_url?: string | null } | null)?.signature_url ?? undefined
 
+      // Witness signatures live on contract_signers (no profile), so pull them
+      // in and append so they render in the {signature-final} block.
+      const { data: witnessRows } = await supabase
+        .from('contract_signers')
+        .select('signed_name, signer_name, signature_url')
+        .eq('contract_id', contractId)
+        .eq('signer_role', 'witness')
+        .eq('status', 'signed')
+        .order('sort_order', { ascending: true })
+      const witnessSigners = (witnessRows ?? [])
+        .filter(w => w.signature_url)
+        .map((w, i) => ({
+          label: (witnessRows!.length > 1 ? `พยาน ${i + 1}` : 'พยาน'),
+          name: w.signed_name ?? w.signer_name ?? '',
+          signatureUrl: w.signature_url ?? undefined,
+          signedAt: null,
+        }))
+
       const baseSigners = [
         { label: 'ผู้ให้เช่า', name: ownerName,    signatureUrl: ownerSigUrl,    signedAt: null },
         { label: 'ผู้เช่า',    name: customerName, signatureUrl: customerSigUrl, signedAt: null },
+        ...witnessSigners,
       ]
       const pdfMeta = {
         contractId:   contract.id,
