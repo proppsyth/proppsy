@@ -17,7 +17,7 @@ const STATUS_OPTS: { value: AccountStatus; label: string }[] = [
   { value: 'rejected', label: 'ปฏิเสธแล้ว' },
 ]
 const PLAN_OPTS: { value: Plan; label: string }[] = [
-  { value: 'starter', label: 'Starter (ฟรี)' },
+  { value: 'starter', label: 'Starter' },
   { value: 'professional', label: 'Professional' },
   { value: 'business', label: 'Business' },
 ]

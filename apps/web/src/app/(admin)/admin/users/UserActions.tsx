@@ -21,10 +21,10 @@ const STATUS_OPTS: { value: AccountStatus; label: string }[] = [
   { value: 'rejected', label: 'ปฏิเสธแล้ว' },
 ]
 
-const PLAN_OPTS: { value: Plan; label: string; desc: string }[] = [
-  { value: 'starter', label: 'Starter (ฟรี)', desc: 'ทรัพย์ 10 / สัญญา 5/เดือน' },
-  { value: 'professional', label: 'Professional', desc: 'ไม่จำกัด + AI + Marketplace' },
-  { value: 'business', label: 'Business', desc: 'ทุกอย่าง + ทีมสูงสุด 5 คน' },
+const PLAN_OPTS: { value: Plan; label: string }[] = [
+  { value: 'starter', label: 'Starter' },
+  { value: 'professional', label: 'Professional' },
+  { value: 'business', label: 'Business' },
 ]
 
 export default function UserActions({ user }: Props) {
@@ -100,7 +100,7 @@ export default function UserActions({ user }: Props) {
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
               {PLAN_OPTS.map(o => (
-                <option key={o.value} value={o.value}>{o.label} — {o.desc}</option>
+                <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
           </div>
