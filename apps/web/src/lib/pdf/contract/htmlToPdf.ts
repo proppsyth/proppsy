@@ -142,9 +142,39 @@ if (!FONT_REG_URL || !FONT_BOLD_URL) {
 // We must NOT fall back to the original external URL — that would let a broken
 // or slow Supabase signed URL block Chromium's render loop.
 
+// Preferred path: download the object directly through the Supabase storage
+// client (service role). This avoids the public-URL/CDN round-trip that can be
+// throttled or reset on serverless, and works even for private buckets.
+async function supabaseDownloadDataUrl(url: string): Promise<string | null> {
+  const marker = '/storage/v1/object/'
+  const idx = url.indexOf(marker)
+  if (idx === -1) return null
+  // Path after the marker is like "public/<bucket>/<path>" or "<bucket>/<path>"
+  let rest = url.slice(idx + marker.length)
+  if (rest.startsWith('public/')) rest = rest.slice('public/'.length)
+  const slash = rest.indexOf('/')
+  if (slash === -1) return null
+  const bucket = rest.slice(0, slash)
+  const objectPath = decodeURIComponent(rest.slice(slash + 1).split('?')[0]!)
+  try {
+    const { createServiceClient } = await import('@/lib/supabase/server')
+    const supabase = createServiceClient()
+    const { data, error } = await supabase.storage.from(bucket).download(objectPath)
+    if (error || !data) return null
+    const buf = Buffer.from(await data.arrayBuffer())
+    const ct = data.type || 'image/png'
+    return `data:${ct};base64,${buf.toString('base64')}`
+  } catch {
+    return null
+  }
+}
+
 async function urlToDataUrl(url: string): Promise<string | null> {
-  // Retry once — a single transient failure (throttle/reset) must not silently
-  // drop one signer's signature from the document.
+  // 1) Try the storage client (reliable, no public-URL dependency)
+  const viaStorage = await supabaseDownloadDataUrl(url)
+  if (viaStorage) return viaStorage
+
+  // 2) Fallback: plain HTTP fetch with a retry for transient failures
   for (let attempt = 0; attempt < 2; attempt++) {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 8000) // 8s max per image

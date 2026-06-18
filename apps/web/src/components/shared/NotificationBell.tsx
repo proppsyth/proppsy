@@ -10,7 +10,7 @@ import {
   markAllNotificationsRead,
 } from '@/app/(protected)/notifications/actions'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
-import { NOTIFICATION_ICON } from '@/lib/notifications/types'
+import NotificationIcon from './NotificationIcon'
 import type { AppNotification } from '@/lib/notifications/types'
 
 interface Props {
@@ -232,7 +232,6 @@ export default function NotificationBell({ userId }: Props) {
               ) : (
                 <div>
                   {notifications.map((n, i) => {
-                    const icon = NOTIFICATION_ICON[n.type] ?? '🔔'
                     return (
                       <button
                         key={n.id}
@@ -241,8 +240,8 @@ export default function NotificationBell({ userId }: Props) {
                           !n.is_read ? 'bg-blue-50/50' : ''
                         } ${i < notifications.length - 1 ? 'border-b border-gray-50' : ''}`}
                       >
-                        <span className="text-xl mt-0.5 flex-shrink-0 leading-none select-none">
-                          {icon}
+                        <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+                          <NotificationIcon type={n.type} />
                         </span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">

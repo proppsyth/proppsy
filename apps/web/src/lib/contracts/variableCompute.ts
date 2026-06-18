@@ -319,14 +319,16 @@ export function computeVariables(
   }
 
   // ─── Reservation financial model ─────────────────────────────
-  // booking_amount  = เงินมัดจำจอง / เดือนแรก (paid at reservation, from stock)
+  // booking_amount  = เงินมัดจำจอง ที่ลูกค้าจ่ายจริงวันจอง (may be a partial amount)
   // deposit_amount  = เงินประกัน (security deposit, rent × deposit_months, default 2)
-  // contract_day_payment = ยอดชำระวันทำสัญญาเช่า = ค่าเช่า × จำนวนเดือนเงินประกัน
-  //   (the booking deposit was already paid at reservation, so on lease-signing
-  //    day only the security deposit is due)
+  // Full obligation at lease-signing = security deposit (deposit_months) +
+  //   one-month booking/advance. Subtract whatever booking was already paid;
+  //   any shortfall is collected on the lease-signing day.
+  //   e.g. rent 8000, deposit 2mo, booking paid 3000 →
+  //        8000×3 − 3000 = 21000
   const bookingAmt = (contract as { booking_amount?: number | null }).booking_amount ?? 0
   const depositMths = contract.deposit_months ?? 2
-  const contractDayPayment = rent * depositMths
+  const contractDayPayment = Math.max(0, rent * (depositMths + 1) - bookingAmt)
 
   v['เงินจอง']               = withCommas(bookingAmt)
   v['เงินจองตัวอักษร']        = bahtText(bookingAmt)

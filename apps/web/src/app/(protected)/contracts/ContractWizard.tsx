@@ -785,14 +785,19 @@ export default function ContractWizard() {
                       )}
                       {state.booking_amount && (
                         <div className="flex justify-between text-xs text-gray-600">
-                          <span>เงินมัดจำจอง / เดือนแรก (ชำระแล้ววันจอง)</span>
+                          <span>เงินมัดจำจอง ที่ชำระแล้ววันจอง</span>
                           <span className="font-semibold text-gray-800">฿{fmt(parseFloat(state.booking_amount))}</span>
                         </div>
                       )}
-                      {state.deposit_amount && (
+                      {state.rent_price && (
                         <div className="flex justify-between text-xs text-blue-700 border-t border-blue-100 pt-1.5">
-                          <span>ยอดชำระวันทำสัญญาเช่า (เงินประกัน {state.deposit_months || '2'} เดือน)</span>
-                          <span className="font-semibold">฿{fmt(parseFloat(state.deposit_amount))}</span>
+                          <span>ยอดชำระวันทำสัญญาเช่า (ประกัน {state.deposit_months || '2'} ด. + ส่วนต่างมัดจำ)</span>
+                          <span className="font-semibold">
+                            ฿{fmt(Math.max(0,
+                              parseFloat(state.rent_price) * ((parseInt(state.deposit_months) || 2) + 1)
+                              - parseFloat(state.booking_amount || '0')
+                            ))}
+                          </span>
                         </div>
                       )}
                     </div>
