@@ -3,6 +3,8 @@
 
 # COMMISSION CONFIRMATION / ยืนยันค่านายหน้า
 
+<<บรรทัดอ้างอิง>>
+
 | Date | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |
 | 7: | :3: |
 
@@ -10,17 +12,17 @@
 | 7: | ~3~ |
 {space:8}
 
-| To / {muted}เรียน{/muted} | <<ชื่อผู้ให้เช่าภาษาอังกฤษ>> {muted}<<ชื่อผู้ให้เช่า>>{/muted} |
+| Dear / {muted}เรียน{/muted} | <<ชื่อผู้ให้เช่าภาษาอังกฤษ>> {muted}<<ชื่อผู้ให้เช่า>>{/muted} |
 | 2 | :8: |
 
-| | Property Owner / {muted}เจ้าของทรัพย์สิน{/muted} |
+| | Property Owner / Authorised Person {muted}เจ้าของทรัพย์สิน / ผู้รับมอบอำนาจกระทำแทน{/muted} |
 | 2 | 8 |
 {space:8}
 
-| We hereby confirm the commission obligation for the following property rental transaction. | |
+| We are pleased to confirm the following rental terms and conditions, and the resulting commission obligation. | |
 | 10 | 0 |
 
-| {muted}เราขอยืนยันภาระผูกพันค่านายหน้าสำหรับธุรกรรมการเช่าอสังหาริมทรัพย์ดังต่อไปนี้{/muted} | |
+| {muted}เราขอยืนยันข้อกำหนดและเงื่อนไขการเช่าดังต่อไปนี้ และภาระผูกพันค่านายหน้าที่เกิดขึ้น{/muted} | |
 | 10 | 0 |
 {space:8}
 
@@ -74,6 +76,23 @@
 
 {space:8}
 
+| Rental Period / {muted}จำนวนสัญญา{/muted} | Commission / {muted}จำนวนค่าคอม{/muted} |
+| 5: | :5: |
+
+| 1 Year / {muted}1 ปี{/muted} | 1 Month / {muted}1 เดือน{/muted} |
+| 5: | :5: |
+
+| 2 Years / {muted}2 ปี{/muted} | 1.5 Months / {muted}1.5 เดือน{/muted} |
+| 5: | :5: |
+
+| 3 Years / {muted}3 ปี{/muted} | 2 Months / {muted}2 เดือน{/muted} |
+| 5: | :5: |
+
+| Renewal (per year) / {muted}ต่อสัญญา (ต่อปี){/muted} | 0.5 Month / {muted}0.5 เดือน{/muted} |
+| 5: | :5: |
+
+{space:8}
+
 {section:PAYMENT INFORMATION|ข้อมูลการชำระเงิน}
 
 {bankcard:<<agent_bank>>|<<agent_account_name>>|<<agent_account_no>>}
@@ -81,22 +100,28 @@
 
 {section:CONDITIONS|เงื่อนไข}
 
-| 1. | The Owner agrees to pay the commission fee within 1 business day after receiving advance rent and security deposit from the Tenant. |
+| 1. | The Owner shall transfer the commission fee to the Agency within 1 business day after receiving the advance rent and security deposit from the Tenant. The fee covers placing the Tenant with the Owner, including drafting the lease agreement, check-in/check-out inspection, and supporting communication between the Tenant and the Owner throughout the lease term. |
 | 0.5: | 9.5 |
 
-| | {muted}เจ้าของทรัพย์ตกลงชำระค่านายหน้าภายใน 1 วันทำการ หลังจากได้รับค่าเช่าล่วงหน้าและเงินประกันจากผู้เช่าครบถ้วน{/muted} |
+| | {muted}เจ้าของทรัพย์ตกลงโอนค่านายหน้าให้ตัวแทนภายใน 1 วันทำการ หลังจากได้รับเงินค่าเช่าล่วงหน้าและเงินประกันจากผู้เช่าครบถ้วน ค่าบริการนี้ครอบคลุมการหาผู้เช่าให้แก่เจ้าของทรัพย์ ซึ่งรวมถึงการร่างสัญญาเช่า การตรวจเช็คห้องวันย้ายเข้า/ย้ายออก และเป็นตัวกลางการสื่อสารระหว่างผู้เช่าและเจ้าของทรัพย์ตลอดระยะสัญญา{/muted} |
 | 0.5 | 9.5 |
 
-| 2. | This commission fee is non-refundable once the lease agreement has been executed and signed by all parties. |
+| 2. | This service fee does not include property management or tenancy services during the lease, such as rental preparation, repair/cleaning coordination, rent collection, bill payment, eviction support, legal support, or property inspections during the rental period. This commission fee is non-refundable once the lease agreement has been executed and signed by all parties. |
 | 0.5: | 9.5 |
 
-| | {muted}ค่านายหน้านี้ไม่สามารถขอคืนได้ หลังจากที่ได้มีการลงนามในสัญญาเช่าโดยทุกฝ่ายแล้ว{/muted} |
+| | {muted}ค่าบริการนี้ไม่รวมค่าบริการจัดการทรัพย์สินหรือจัดการผู้เช่าระหว่างสัญญา เช่น การเตรียมทรัพย์สำหรับเช่า การจัดการซ่อมแซม/ทำความสะอาด การทวงค่าเช่า การชำระบิล การเชิญออก การสนับสนุนทางกฎหมาย หรือการตรวจสอบทรัพย์สินระหว่างเช่า และค่านายหน้านี้ไม่สามารถเรียกคืนได้ไม่ว่ากรณีใด หลังจากที่มีการลงนามในสัญญาเช่าโดยทุกฝ่ายแล้ว{/muted} |
 | 0.5 | 9.5 |
 
-| 3. | In the event the Owner is unable to fulfill the agreement after a booking deposit has been received, a processing fee of 50% of the amount received, not exceeding the commission stated above, shall apply. |
+| 3. | In the event the Owner is unable to fulfill the agreement after a booking deposit or advance payment has been received from the Tenant, the Agency shall be entitled to an administrative fee equal to 50% of the amount received, but not exceeding the commission stated above. |
 | 0.5: | 9.5 |
 
-| | {muted}ในกรณีที่เจ้าของทรัพย์ไม่สามารถปฏิบัติตามสัญญาได้หลังจากได้รับเงินมัดจำ จะมีการเรียกเก็บค่าดำเนินการ 50% ของจำนวนเงินที่ได้รับ แต่ไม่เกินค่านายหน้าที่ระบุข้างต้น{/muted} |
+| | {muted}ในกรณีที่เจ้าของทรัพย์ได้รับเงินมัดจำหรือเงินจ่ายล่วงหน้าจากผู้เช่าแล้ว หากเจ้าของทรัพย์ไม่สามารถปฏิบัติตามข้อตกลงได้ ตัวแทนมีสิทธิเรียกเก็บค่าดำเนินการ 50% ของจำนวนเงินที่ได้รับชำระไว้ แต่ไม่เกินค่านายหน้าที่ระบุไว้ในเอกสารฉบับนี้{/muted} |
+| 0.5 | 9.5 |
+
+| 4. | A lease renewal includes the Tenant's continued occupancy of the property described in this agreement, and the renewal commission stated above shall apply. |
+| 0.5: | 9.5 |
+
+| | {muted}กรณีต่อสัญญานี้ให้รวมถึงการอยู่ต่อของผู้เช่าในทรัพย์ที่ระบุในข้อตกลงฉบับนี้ และให้คิดค่านายหน้าต่อสัญญาตามอัตราที่ระบุไว้ข้างต้น{/muted} |
 | 0.5 | 9.5 |
 {space:12}
 

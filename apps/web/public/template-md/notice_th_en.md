@@ -2,6 +2,8 @@
 {signature-mini}
 
 # NOTICE
+
+<<บรรทัดอ้างอิง>>
 {th-subtitle}หนังสือแจ้ง{/th-subtitle}
 
 | Date | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |

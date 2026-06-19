@@ -219,27 +219,30 @@ async function injectFooterIntoZip(zip: PizZip, sigs: DocxSignatureData): Promis
   type RawSlot = { name: string; role: string; sigUrl: string | null | undefined }
   const rawSlots: RawSlot[] = []
 
+  // Include every party whose name was actually provided. This lets a doc
+  // type mix an owner signer with an agent signer (e.g. commission_confirm:
+  // owner + agent) instead of the old agent-only branch hiding the owner
+  // whenever showAgent was true.
+  if (sigs.ownerName !== undefined) {
+    rawSlots.push({
+      name: sigs.ownerName ?? '-',
+      role: sigs.ownerRole ?? 'ผู้ให้เช่า',
+      sigUrl: sigs.ownerSigUrl,
+    })
+  }
+  if (sigs.customerName !== undefined) {
+    rawSlots.push({
+      name: sigs.customerName ?? '-',
+      role: sigs.customerRole ?? 'ผู้เช่า',
+      sigUrl: sigs.customerSigUrl,
+    })
+  }
   if (sigs.showAgent) {
     rawSlots.push({
       name: sigs.agentName ?? '-',
       role: 'ตัวแทน / นายหน้า',
       sigUrl: sigs.agentSigUrl,
     })
-  } else {
-    if (sigs.ownerName !== undefined) {
-      rawSlots.push({
-        name: sigs.ownerName ?? '-',
-        role: sigs.ownerRole ?? 'ผู้ให้เช่า',
-        sigUrl: sigs.ownerSigUrl,
-      })
-    }
-    if (sigs.customerName !== undefined) {
-      rawSlots.push({
-        name: sigs.customerName ?? '-',
-        role: sigs.customerRole ?? 'ผู้เช่า',
-        sigUrl: sigs.customerSigUrl,
-      })
-    }
   }
 
   if (rawSlots.length === 0) return

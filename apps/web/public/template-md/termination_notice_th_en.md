@@ -2,6 +2,8 @@
 {signature-mini}
 
 # LEASE TERMINATION NOTICE
+
+<<บรรทัดอ้างอิง>>
 {th-subtitle}หนังสือบอกเลิกสัญญาเช่า{/th-subtitle}
 
 | Date | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> |

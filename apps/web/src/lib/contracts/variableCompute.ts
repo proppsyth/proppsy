@@ -406,6 +406,18 @@ export function computeVariables(
   } else {
     invoiceBase = contract.commission_net ?? 0
   }
+  // invoice_th_en.md is shared by invoice_reservation/receipt_reservation/
+  // invoice_deposit/receipt_deposit and prints <<จำนวนเงินวันทำสัญญา>> as the
+  // single line-item amount. For those 4 doc types it must equal the same
+  // base used for the subtotal (invoiceBase) — NOT the lease-signing-day
+  // estimate computed above (which only applies to the reservation contract
+  // itself, doc_type === 'reservation').
+  if (['invoice_reservation', 'receipt_reservation', 'invoice_deposit', 'receipt_deposit'].includes(_docTypeForInvoice)) {
+    v['จำนวนเงินวันทำสัญญา']            = withCommas(invoiceBase)
+    v['จำนวนเงินวันทำสัญญาตัวอักษร']    = bahtText(invoiceBase)
+    v['จำนวนเงินวันทำสัญญาภาษาอังกฤษ'] = bahtTextEn(invoiceBase)
+  }
+
   // VAT/WHT only applies to commission amounts — NEVER to deposit, rent, or tenant-facing amounts.
   const _isCommissionDoc = _docTypeForInvoice.includes('commission')
   const vat7Amt  = (_isCommissionDoc && contract.vat_7) ? Math.round(invoiceBase * 0.07 * 100) / 100 : 0

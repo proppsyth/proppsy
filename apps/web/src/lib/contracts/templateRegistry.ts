@@ -219,7 +219,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     slug: 'commission_confirm_th_en',
     docType: 'commission_confirm' as ContractDocType,
     language: 'th_en',
-    filename: 'สัญญาเช่าอังกฤษไทย.docx',
+    filename: 'commission_confirm_th_en.docx',
     mdFilename: 'commission_confirm_th_en.md',
     label: 'ยืนยันค่านายหน้า',
     languageLabel: 'ไทย + อังกฤษ',

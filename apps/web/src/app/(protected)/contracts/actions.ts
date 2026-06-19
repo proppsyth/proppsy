@@ -63,38 +63,71 @@ export type ContractInput = {
 // ─── ID Generators ────────────────────────────────────────────
 
 // Prefix per doc type / category — keeps contract lists scannable
-function docTypePrefix(docType: ContractDocType, category: ContractCategory): string {
+// Single-letter doc-type code used in the new per-agent document numbers
+// (see nextId below) — e.g. lease = 'C', invoice = 'I', commission = 'M'.
+function docTypeLetter(docType: ContractDocType, category: ContractCategory): string {
   if (category === 'reservation') return 'B'
   if (category === 'lease')       return 'C'
-  if (docType.startsWith('invoice_'))        return 'IV'
-  if (docType.startsWith('receipt_'))        return 'RC'
-  if (docType === 'warning')                 return 'WN'
-  if (docType === 'termination')             return 'TM'
-  if (docType === 'cancellation')            return 'CN'
-  if (docType === 'notice')                  return 'NT'
-  if (docType === 'end_contract')            return 'EC'
-  if (docType === 'renewal')                 return 'RL'
-  if (docType === 'commission' || docType === 'commission_confirm') return 'CM'
-  if (docType === 'co_agent')                return 'CA'
-  if (docType === 'installment_schedule')    return 'IS'
-  if (docType === 'furniture_list')          return 'FL'
-  return 'BK'
+  if (docType.startsWith('invoice_'))        return 'I'
+  if (docType.startsWith('receipt_'))        return 'R'
+  if (docType === 'warning')                 return 'W'
+  if (docType === 'termination')             return 'T'
+  if (docType === 'cancellation')            return 'X'
+  if (docType === 'notice')                  return 'N'
+  if (docType === 'end_contract')            return 'E'
+  if (docType === 'renewal')                 return 'L'
+  if (docType === 'commission' || docType === 'commission_confirm') return 'M'
+  if (docType === 'co_agent')                return 'A'
+  if (docType === 'installment_schedule')    return 'S'
+  if (docType === 'furniture_list')          return 'F'
+  return 'O'
 }
 
+// Two-letter initials for the agent, used as the document-number prefix so
+// different agents' documents don't collide on short sequence numbers.
+// "Non Agent" → "NA". Falls back to nickname, then "XX".
+function agentInitials(name?: string | null, nickname?: string | null): string {
+  const source = (name ?? '').trim() || (nickname ?? '').trim()
+  if (!source) return 'XX'
+  const parts = source.split(/\s+/).filter(Boolean)
+  let letters = parts.length >= 2
+    ? (parts[0]!.charAt(0) + parts[1]!.charAt(0))
+    : source.slice(0, 2)
+  letters = letters.toUpperCase()
+  if (letters.length < 2) letters = (letters + 'X').slice(0, 2)
+  return letters
+}
+
+// Document number = <agent initials><doc-type letter><YYYYMMDD><seq>
+// e.g. NAC2026061901 — short, human-readable, and scoped to the agent/day/
+// type so concurrent agents rarely share a sequence. Uniqueness is still
+// enforced against the full id (contracts.id is the primary key): the
+// sequence is read back from any existing row with the same prefix,
+// regardless of which agent created it, so a collision can never be
+// generated even if two agents happen to share initials.
 async function nextId(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  prefix: string,
+  agentUid: string,
+  docLetter: string,
 ): Promise<string> {
+  const { data: profile } = await supabase
+    .from('profiles').select('name, nickname').eq('id', agentUid).single()
+  const initials = agentInitials(profile?.name, profile?.nickname)
+
+  const today = new Date()
+  const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
+  const prefix = `${initials}${docLetter}${dateStr}`
+
   const { data } = await supabase
     .from('contracts')
     .select('id')
-    .like('id', `${prefix}-%`)
+    .like('id', `${prefix}%`)
     .order('id', { ascending: false })
     .limit(1)
     .maybeSingle()
 
-  const num = data?.id ? (parseInt(data.id.slice(prefix.length + 1)) || 0) : 0
-  return `${prefix}-${String(num + 1).padStart(4, '0')}`
+  const lastSeq = data?.id ? (parseInt(data.id.slice(prefix.length)) || 0) : 0
+  return `${prefix}${String(lastSeq + 1).padStart(2, '0')}`
 }
 
 // ─── Create ──────────────────────────────────────────────────
@@ -179,7 +212,7 @@ export async function createContract(
     ? computeLeaseEndDate(input.move_in_date, input.contract_months ?? 12)
     : input.end_date ?? null
 
-  const id = await nextId(supabase, docTypePrefix(input.doc_type, contract_category))
+  const id = await nextId(supabase, user.id, docTypeLetter(input.doc_type, contract_category))
 
   const { error } = await supabase.from('contracts').insert({
     id,
@@ -314,7 +347,7 @@ export async function createLeaseFromReservation(
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }
 
-  const id = await nextId(supabase, 'C')
+  const id = await nextId(supabase, user.id, 'C')
 
   // Compute end_date: last day within the paid term (moveIn + N months − 1 day)
   const moveIn = extras.move_in_date ?? reservation.move_in_date ?? null
@@ -534,8 +567,7 @@ export async function createChildDocument(
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }
 
-  const prefix = docTypePrefix(docType, 'child')
-  const id = await nextId(supabase, prefix)
+  const id = await nextId(supabase, user.id, docTypeLetter(docType, 'child'))
   // For reservation parents the reservation itself is the "master"
   const masterId = parentCategory === 'reservation'
     ? leaseId
@@ -1017,25 +1049,14 @@ async function resolveReferenceId(
   contract: { doc_type?: string | null; parent_contract_id?: string | null; master_contract_id?: string | null },
 ): Promise<string | null> {
   const dt = contract.doc_type ?? ''
-  const parent = contract.parent_contract_id ?? contract.master_contract_id ?? null
   if (dt === 'reservation') return null
-  if (dt === 'receipt_reservation' || dt === 'receipt_deposit') {
-    const invType = dt === 'receipt_reservation' ? 'invoice_reservation' : 'invoice_deposit'
-    if (parent) {
-      const { data } = await supabase
-        .from('contracts')
-        .select('id')
-        .eq('parent_contract_id', parent)
-        .eq('doc_type', invType)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      return data?.id ?? parent
-    }
-    return null
-  }
-  return parent
+  // A lease references the reservation it was created from.
+  if (dt === 'rental') return contract.parent_contract_id ?? null
+  // Every child document (invoice, receipt, commission confirm, end_contract,
+  // renewal, etc.) references its master contract directly — the lease once
+  // one exists, or the reservation if created before the lease (booking
+  // invoice/receipt). No sibling-document lookups.
+  return contract.master_contract_id ?? contract.parent_contract_id ?? null
 }
 
 // Injects the cross-reference variables into a computed variable map.
@@ -1429,11 +1450,23 @@ export async function generateContractPdf(
           signedAt: null,
         }))
 
-      const baseSigners = [
-        { label: 'ผู้ให้เช่า', name: ownerName,    signatureUrl: ownerSigUrl,    signedAt: null },
-        { label: 'ผู้เช่า',    name: customerName, signatureUrl: customerSigUrl, signedAt: null },
-        ...witnessSigners,
-      ]
+      // Commission confirmation is signed between the Owner and the Agency
+      // (not the Tenant) — every other doc type keeps Owner + Tenant.
+      const isCommissionConfirmDoc = contract.doc_type === 'commission_confirm'
+      const agentSigUrlForSigners = (profile as { signature_url?: string | null } | null)?.signature_url ?? undefined
+      const agentDisplayName = profile?.name ?? profile?.company_name ?? ''
+
+      const baseSigners = isCommissionConfirmDoc
+        ? [
+            { label: 'ผู้ให้เช่า', name: ownerName, signatureUrl: ownerSigUrl, signedAt: null },
+            { label: 'ตัวแทน',     name: agentDisplayName, signatureUrl: agentSigUrlForSigners, signedAt: null },
+            ...witnessSigners,
+          ]
+        : [
+            { label: 'ผู้ให้เช่า', name: ownerName,    signatureUrl: ownerSigUrl,    signedAt: null },
+            { label: 'ผู้เช่า',    name: customerName, signatureUrl: customerSigUrl, signedAt: null },
+            ...witnessSigners,
+          ]
       const pdfMeta = {
         contractId:   contract.id,
         docTypeLabel: template.label,

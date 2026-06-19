@@ -144,22 +144,13 @@ export default async function ContractDetailPage({
   const masterContractId = contractMeta.master_contract_id
   const reservationId    = contractMeta.reservation_id
 
-  // Cross-reference: the document this one refers to (lease→reservation,
-  // invoice→parent, receipt→matching invoice).
-  const parentId = (contract as { parent_contract_id?: string | null }).parent_contract_id ?? masterContractId ?? null
-  let referenceId: string | null = null
-  if (!isReservation && parentId) {
-    if (contract.doc_type === 'receipt_reservation' || contract.doc_type === 'receipt_deposit') {
-      const invType = contract.doc_type === 'receipt_reservation' ? 'invoice_reservation' : 'invoice_deposit'
-      const { data: sib } = await supabase
-        .from('contracts').select('id')
-        .eq('parent_contract_id', parentId).eq('doc_type', invType).is('deleted_at', null)
-        .order('created_at', { ascending: false }).limit(1).maybeSingle()
-      referenceId = sib?.id ?? parentId
-    } else {
-      referenceId = parentId
-    }
-  }
+  // Cross-reference: lease → reservation it came from; every child document
+  // (invoice, receipt, commission confirm, end_contract, renewal, etc.)
+  // → its master contract directly (the lease once one exists).
+  const parentId = (contract as { parent_contract_id?: string | null }).parent_contract_id ?? null
+  const referenceId: string | null = isReservation
+    ? null
+    : (contract.doc_type === 'rental' ? parentId : (masterContractId ?? parentId))
 
   return (
     <div className="w-full p-4 lg:p-8 pt-6 max-w-4xl overflow-x-hidden">
