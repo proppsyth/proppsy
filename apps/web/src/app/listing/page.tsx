@@ -84,14 +84,15 @@ export default async function ListingPage({
     let stockQuery = supabase
       .from('stock')
       .select(
-        'id, unit_no, project_name, project_id, room_type, size_sqm, floor, rent_price, sale_price, listing_type, status, is_premium, co_agent_accepted, photo_urls, photo_thumb_urls, project:projects(province, district, bts_mrt)',
+        'id, unit_no, project_name, project_id, room_type, size_sqm, floor, rent_price, sale_price, listing_type, status, contract_end_date, is_premium, co_agent_accepted, photo_urls, photo_thumb_urls, project:projects(province, district, bts_mrt)',
         { count: 'exact' }
       )
       .eq('is_published', true)
 
-    // Status filter
+    // Status filter — default shows available + reserved (จองแล้ว) and any
+    // re-published rented units that are about to free up (ว่างเร็วๆนี้).
     if (!status || status === 'available') {
-      stockQuery = stockQuery.eq('status', 'available')
+      stockQuery = stockQuery.in('status', ['available', 'reserved', 'rented'])
     } else if (status !== 'all') {
       stockQuery = stockQuery.eq('status', status)
     }

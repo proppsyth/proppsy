@@ -42,7 +42,7 @@ const getStock = cache(async (id: string) => {
     `)
     .eq('id', id)
     .eq('is_published', true)
-    .eq('status', 'available')
+    .in('status', ['available', 'reserved', 'rented'])
     .single()
   return data
 })

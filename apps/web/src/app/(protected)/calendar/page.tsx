@@ -69,7 +69,7 @@ export default async function CalendarPage({
       .is('deleted_at', null)
       .gte('end_date', monthStartStr)
       .lte('end_date', monthEndStr)
-      .neq('status', 'cancelled'),
+      .not('status', 'in', '("cancelled","terminated","renewed")'),
     supabase
       .from('contracts')
       .select('id, move_in_date, doc_type, status')
@@ -77,7 +77,7 @@ export default async function CalendarPage({
       .is('deleted_at', null)
       .gte('move_in_date', monthStartStr)
       .lte('move_in_date', monthEndStr)
-      .neq('status', 'cancelled'),
+      .not('status', 'in', '("cancelled","terminated","renewed")'),
     supabase
       .from('stock')
       .select('id, unit_no, project_name, contract_end_date')

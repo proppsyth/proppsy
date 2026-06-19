@@ -136,6 +136,8 @@ export default async function StockDetailPage({
               status={s.status}
               currentBalance={creditBalance}
               accountPending={agentProfile?.account_status === 'pending'}
+              soonFree={s.status === 'rented' && !!s.contract_end_date &&
+                (new Date(s.contract_end_date).getTime() - Date.now()) <= 45 * 86_400_000}
             />
             <Link
               href={`/stock/${s.id}/edit`}

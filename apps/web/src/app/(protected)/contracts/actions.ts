@@ -164,6 +164,21 @@ export async function createContract(
     return { error: 'เอกสารนี้ต้องสร้างจากสัญญาเช่า (ใช้ปุ่มบนหน้าสัญญาเช่า)' }
   }
 
+  // ── A: only available stock can be reserved ──────────────────
+  if (contract_category === 'reservation' && input.stock_id) {
+    const { data: stk } = await supabase
+      .from('stock').select('status').eq('id', input.stock_id).eq('agent_uid', user.id).single()
+    if (stk && stk.status !== 'available') {
+      return { error: 'ออกสัญญาจองได้เฉพาะทรัพย์ที่สถานะ "ว่าง" เท่านั้น (ทรัพย์นี้ไม่ว่างแล้ว)' }
+    }
+  }
+
+  // ── F: auto-compute the projected lease end date on the reservation so the
+  // calendar shows both the move-in and end dates ──────────────
+  const computedEndDate = (!input.end_date && input.move_in_date)
+    ? computeLeaseEndDate(input.move_in_date, input.contract_months ?? 12)
+    : input.end_date ?? null
+
   const id = await nextId(supabase, docTypePrefix(input.doc_type, contract_category))
 
   const { error } = await supabase.from('contracts').insert({
@@ -173,6 +188,7 @@ export async function createContract(
     contract_category,
     master_contract_id: null,
     ...input,
+    end_date:    computedEndDate,
     stock_id:    input.stock_id    || null,
     owner_id:    input.owner_id    || null,
     customer_id: input.customer_id || null,
@@ -876,7 +892,7 @@ export async function finalizeManually(
 
   const { data: contract } = await supabase
     .from('contracts')
-    .select('is_finalized, status, docx_url, pdf_url, contract_category, stock_id, doc_type, master_contract_id, effective_end_date')
+    .select('is_finalized, status, docx_url, pdf_url, contract_category, stock_id, doc_type, master_contract_id, effective_end_date, end_date')
     .eq('id', contractId)
     .eq('agent_uid', user.id)
     .single()
@@ -904,9 +920,10 @@ export async function finalizeManually(
   // Capture snapshot before mutating further
   await captureFinalizationSnapshot(supabase, contractId, user.id)
 
-  // Lease activation: set stock to rented and create lease package
+  // Lease activation: set stock to rented (+ sync end date) and create package
   if (isLease && (contract as { stock_id?: string | null }).stock_id) {
-    await setStockRented(supabase, (contract as { stock_id: string }).stock_id, user.id)
+    await setStockRented(supabase, (contract as { stock_id: string }).stock_id, user.id,
+      (contract as { end_date?: string | null }).end_date ?? null)
     await createLeasePackage(supabase, contractId, user.id)
   }
 
@@ -1982,7 +1999,7 @@ export async function deleteContract(
 
   const { data: contract } = await supabase
     .from('contracts')
-    .select('status, is_finalized, contract_category')
+    .select('status, is_finalized, contract_category, doc_type, stock_id')
     .eq('id', contractId)
     .eq('agent_uid', user.id)
     .is('deleted_at', null)
@@ -1994,6 +2011,24 @@ export async function deleteContract(
     return { error: `ลบได้เฉพาะสัญญาสถานะ ร่าง / ยกเลิก / บอกเลิก / แปลงเป็นสัญญาเช่าแล้ว เท่านั้น (ปัจจุบัน: ${contract.status})` }
   }
 
+  const category = (contract as { contract_category?: string }).contract_category
+  const stockId  = (contract as { stock_id?: string | null }).stock_id ?? null
+
+  // ── D: a reservation can only be deleted once its lease is gone ──
+  if (category === 'reservation') {
+    const { data: childLease } = await supabase
+      .from('contracts')
+      .select('id')
+      .eq('parent_contract_id', contractId)
+      .eq('contract_category', 'lease')
+      .is('deleted_at', null)
+      .limit(1)
+      .maybeSingle()
+    if (childLease) {
+      return { error: `ลบสัญญาจองไม่ได้ — มีสัญญาเช่า (${childLease.id}) อ้างอิงอยู่ กรุณาลบสัญญาเช่าก่อน` }
+    }
+  }
+
   const { error } = await supabase
     .from('contracts')
     .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
@@ -2002,6 +2037,16 @@ export async function deleteContract(
 
   if (error) return { error: 'ลบสัญญาไม่สำเร็จ: ' + error.message }
 
+  // ── E: deleting a LEASE ends it → free the stock immediately.
+  //    Deleting a standalone RESERVATION (no lease) also frees the held stock.
+  //    Child / other docs do not affect the stock.
+  if (stockId && (category === 'lease' || category === 'reservation')) {
+    await setStockAvailable(supabase, stockId, user.id)
+    await appendTimelineEvent(supabase, contractId, null, user.id, 'deleted',
+      category === 'lease' ? 'ลบสัญญาเช่า — ทรัพย์กลับเป็นว่าง' : 'ลบสัญญาจอง — ทรัพย์กลับเป็นว่าง')
+  }
+
   revalidatePath('/contracts')
+  revalidatePath('/stock')
   return {}
 }

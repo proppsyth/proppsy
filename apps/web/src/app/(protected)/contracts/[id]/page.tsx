@@ -218,7 +218,7 @@ export default async function ContractDetailPage({
               </Link>
             )}
             {!isFinalized && DELETABLE_STATUSES.has(contract.status) && (
-              <DeleteContractButton contractId={contract.id} />
+              <DeleteContractButton contractId={contract.id} category={contractMeta.contract_category} />
             )}
           </div>
         </div>

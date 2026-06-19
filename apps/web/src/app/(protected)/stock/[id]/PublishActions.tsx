@@ -15,9 +15,11 @@ interface Props {
   status: string
   currentBalance: number
   accountPending?: boolean
+  /** Rented unit within 45 days of its lease end — may be re-published as "ว่างเร็วๆนี้". */
+  soonFree?: boolean
 }
 
-export default function PublishActions({ stockId, isPublished, isPremium, status, currentBalance, accountPending = false }: Props) {
+export default function PublishActions({ stockId, isPublished, isPremium, status, currentBalance, accountPending = false, soonFree = false }: Props) {
   const router = useRouter()
   const [showPublish, setShowPublish] = useState(false)
   const [showUpsell, setShowUpsell] = useState(false)
@@ -58,10 +60,10 @@ export default function PublishActions({ stockId, isPublished, isPremium, status
     )
   }
 
-  if (status !== 'available') {
+  if (status !== 'available' && !soonFree) {
     return (
       <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-400 text-sm font-medium rounded-lg cursor-not-allowed"
-        title="เผยแพร่ได้เฉพาะทรัพย์สถานะ 'ว่าง' เท่านั้น">
+        title="เผยแพร่ได้เฉพาะทรัพย์สถานะ 'ว่าง' หรือทรัพย์เช่าที่ใกล้หมดสัญญา">
         <AlertCircle className="w-3.5 h-3.5" />
         เผยแพร่ไม่ได้
       </div>

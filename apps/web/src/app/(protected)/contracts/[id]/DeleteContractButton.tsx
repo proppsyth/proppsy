@@ -7,9 +7,11 @@ import { deleteContract } from '../actions'
 
 interface Props {
   contractId: string
+  category?: string | null
 }
 
-export default function DeleteContractButton({ contractId }: Props) {
+export default function DeleteContractButton({ contractId, category }: Props) {
+  const isLease = category === 'lease'
   const router = useRouter()
   const [confirm, setConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -30,14 +32,20 @@ export default function DeleteContractButton({ contractId }: Props) {
 
   if (confirm) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-1.5">
+        {isLease && (
+          <p className="text-xs text-red-600 font-medium">
+            ⚠️ ลบสัญญาเช่า = สิ้นสุดสัญญาทันที และทรัพย์จะกลับเป็น “ว่าง” ทันที — ยืนยันหรือไม่?
+          </p>
+        )}
+        <div className="flex items-center gap-2">
         {error && <p className="text-xs text-red-500">{error}</p>}
         <button
           onClick={handleDelete}
           disabled={loading}
           className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50"
         >
-          {loading ? '...' : 'ยืนยันลบ'}
+          {loading ? '...' : isLease ? 'ยืนยันสิ้นสุดสัญญา & ลบ' : 'ยืนยันลบ'}
         </button>
         <button
           onClick={() => setConfirm(false)}
@@ -46,6 +54,7 @@ export default function DeleteContractButton({ contractId }: Props) {
         >
           ยกเลิก
         </button>
+        </div>
       </div>
     )
   }

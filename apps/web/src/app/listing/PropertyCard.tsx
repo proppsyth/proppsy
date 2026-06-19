@@ -49,6 +49,14 @@ export default function PropertyCard({ stock }: { stock: StockWithProject }) {
         <div className="absolute top-2 left-2 flex gap-1">
           {isRent && <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/90 text-white backdrop-blur-sm">เช่า</span>}
           {isSale && stock.listing_type !== 'rent' && <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-500/90 text-white backdrop-blur-sm">ขาย</span>}
+          {stock.status === 'reserved' && (
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-500/90 text-white backdrop-blur-sm">จองแล้ว</span>
+          )}
+          {stock.status === 'rented' && (
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-500/90 text-white backdrop-blur-sm">
+              ว่างเร็วๆนี้{stock.contract_end_date ? ` · ${new Date(stock.contract_end_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}` : ''}
+            </span>
+          )}
         </div>
         {stock.is_premium && (
           <span

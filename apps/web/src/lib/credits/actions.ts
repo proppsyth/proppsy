@@ -87,14 +87,21 @@ export async function publishStock(
 
   const { data: stock } = await supabase
     .from('stock')
-    .select('id, is_published, status')
+    .select('id, is_published, status, contract_end_date')
     .eq('id', stockId)
     .eq('agent_uid', user.id)
     .single()
 
   if (!stock) return { error: 'ไม่พบทรัพย์หรือไม่มีสิทธิ์' }
   if (stock.is_published) return { error: 'ทรัพย์นี้เผยแพร่แล้ว' }
-  if (stock.status !== 'available') return { error: 'สามารถเผยแพร่ได้เฉพาะทรัพย์ที่มีสถานะ "ว่าง" เท่านั้น' }
+  // Available, or a rented unit within 45 days of its lease end ("ว่างเร็วๆนี้").
+  const endDate = (stock as { contract_end_date?: string | null }).contract_end_date
+  const soonFree = stock.status === 'rented' && !!endDate &&
+    (new Date(endDate).getTime() - Date.now()) <= 45 * 86_400_000 &&
+    (new Date(endDate).getTime() - Date.now()) >= -1 * 86_400_000
+  if (stock.status !== 'available' && !soonFree) {
+    return { error: 'เผยแพร่ได้เฉพาะทรัพย์ที่ "ว่าง" หรือทรัพย์เช่าที่ใกล้หมดสัญญา (ภายใน 45 วัน)' }
+  }
 
   const cost = CREDIT_COST[tier]
   const desc = tier === 'premium'
