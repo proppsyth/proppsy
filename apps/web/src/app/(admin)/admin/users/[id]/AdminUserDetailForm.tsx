@@ -16,6 +16,13 @@ const STATUS_OPTS: { value: AccountStatus; label: string }[] = [
   { value: 'approved', label: 'อนุมัติแล้ว' },
   { value: 'rejected', label: 'ปฏิเสธแล้ว' },
 ]
+function dateFromNow({ months = 0, years = 0 }: { months?: number; years?: number }): string {
+  const d = new Date()
+  if (months) d.setMonth(d.getMonth() + months)
+  if (years) d.setFullYear(d.getFullYear() + years)
+  return d.toISOString().slice(0, 10)
+}
+
 const PLAN_OPTS: { value: Plan; label: string }[] = [
   { value: 'starter', label: 'Starter' },
   { value: 'professional', label: 'Professional' },
@@ -70,6 +77,7 @@ export default function AdminUserDetailForm({ profile, idCardDisplayUrl }: Props
     role: profile.role,
     account_status: profile.account_status,
     plan: plan,
+    plan_expires_at: (profile as { plan_expires_at?: string | null }).plan_expires_at?.slice(0, 10) ?? '',
   })
 
   const busy = isPending || approvePending || rejectPending || deactivatePending || restorePending || deletePending
@@ -97,6 +105,7 @@ export default function AdminUserDetailForm({ profile, idCardDisplayUrl }: Props
         role: form.role,
         account_status: form.account_status,
         plan: form.plan,
+        plan_expires_at: form.plan_expires_at ? new Date(form.plan_expires_at).toISOString() : null,
       })
       if (res.error) { setError(res.error); return }
       setSuccess('บันทึกแล้ว ✓')
@@ -143,7 +152,7 @@ export default function AdminUserDetailForm({ profile, idCardDisplayUrl }: Props
             </button>
           ) : (
             <>
-              <button onClick={() => { setEditing(false); setError(''); setForm({ name: profile.name ?? '', nickname: profile.nickname ?? '', phone: profile.phone ?? '', line_id: profile.line_id ?? '', position: profile.position ?? '', company_name: profile.company_name ?? '', tax_id: profile.tax_id ?? '', national_id: profile.national_id ?? '', address_no: profile.address_no ?? '', address_road: profile.address_road ?? '', subdistrict: profile.subdistrict ?? '', district: profile.district ?? '', province: profile.province ?? '', zip: profile.zip ?? '', role: profile.role, account_status: profile.account_status, plan: resolvePlan(profile.plan) }) }} disabled={busy}
+              <button onClick={() => { setEditing(false); setError(''); setForm({ name: profile.name ?? '', nickname: profile.nickname ?? '', phone: profile.phone ?? '', line_id: profile.line_id ?? '', position: profile.position ?? '', company_name: profile.company_name ?? '', tax_id: profile.tax_id ?? '', national_id: profile.national_id ?? '', address_no: profile.address_no ?? '', address_road: profile.address_road ?? '', subdistrict: profile.subdistrict ?? '', district: profile.district ?? '', province: profile.province ?? '', zip: profile.zip ?? '', role: profile.role, account_status: profile.account_status, plan: resolvePlan(profile.plan), plan_expires_at: (profile as { plan_expires_at?: string | null }).plan_expires_at?.slice(0, 10) ?? '' }) }} disabled={busy}
                 className="px-4 py-2 border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition disabled:opacity-50">
                 ยกเลิก
               </button>
@@ -353,6 +362,37 @@ export default function AdminUserDetailForm({ profile, idCardDisplayUrl }: Props
               </span>
             )}
           </div>
+          {editing && (
+            <div>
+              <label className="text-xs text-gray-400 block mb-1">วันหมดอายุแพ็กเกจ (ว่าง = ไม่มีกำหนด)</label>
+              <input
+                type="date"
+                value={form.plan_expires_at}
+                onChange={e => set('plan_expires_at', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              />
+              <div className="flex gap-1.5 flex-wrap mt-1.5">
+                {[
+                  { label: 'รายเดือน', value: dateFromNow({ months: 1 }) },
+                  { label: 'รายปี', value: dateFromNow({ years: 1 }) },
+                  { label: 'ไม่มีกำหนด', value: '' },
+                ].map(p => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => set('plan_expires_at', p.value)}
+                    className={`px-2.5 py-1 text-[11px] rounded-full border transition ${
+                      form.plan_expires_at === p.value
+                        ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium'
+                        : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Section>
 

@@ -21,6 +21,13 @@ const STATUS_OPTS: { value: AccountStatus; label: string }[] = [
   { value: 'rejected', label: 'ปฏิเสธแล้ว' },
 ]
 
+function dateFromNow({ months = 0, years = 0 }: { months?: number; years?: number }): string {
+  const d = new Date()
+  if (months) d.setMonth(d.getMonth() + months)
+  if (years) d.setFullYear(d.getFullYear() + years)
+  return d.toISOString().slice(0, 10)
+}
+
 const PLAN_OPTS: { value: Plan; label: string }[] = [
   { value: 'starter', label: 'Starter' },
   { value: 'professional', label: 'Professional' },
@@ -43,6 +50,7 @@ export default function UserActions({ user }: Props) {
     role: user.role,
     account_status: user.account_status,
     plan: resolvePlan(user.plan),
+    plan_expires_at: (user as { plan_expires_at?: string | null }).plan_expires_at?.slice(0, 10) ?? '',
   })
 
   const busy = approvePending || rejectPending || deactivatePending || restorePending || editPending
@@ -104,6 +112,35 @@ export default function UserActions({ user }: Props) {
               ))}
             </select>
           </div>
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">วันหมดอายุแพ็กเกจ (ว่าง = ไม่มีกำหนด)</label>
+            <input
+              type="date"
+              value={form.plan_expires_at}
+              onChange={e => setForm(f => ({ ...f, plan_expires_at: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            />
+            <div className="flex gap-1.5 flex-wrap mt-1.5">
+              {[
+                { label: 'รายเดือน', value: dateFromNow({ months: 1 }) },
+                { label: 'รายปี', value: dateFromNow({ years: 1 }) },
+                { label: 'ไม่มีกำหนด', value: '' },
+              ].map(p => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, plan_expires_at: p.value }))}
+                  className={`px-2.5 py-1 text-[11px] rounded-full border transition ${
+                    form.plan_expires_at === p.value
+                      ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium'
+                      : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         {error && <p className="text-xs text-red-500">{error}</p>}
         <div className="flex gap-2">
@@ -122,6 +159,7 @@ export default function UserActions({ user }: Props) {
                   role: form.role,
                   account_status: form.account_status,
                   plan: form.plan,
+                  plan_expires_at: form.plan_expires_at ? new Date(form.plan_expires_at).toISOString() : null,
                 })
                 if (res.error) { setError(res.error); return }
                 setEditing(false)
