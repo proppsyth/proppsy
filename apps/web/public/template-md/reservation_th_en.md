@@ -115,7 +115,7 @@
 {section:2. RENTAL TERMS|ข้อ 2. ค่าเช่าและระยะเวลา}
 
 | 2.1 | The Lessor agrees to let and the Lessee agrees to rent the Premises at | <<ค่าเช่าเติมลูกน้ำ>> | Baht per month |
-| 0.5: | 6.7 | :1.3: | 1.5 |
+| 0.5: | 6.9 | :1: | 1.6 |
 
 | | (<<ค่าเช่าภาษาอังกฤษ>>) | for a period of | <<ระยะเวลาสัญญา>> | month(s). |
 | 0.5 | :6.5: | 1.5 | :0.5: | 1 |
@@ -145,10 +145,10 @@
 {section:4. REMAINING PAYMENT|ข้อ 4. การชำระเงินส่วนที่เหลือ}
 
 | 4.1 | The Lessee agrees to pay the remaining advance rental and security deposit of | <<จำนวนเงินวันทำสัญญา>> | Baht |
-| 0.5: | 7.5 | :1.5: | 0.5 |
+| 0.5: | 7.8 | :1.2: | 0.5 |
 
 | | (<<จำนวนเงินวันทำสัญญาภาษาอังกฤษ>>) | on the lease agreement signing date, |
-| 0.5 | :6: | 3.5 | 
+| 0.5 | :5.8: | 3.7 | 
 
 | | scheduled no later than | <<วันนัดทำสัญญาภาษาอังกฤษLong>> | |
 | 0.5 | 2.5 | :2.5: | 4.5 |  

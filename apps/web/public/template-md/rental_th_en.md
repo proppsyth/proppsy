@@ -112,7 +112,7 @@
 {section:1. LEASE TERM|ข้อ 1. ระยะเวลาของสัญญา}
 
 | 1.1 | The term of this agreement shall be for a period of | <<ระยะเวลาสัญญา>> | months commencing from |
-| 0.5: | 4.7 | :1: | 3.8 |
+| 0.5: | 5 | :1: | 3.5 |
 
 | | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> | and expiring on | <<ทำสัญญาวันที่สิ้นสุดภาษาอังกฤษLong>> |
 | 0.5 | :4: | 1.5 | :4: |
@@ -124,10 +124,10 @@
 {section:2. RENTAL AND CAM FEE|ข้อ 2. ค่าเช่าและค่าส่วนกลาง}
 
 | 2.1 | The rent shall be | <<ค่าเช่าเติมลูกน้ำ>> | Baht per month | (<<ค่าเช่าภาษาอังกฤษ>>) |
-| 0.5: | 1.7 | :1.5: | 1.5 | :4.8: |
+| 0.5: | 1.7 | :1.4: | 1.7 | :4.7: |
 
 | | payable in advance on the | <<ทำสัญญาวันที่อย่างเดียว>> | day of each calendar month. If rent is not paid within | <<พ้นกำหนดชำระได้>> | days |
-| 0.5: | 2.6 | :0.5: | 5.1 | :0.5: | 0.8 |
+| 0.5: | 2.7 | :0.4: | 5.3 | :0.3: | 0.8 |
 
 | | of the due date, a late payment fee of | <<ค่าปรับเติมลูกน้ำ>> | Baht | (<<ค่าปรับตัวอักษรen>>) |
 | 0.5: | 3.7 | :1.3: | 0.5 | :4: |
@@ -224,7 +224,7 @@
 | 0.5: | 9.5 |
 
 | 4.3 | To use the Premises for dwelling purposes only and not more than | <<จำนวนผู้พักอาศัย>> | persons are permitted |
-| 0.5: | 5 | :0.5: | 4 |
+| 0.5: | 7 | :0.5: | 2 |
 
 | | to reside in the Premises. |
 | 0.5: | 9.5 | |
@@ -427,11 +427,11 @@
 | | {muted}ให้ถือว่าทรัพย์สินของ ผู้เช่า ที่ยังคงอยู่ภายใน ทรัพย์สิน ตกเป็นกรรมสิทธิ์ของ ผู้ให้เช่า และ ผู้ให้เช่า มีสิทธิที่จะดำเนินการใดๆกับทรัพย์สินดังกล่าวได้ หรือสามารถเรียกร้องค่าเสียหายที่อาจเกิดขึ้น หากทรัพย์สินของ ผู้เช่า ดังกล่าวไม่ได้รับการโอนให้เป็นกรรมสิทธิ์ของ ผู้ให้เช่า หรือสร้างความเสียหายแก่ ทรัพย์สิน ได้{/muted} |
 | 1: | 9 |
 
-| (b) | The Lessee shall pay the rent equal to half of the monthly rent if the Lessee accomplishes Clause 7.1 within 15 days after the expiry date, and equal to the monthly rent if after 15 days and within 30 days |
+| (b) | The Lessee shall pay the rent equal to half of the monthly rent if the Lessee accomplishes Clause 7.1 within 15 days after the expiry date, and equal to the monthly rent if after 15 days and within 30 days after the expiry date, including a penalty of |
 | 1: | 9 |
 
-| | after the expiry date, including a penalty of | <<ค่าปรับเติมลูกน้ำ>> | Baht | (<<ค่าปรับตัวอักษรen>>) |
-| 1: | 4.2 | :1: | 0.5 | :3.3: |
+| | <<ค่าปรับเติมลูกน้ำ>> | Baht | (<<ค่าปรับตัวอักษรen>>) |
+| 1: | :2: | 0.5 | :36.5: |
 
 | | per day commencing from the expiry date. |
 | 1: | 9 |
@@ -464,14 +464,14 @@
 | | {muted}การที่ "ผู้ให้เช่า" ได้รับชำระค่าเช่า ไม่ถือเป็นข้อยกเว้นที่จะไม่ให้ "ผู้ให้เช่า" ดำเนินการใดๆ กับ "ผู้เช่า" ในกรณีที่มีการละเมิดข้อตกลงใดๆ ในสัญญาฉบับนี้{/muted} |
 | 0.5: | 9.5 |
 
-| 9.2 | On the end of the contract, the Lessee agrees to allow the Lessor to deduct the cost of cleaning the room |
+| 9.2 | On the end of the contract, the Lessee agrees to allow the Lessor to deduct the cost of cleaning room |
 | 0.5: | 9.5 |
 
 | | <<ค่าทำความสะอาดเติมลูกน้ำ>> | Baht | (<<ค่าทำความสะอาดตัวอักษรen>>) | and the cost of cleaning | 
 | 0.5: | :1.5: | 0.5 | :5: | 2.5 |
 
 | | <<จำนวนแอร์>> | air conditioner(s) |  <<ค่าล้างแอร์เติมลูกน้ำ>> | Baht each | (<<ค่าล้างแอร์ตัวอักษรen>>) |
-| 0.5: | :0.5: | 1.8 | :1.5: | 1 | :4.7: |
+| 0.5: | :0.5: | 1.8 | :1.4: | 1.3 | :4.5: |
 
 | |, totaling | <<รวมค่าล้างแอร์เติมลูกน้ำ>> | Baht | (<<รวมค่าล้างแอร์ตัวอักษรen>>), |  grand total |
 | 0.5: | 1 | :1.5: | 0.5 | :5: | 1.5 |
