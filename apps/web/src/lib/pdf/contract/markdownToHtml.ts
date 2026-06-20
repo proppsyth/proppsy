@@ -2,6 +2,7 @@
 // Browser handles Thai shaping/wrapping natively (no react-pdf limitations).
 
 import type { MdBlock, ColSpec } from './markdownParser'
+import { parseTable } from './tableParser'
 import { isSafeMode } from './sanitize'
 import { getBankLogoDataUrl } from './bankLogos'
 
@@ -92,6 +93,17 @@ function renderBlock(block: MdBlock, blankCountRef: { n: number }): string {
     // box or box:variant
     const boxVariant = tag.startsWith('box:') ? escapeHtml(tag.slice(4)) : ''
     const boxCls = boxVariant ? `mb-box mb-box-${boxVariant}` : 'mb-box'
+    // A box whose content is entirely markdown table rows (every non-blank line
+    // starts with `|`) renders as a real framed table — used for the commission
+    // rate table. Otherwise fall back to plain box lines.
+    const nonBlank = block.lines.filter(l => l.trim())
+    const isTableBox = nonBlank.length > 0 && nonBlank.every(l => l.trimStart().startsWith('|'))
+    if (isTableBox) {
+      const parsed = parseTable(block.lines)
+      if (parsed.table && (parsed.table.rows[0]?.length ?? 0) > 1) {
+        return `<div class="${boxCls} mb-box-table">${renderTable(parsed.table.rows, parsed.table.cols)}</div>`
+      }
+    }
     const boxContent = block.lines.map(l => `<p class="mb-box-line">${inlineMd(l)}</p>`).join('')
     return `<div class="${boxCls}">${boxContent}</div>`
   }

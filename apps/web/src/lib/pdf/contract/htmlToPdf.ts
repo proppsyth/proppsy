@@ -520,6 +520,10 @@ function buildFullHtml(opts: RenderOptions): string {
   .mb-box-blue   { border-color: #3B6CD4; background: #EDF1FB; }
   .mb-box-gray   { border-color: #C8D6E8; background: #F5F7FA; }
   .mb-box-line   { margin: 0; line-height: 1.75; }
+  /* Box wrapping a real table (e.g. commission rate table) */
+  .mb-box-table  { padding: 4pt 8pt; }
+  .mb-box-table .table { margin: 0; }
+  .mb-box-table .row:last-child .cell { border-bottom: none; }
 
   /* ── Multi-block: info-box & note ───────────────────────────────── */
   .mb-info-box  { border: 0.75pt solid #BFDBFE; background: #EFF6FF; border-radius: 3pt; padding: 5pt 8pt; margin: 4pt 0; page-break-inside: avoid; }

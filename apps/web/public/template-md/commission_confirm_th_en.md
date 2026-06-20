@@ -43,7 +43,7 @@
 | Monthly Rent / {muted}ค่าเช่า/เดือน{/muted} | <<ค่าเช่าเติมลูกน้ำ>> Baht {muted}(<<ค่าเช่าตัวอักษร>>){/muted} |
 | 3 | :7: |
 
-| Start Date / {muted}วันเริ่มสัญญา{/muted} | <<ทำสัญญาวันที่ภาษาอังกฤษLong>> {muted}<<ทำสัญญาวันที่ภาษาไทย>>{/muted} |
+| Start Date / {muted}วันเริ่มสัญญา{/muted} | <<วันเข้าอยู่ภาษาอังกฤษLong>> {muted}<<วันเข้าอยู่ภาษาไทย>>{/muted} |
 | 3 | :7: |
 
 | End Date / {muted}วันสิ้นสุดสัญญา{/muted} | <<ทำสัญญาวันที่สิ้นสุดภาษาอังกฤษLong>> {muted}<<ทำสัญญาวันที่สิ้นสุดภาษาไทย>>{/muted} |
@@ -56,40 +56,29 @@
 | Commission Rate / {muted}อัตราค่านายหน้า{/muted} | <<คอมมิชชั่น%>> |
 | 3 | :7: |
 
-| Commission from Owner / {muted}ค่านายหน้าจากเจ้าของ{/muted} | **<<commission_from_owner>> THB** {muted}(<<commission_from_owner_text>>){/muted} |
-| 3 | :7: |
-
-| Commission from Tenant / {muted}ค่านายหน้าจากผู้เช่า{/muted} | <<commission_from_customer>> THB |
-| 3 | :7: |
-
-| VAT 7% / {muted}ภาษีมูลค่าเพิ่ม 7%{/muted} | <<commission_vat7>> THB |
-| 3 | :7: |
-
-| WHT 3% Deduction / {muted}หัก ณ ที่จ่าย 3%{/muted} | (<<commission_wht3>>) THB |
-| 3 | :7: |
-
-| **Net Amount Payable** / {muted}ยอดสุทธิที่ต้องชำระ{/muted} | **<<commission_total>> THB** |
+| **Net Commission Payable** / {muted}ค่านายหน้าสุทธิที่ต้องชำระ{/muted} | **<<commission_total>> THB** |
 | 3 | :7: |
 
 | | {muted}(<<commission_total_text>>){/muted} |
 | 3 | ~7~ |
 
-{space:8}
+{space:6}
 
-| Rental Period / {muted}จำนวนสัญญา{/muted} | Commission / {muted}จำนวนค่าคอม{/muted} |
+| Commission Rate by Rental Period / {muted}อัตราค่านายหน้าตามระยะสัญญา{/muted} | |
+| 10 | 0 |
+
+{box:gray}
+| **Rental Period** {muted}ระยะสัญญา{/muted} | **Commission** {muted}ค่านายหน้า{/muted} |
 | 5: | :5: |
-
 | 1 Year / {muted}1 ปี{/muted} | 1 Month / {muted}1 เดือน{/muted} |
 | 5: | :5: |
-
 | 2 Years / {muted}2 ปี{/muted} | 1.5 Months / {muted}1.5 เดือน{/muted} |
 | 5: | :5: |
-
 | 3 Years / {muted}3 ปี{/muted} | 2 Months / {muted}2 เดือน{/muted} |
 | 5: | :5: |
-
 | Renewal (per year) / {muted}ต่อสัญญา (ต่อปี){/muted} | 0.5 Month / {muted}0.5 เดือน{/muted} |
 | 5: | :5: |
+{/box:gray}
 
 {space:8}
 
