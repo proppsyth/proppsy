@@ -218,7 +218,9 @@ export default async function ContractDetailPage({
                 Preview เอกสาร
               </Link>
             )}
-            {!isFinalized && DELETABLE_STATUSES.has(contract.status) && (
+            {/* Reservations can always be deleted (once no active lease references
+                them); other docs only in draft/cancelled/terminated and unlocked. */}
+            {((isReservation && !hasActiveLease) || (!isFinalized && DELETABLE_STATUSES.has(contract.status))) && (
               <DeleteContractButton contractId={contract.id} category={contractMeta.contract_category} />
             )}
           </div>

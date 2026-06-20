@@ -12,6 +12,7 @@ interface Props {
 
 export default function DeleteContractButton({ contractId, category }: Props) {
   const isLease = category === 'lease'
+  const isReservation = category === 'reservation'
   const router = useRouter()
   const [confirm, setConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -36,6 +37,11 @@ export default function DeleteContractButton({ contractId, category }: Props) {
         {isLease && (
           <p className="text-xs text-red-600 font-medium">
             ⚠️ ลบสัญญาเช่า = สิ้นสุดสัญญาทันที และทรัพย์จะกลับเป็น “ว่าง” ทันที — ยืนยันหรือไม่?
+          </p>
+        )}
+        {isReservation && (
+          <p className="text-xs text-red-600 font-medium">
+            ⚠️ ลบสัญญาจองนี้ถาวร และทรัพย์จะกลับเป็น “ว่าง” ทันที — ยืนยันหรือไม่?
           </p>
         )}
         <div className="flex items-center gap-2">

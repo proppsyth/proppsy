@@ -2059,13 +2059,21 @@ export async function deleteContract(
     .single()
 
   if (!contract) return { error: 'ไม่พบสัญญา' }
-  if (contract.is_finalized) return { error: 'ไม่สามารถลบสัญญาที่ล็อกแล้ว' }
-  if (!DELETABLE_STATUSES.has(contract.status)) {
-    return { error: `ลบได้เฉพาะสัญญาสถานะ ร่าง / ยกเลิก / บอกเลิก / แปลงเป็นสัญญาเช่าแล้ว เท่านั้น (ปัจจุบัน: ${contract.status})` }
-  }
 
   const category = (contract as { contract_category?: string }).contract_category
   const stockId  = (contract as { stock_id?: string | null }).stock_id ?? null
+
+  // A reservation may always be deleted (even once finalized / converted),
+  // because it sits at the top of the hierarchy and deleting it frees the
+  // unit so the agent can start over. Integrity is protected by guard D below
+  // (it can't be deleted while an active lease still references it). All other
+  // categories keep the standard locked/status restrictions.
+  if (category !== 'reservation') {
+    if (contract.is_finalized) return { error: 'ไม่สามารถลบสัญญาที่ล็อกแล้ว' }
+    if (!DELETABLE_STATUSES.has(contract.status)) {
+      return { error: `ลบได้เฉพาะสัญญาสถานะ ร่าง / ยกเลิก / บอกเลิก / แปลงเป็นสัญญาเช่าแล้ว เท่านั้น (ปัจจุบัน: ${contract.status})` }
+    }
+  }
 
   // ── D: a reservation can only be deleted once its lease is gone ──
   if (category === 'reservation') {
