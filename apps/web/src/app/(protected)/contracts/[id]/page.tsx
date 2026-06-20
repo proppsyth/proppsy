@@ -100,6 +100,7 @@ export default async function ContractDetailPage({
       .select('id, doc_type, status, created_at, end_date, effective_end_date, contract_category')
       .eq('parent_contract_id', id)
       .eq('agent_uid', user.id)
+      .is('deleted_at', null)
       .order('created_at', { ascending: true }),
     supabase
       .from('co_agents')
@@ -143,6 +144,15 @@ export default async function ContractDetailPage({
   const effectiveEndDate = contractMeta.effective_end_date
   const masterContractId = contractMeta.master_contract_id
   const reservationId    = contractMeta.reservation_id
+
+  // A reservation can spawn a lease. If that lease was later deleted, the
+  // reservation may still be flagged `converted_to_lease` — so we gate the
+  // "create lease" panel on whether an *active* (non-deleted) lease exists,
+  // not on the reservation status. This lets the agent re-create a lease
+  // after deleting a mistaken one.
+  const hasActiveLease = (relatedDocs ?? []).some(
+    d => (d as { contract_category?: string | null }).contract_category === 'lease'
+  )
 
   // Cross-reference: lease → reservation it came from; every child document
   // (invoice, receipt, commission confirm, end_contract, renewal, etc.)
@@ -425,10 +435,11 @@ export default async function ContractDetailPage({
           )}
 
           {/* ── Reservation: Create Lease Panel ── */}
-          {isReservation && contract.status !== 'converted_to_lease' && isActive && (
+          {isReservation && !hasActiveLease && isActive && (
             <CreateLeasePanel
               reservation={{
                 reservationId:     id,
+                languageVersion:   contract.language_version ?? null,
                 rentPrice:         contract.rent_price ?? null,
                 depositMonths:     contract.deposit_months ?? null,
                 depositAmount:     contract.deposit_amount ?? null,

@@ -8,6 +8,9 @@
 /** All reservation fields needed to pre-fill a new lease. */
 export interface ReservationLease {
   reservationId:     string
+  /** Language the reservation was created in (th / th_en / th_en_zh).
+   *  The lease inherits this automatically so the agent can't pick a mismatched language. */
+  languageVersion:   string | null
   rentPrice:         number | null
   depositMonths:     number | null
   /** Security deposit on the reservation (rent × deposit_months). */

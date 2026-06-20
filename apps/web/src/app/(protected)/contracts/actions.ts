@@ -334,6 +334,21 @@ export async function createLeaseFromReservation(
     return { error: 'ใบจองนี้ถูกยกเลิก/เสร็จสมบูรณ์แล้ว' }
   }
 
+  // Guard against a duplicate lease. A reservation flagged converted_to_lease
+  // whose lease was deleted is allowed through (recovery path); only an *active*
+  // (non-deleted) lease blocks creating another one.
+  const { data: existingLease } = await supabase
+    .from('contracts')
+    .select('id')
+    .eq('parent_contract_id', reservationId)
+    .eq('contract_category', 'lease')
+    .is('deleted_at', null)
+    .limit(1)
+    .maybeSingle()
+  if (existingLease) {
+    return { error: `ใบจองนี้มีสัญญาเช่าอยู่แล้ว (${existingLease.id})` }
+  }
+
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   const { count: contractsThisMonth } = await supabase
@@ -405,10 +420,15 @@ export async function createLeaseFromReservation(
     await setStockPendingMoveIn(supabase, reservation.stock_id, user.id)
   }
 
-  // Mark reservation as converted — prevents duplicate lease creation
+  // Mark reservation as converted — prevents duplicate lease creation.
+  // Snapshot the pre-conversion status so deleting the lease can restore it.
+  const reservationExtra = (reservation.extra_vars as Record<string, unknown> | null) ?? {}
   await supabase
     .from('contracts')
-    .update({ status: 'converted_to_lease' })
+    .update({
+      status: 'converted_to_lease',
+      extra_vars: { ...reservationExtra, pre_conversion_status: reservation.status },
+    })
     .eq('id', reservationId)
     .eq('agent_uid', user.id)
 
@@ -2032,7 +2052,7 @@ export async function deleteContract(
 
   const { data: contract } = await supabase
     .from('contracts')
-    .select('status, is_finalized, contract_category, doc_type, stock_id')
+    .select('status, is_finalized, contract_category, doc_type, stock_id, parent_contract_id')
     .eq('id', contractId)
     .eq('agent_uid', user.id)
     .is('deleted_at', null)
@@ -2077,6 +2097,31 @@ export async function deleteContract(
     await setStockAvailable(supabase, stockId, user.id)
     await appendTimelineEvent(supabase, contractId, null, user.id, 'deleted',
       category === 'lease' ? 'ลบสัญญาเช่า — ทรัพย์กลับเป็นว่าง' : 'ลบสัญญาจอง — ทรัพย์กลับเป็นว่าง')
+  }
+
+  // ── F: deleting a LEASE re-opens its source reservation so a new lease can
+  //    be created. Restore the reservation's pre-conversion status (snapshotted
+  //    at conversion time), falling back to 'signed'.
+  const parentId = (contract as { parent_contract_id?: string | null }).parent_contract_id ?? null
+  if (category === 'lease' && parentId) {
+    const { data: reservation } = await supabase
+      .from('contracts')
+      .select('status, extra_vars')
+      .eq('id', parentId)
+      .eq('agent_uid', user.id)
+      .eq('contract_category', 'reservation')
+      .maybeSingle()
+    if (reservation && reservation.status === 'converted_to_lease') {
+      const extra = (reservation.extra_vars as Record<string, unknown> | null) ?? {}
+      const restored = (extra.pre_conversion_status as string | undefined) || 'signed'
+      await supabase
+        .from('contracts')
+        .update({ status: restored })
+        .eq('id', parentId)
+        .eq('agent_uid', user.id)
+      await appendTimelineEvent(supabase, parentId, null, user.id, 'reopened',
+        'เปิดใบจองอีกครั้ง — ลบสัญญาเช่าแล้ว สามารถสร้างสัญญาเช่าใหม่ได้')
+    }
   }
 
   revalidatePath('/contracts')

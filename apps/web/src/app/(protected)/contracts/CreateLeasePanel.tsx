@@ -31,9 +31,18 @@ export default function CreateLeasePanel({ reservation }: Props) {
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
 
+  // Lease inherits the reservation's language so the agent can't accidentally
+  // pick a mismatched language (e.g. reservation in th_en, lease in th).
+  const availableTemplates = TEMPLATE_REGISTRY.filter(t => t.docType === 'rental')
+  const inheritedLanguage = (
+    availableTemplates.some(t => t.language === reservation.languageVersion)
+      ? reservation.languageVersion
+      : (availableTemplates[0]?.language ?? 'th')
+  ) as LanguageVersion
+
   const [form, setForm] = useState(() => ({
     ...buildLeaseFormDefaults(reservation),
-    language: 'th' as LanguageVersion,
+    language: inheritedLanguage,
   }))
 
   const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -74,8 +83,6 @@ export default function CreateLeasePanel({ reservation }: Props) {
     ? computeLeaseEndDate(form.moveInDate, parseInt(form.contractMonths) || 12)
     : null
 
-  const availableTemplates = TEMPLATE_REGISTRY.filter(t => t.docType === 'rental')
-  const availableLanguages = availableTemplates.map(t => t.language)
   const selectedTemplate = availableTemplates.find(t => t.language === form.language) ?? availableTemplates[0]
 
   function handleSubmit() {
@@ -144,31 +151,14 @@ export default function CreateLeasePanel({ reservation }: Props) {
               </button>
             </div>
 
-            {/* Language / Template */}
-            {availableLanguages.length > 1 && (
-              <div className="mb-4">
-                <p className="text-xs text-gray-500 mb-2 font-medium">ภาษาสัญญา</p>
-                <div className="flex gap-2 flex-wrap">
-                  {availableLanguages.map(lang => (
-                    <button
-                      key={lang}
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, language: lang }))}
-                      className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition ${
-                        form.language === lang
-                          ? 'border-blue-600 bg-blue-50 text-blue-700'
-                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                      }`}
-                    >
-                      {LANGUAGE_LABELS[lang]}
-                    </button>
-                  ))}
-                </div>
-                {selectedTemplate && (
-                  <p className="text-xs text-gray-400 mt-1">ไฟล์: {selectedTemplate.filename}</p>
-                )}
+            {/* Language — inherited from the reservation (not editable, to prevent mis-clicks) */}
+            <div className="mb-4">
+              <p className="text-xs text-gray-500 mb-1 font-medium">ภาษาสัญญา</p>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-xs font-medium text-blue-700">
+                {LANGUAGE_LABELS[form.language]}
+                <span className="text-blue-400">· ตามใบจอง</span>
               </div>
-            )}
+            </div>
 
             {/* Core terms */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
