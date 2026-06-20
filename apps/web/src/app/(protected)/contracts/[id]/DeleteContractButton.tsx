@@ -13,6 +13,7 @@ interface Props {
 export default function DeleteContractButton({ contractId, category }: Props) {
   const isLease = category === 'lease'
   const isReservation = category === 'reservation'
+  const isChild = category === 'child'
   const router = useRouter()
   const [confirm, setConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -44,6 +45,11 @@ export default function DeleteContractButton({ contractId, category }: Props) {
             ⚠️ ลบสัญญาจองนี้ถาวร และทรัพย์จะกลับเป็น “ว่าง” ทันที — ยืนยันหรือไม่?
           </p>
         )}
+        {isChild && (
+          <p className="text-xs text-red-600 font-medium">
+            ⚠️ การลบ = ยกเลิกเอกสารนี้ หากเป็นเอกสารสิ้นสุด/บอกเลิกสัญญา สัญญาเช่าจะกลับมาใช้งานอีกครั้ง — ยืนยันหรือไม่?
+          </p>
+        )}
         <div className="flex items-center gap-2">
         {error && <p className="text-xs text-red-500">{error}</p>}
         <button
@@ -69,7 +75,7 @@ export default function DeleteContractButton({ contractId, category }: Props) {
     <button
       onClick={() => setConfirm(true)}
       className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 bg-white hover:bg-red-50 hover:border-red-200 text-gray-400 hover:text-red-600 text-sm font-medium rounded-lg transition"
-      title="ลบสัญญา (เฉพาะร่าง/ยกเลิก/บอกเลิก)"
+      title="ลบเอกสาร (= ยกเลิก) — ต้องไม่มีเอกสารอื่นผูกอยู่"
     >
       <Trash2 className="w-3.5 h-3.5" />
       ลบ

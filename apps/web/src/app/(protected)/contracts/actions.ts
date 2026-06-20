@@ -2040,8 +2040,17 @@ export async function generateSignToken(
 }
 
 // ─── Soft Delete ──────────────────────────────────────────────
+//
+// Unified policy: ANY document can be deleted (deletion = cancellation),
+// regardless of its status or whether it was finalized/locked — as long as no
+// other document is still bound to it. "Bound" means another non-deleted
+// contract references this one as its parent_contract_id or master_contract_id
+// (e.g. a reservation with a live lease, or a lease with live child docs). The
+// caller must delete the dependents first (bottom-up). Deleting a document also
+// reverts whatever effect it had applied (ending docs re-activate the lease,
+// leases re-open their reservation and free the unit, etc.).
 
-const DELETABLE_STATUSES = new Set(['draft', 'cancelled', 'terminated', 'converted_to_lease'])
+const ENDING_DOC_TYPES = new Set(['termination', 'cancellation', 'end_contract'])
 
 export async function deleteContract(
   contractId: string,
@@ -2052,7 +2061,7 @@ export async function deleteContract(
 
   const { data: contract } = await supabase
     .from('contracts')
-    .select('status, is_finalized, contract_category, doc_type, stock_id, parent_contract_id')
+    .select('status, is_finalized, contract_category, doc_type, stock_id, parent_contract_id, master_contract_id')
     .eq('id', contractId)
     .eq('agent_uid', user.id)
     .is('deleted_at', null)
@@ -2061,32 +2070,26 @@ export async function deleteContract(
   if (!contract) return { error: 'ไม่พบสัญญา' }
 
   const category = (contract as { contract_category?: string }).contract_category
+  const docType  = (contract as { doc_type?: string }).doc_type ?? ''
   const stockId  = (contract as { stock_id?: string | null }).stock_id ?? null
+  const isFinalized = !!(contract as { is_finalized?: boolean }).is_finalized
 
-  // A reservation may always be deleted (even once finalized / converted),
-  // because it sits at the top of the hierarchy and deleting it frees the
-  // unit so the agent can start over. Integrity is protected by guard D below
-  // (it can't be deleted while an active lease still references it). All other
-  // categories keep the standard locked/status restrictions.
-  if (category !== 'reservation') {
-    if (contract.is_finalized) return { error: 'ไม่สามารถลบสัญญาที่ล็อกแล้ว' }
-    if (!DELETABLE_STATUSES.has(contract.status)) {
-      return { error: `ลบได้เฉพาะสัญญาสถานะ ร่าง / ยกเลิก / บอกเลิก / แปลงเป็นสัญญาเช่าแล้ว เท่านั้น (ปัจจุบัน: ${contract.status})` }
-    }
-  }
+  // ── Dependency guard: refuse if any other live document is bound to this one.
+  const { data: dependents } = await supabase
+    .from('contracts')
+    .select('id, doc_type, contract_category')
+    .or(`parent_contract_id.eq.${contractId},master_contract_id.eq.${contractId}`)
+    .neq('id', contractId)
+    .eq('agent_uid', user.id)
+    .is('deleted_at', null)
+    .limit(5)
 
-  // ── D: a reservation can only be deleted once its lease is gone ──
-  if (category === 'reservation') {
-    const { data: childLease } = await supabase
-      .from('contracts')
-      .select('id')
-      .eq('parent_contract_id', contractId)
-      .eq('contract_category', 'lease')
-      .is('deleted_at', null)
-      .limit(1)
-      .maybeSingle()
-    if (childLease) {
-      return { error: `ลบสัญญาจองไม่ได้ — มีสัญญาเช่า (${childLease.id}) อ้างอิงอยู่ กรุณาลบสัญญาเช่าก่อน` }
+  if (dependents && dependents.length > 0) {
+    const sample = dependents[0] as { id: string }
+    const what = category === 'reservation' ? 'สัญญาจอง'
+      : category === 'lease' ? 'สัญญาเช่า' : 'เอกสารนี้'
+    return {
+      error: `ลบ${what}ไม่ได้ — มีเอกสารอื่นผูกอยู่ (${sample.id}${dependents.length > 1 ? ` และอีก ${dependents.length - 1} ฉบับ` : ''}) กรุณาลบเอกสารที่ผูกอยู่ก่อน`,
     }
   }
 
@@ -2098,38 +2101,76 @@ export async function deleteContract(
 
   if (error) return { error: 'ลบสัญญาไม่สำเร็จ: ' + error.message }
 
-  // ── E: deleting a LEASE ends it → free the stock immediately.
-  //    Deleting a standalone RESERVATION (no lease) also frees the held stock.
-  //    Child / other docs do not affect the stock.
-  if (stockId && (category === 'lease' || category === 'reservation')) {
-    await setStockAvailable(supabase, stockId, user.id)
-    await appendTimelineEvent(supabase, contractId, null, user.id, 'deleted',
-      category === 'lease' ? 'ลบสัญญาเช่า — ทรัพย์กลับเป็นว่าง' : 'ลบสัญญาจอง — ทรัพย์กลับเป็นว่าง')
+  const now = new Date().toISOString()
+
+  // ── Revert effects, per category / doc type ──────────────────
+
+  // A finalized ending doc had terminated/cancelled its master lease and freed
+  // the unit. Deleting it un-does that: re-activate the lease and re-occupy the
+  // unit so the tenancy continues as if the ending doc never existed.
+  if (ENDING_DOC_TYPES.has(docType) && isFinalized) {
+    const masterId = (contract as { master_contract_id?: string | null }).master_contract_id
+    if (masterId) {
+      const { data: master } = await supabase
+        .from('contracts')
+        .select('stock_id, end_date')
+        .eq('id', masterId).eq('agent_uid', user.id).single()
+      await supabase.from('contracts')
+        .update({ status: 'active', terminated_at: null, effective_end_date: null })
+        .eq('id', masterId).eq('agent_uid', user.id)
+      const masterStockId = (master as { stock_id?: string | null } | null)?.stock_id ?? null
+      if (masterStockId) {
+        await setStockRented(supabase, masterStockId, user.id,
+          (master as { end_date?: string | null } | null)?.end_date ?? null)
+      }
+      await appendTimelineEvent(supabase, masterId, masterId, user.id, 'reactivated',
+        `ลบเอกสารสิ้นสุดสัญญา (${contractId}) — สัญญาเช่ากลับมาใช้งาน`)
+    }
   }
 
-  // ── F: deleting a LEASE re-opens its source reservation so a new lease can
-  //    be created. Restore the reservation's pre-conversion status (snapshotted
-  //    at conversion time), falling back to 'signed'.
-  const parentId = (contract as { parent_contract_id?: string | null }).parent_contract_id ?? null
-  if (category === 'lease' && parentId) {
-    const { data: reservation } = await supabase
-      .from('contracts')
-      .select('status, extra_vars')
-      .eq('id', parentId)
-      .eq('agent_uid', user.id)
-      .eq('contract_category', 'reservation')
-      .maybeSingle()
-    if (reservation && reservation.status === 'converted_to_lease') {
-      const extra = (reservation.extra_vars as Record<string, unknown> | null) ?? {}
-      const restored = (extra.pre_conversion_status as string | undefined) || 'signed'
-      await supabase
+  // Deleting a LEASE ends the tenancy → free the unit, re-open the source
+  // reservation, and roll the earned commission back to pipeline.
+  if (category === 'lease') {
+    if (stockId) await setStockAvailable(supabase, stockId, user.id)
+    await appendTimelineEvent(supabase, contractId, null, user.id, 'deleted',
+      'ลบสัญญาเช่า — ทรัพย์กลับเป็นว่าง')
+
+    const parentId = (contract as { parent_contract_id?: string | null }).parent_contract_id ?? null
+    if (parentId) {
+      const { data: reservation } = await supabase
         .from('contracts')
-        .update({ status: restored })
+        .select('status, extra_vars')
         .eq('id', parentId)
         .eq('agent_uid', user.id)
-      await appendTimelineEvent(supabase, parentId, null, user.id, 'reopened',
-        'เปิดใบจองอีกครั้ง — ลบสัญญาเช่าแล้ว สามารถสร้างสัญญาเช่าใหม่ได้')
+        .eq('contract_category', 'reservation')
+        .maybeSingle()
+      if (reservation && reservation.status === 'converted_to_lease') {
+        const extra = (reservation.extra_vars as Record<string, unknown> | null) ?? {}
+        const restored = (extra.pre_conversion_status as string | undefined) || 'signed'
+        await supabase
+          .from('contracts')
+          .update({ status: restored })
+          .eq('id', parentId)
+          .eq('agent_uid', user.id)
+        await appendTimelineEvent(supabase, parentId, null, user.id, 'reopened',
+          'เปิดใบจองอีกครั้ง — ลบสัญญาเช่าแล้ว สามารถสร้างสัญญาเช่าใหม่ได้')
+      }
     }
+
+    // Earned commission reverts to pipeline (lease no longer exists).
+    await supabase.from('commission_records')
+      .update({ status: 'pipeline', lease_id: null, earned_at: null, updated_at: now })
+      .eq('lease_id', contractId)
+      .eq('agent_uid', user.id)
+      .eq('status', 'earned')
+  }
+
+  // Deleting a standalone RESERVATION (no lease — guaranteed by the dependency
+  // guard) frees the held unit.
+  if (category === 'reservation' && stockId) {
+    await setStockAvailable(supabase, stockId, user.id)
+    await appendTimelineEvent(supabase, contractId, null, user.id, 'deleted',
+      'ลบสัญญาจอง — ทรัพย์กลับเป็นว่าง')
   }
 
   revalidatePath('/contracts')

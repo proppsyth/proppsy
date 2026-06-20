@@ -17,8 +17,6 @@ import DeleteContractButton from './DeleteContractButton'
 import { TEMPLATE_SUPPORTED_TYPES } from '@/lib/contracts/templateRegistry'
 import ActivityPanel from '@/components/shared/ActivityPanel'
 
-const DELETABLE_STATUSES = new Set(['draft', 'cancelled', 'terminated'])
-
 export const metadata: Metadata = { title: 'รายละเอียดสัญญา' }
 
 const STATUS_COLORS: Record<ContractStatus, string> = {
@@ -218,11 +216,10 @@ export default async function ContractDetailPage({
                 Preview เอกสาร
               </Link>
             )}
-            {/* Reservations can always be deleted (once no active lease references
-                them); other docs only in draft/cancelled/terminated and unlocked. */}
-            {((isReservation && !hasActiveLease) || (!isFinalized && DELETABLE_STATUSES.has(contract.status))) && (
-              <DeleteContractButton contractId={contract.id} category={contractMeta.contract_category} />
-            )}
+            {/* Any document can be deleted (= cancellation). The server enforces
+                the conditions: nothing else may be bound to it, and deleting
+                reverts whatever effect the document applied. */}
+            <DeleteContractButton contractId={contract.id} category={contractMeta.contract_category} />
           </div>
         </div>
       </div>
