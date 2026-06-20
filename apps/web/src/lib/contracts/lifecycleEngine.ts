@@ -12,13 +12,14 @@ export async function setStockReserved(supabase: SupabaseClient, stockId: string
   await supabase.from('stock').update({ status: 'reserved' }).eq('id', stockId).eq('agent_uid', agentUid)
 }
 
-// Lease creation removes the unit from the public listing.
+// Lease creation removes the unit from the public listing. Clear the HOT/premium
+// flag too so the marketplace badge doesn't linger on an off-market unit.
 export async function setStockPendingMoveIn(supabase: SupabaseClient, stockId: string, agentUid: string) {
-  await supabase.from('stock').update({ status: 'pending_move_in', is_published: false, published_at: null }).eq('id', stockId).eq('agent_uid', agentUid)
+  await supabase.from('stock').update({ status: 'pending_move_in', is_published: false, published_at: null, is_premium: false, premium_expires_at: null }).eq('id', stockId).eq('agent_uid', agentUid)
 }
 
 export async function setStockRented(supabase: SupabaseClient, stockId: string, agentUid: string, contractEndDate?: string | null) {
-  const patch: Record<string, unknown> = { status: 'rented', is_published: false, published_at: null }
+  const patch: Record<string, unknown> = { status: 'rented', is_published: false, published_at: null, is_premium: false, premium_expires_at: null }
   // Sync the lease end date so the 30-day expiry reminder fires automatically.
   if (contractEndDate !== undefined) patch.contract_end_date = contractEndDate
   await supabase.from('stock').update(patch).eq('id', stockId).eq('agent_uid', agentUid)

@@ -203,7 +203,7 @@ export async function searchStocks(query: string): Promise<StockSearchResult[]> 
   const q = query.trim()
   let req = supabase
     .from('stock')
-    .select('id, project_name, unit_no, room_type, building, floor, status, rent_price, deposit, owner_id, owner:owners(nickname, first_name_th, last_name_th)')
+    .select('id, project_name, unit_no, room_type, building, floor, status, rent_price, deposit, owner_id, owner:owners(nickname, first_name_th, last_name_th), project:projects(name_en, name_th)')
     .eq('agent_uid', user.id)
     .in('status', ['available', 'reserved'])
     .order('created_at', { ascending: false })
@@ -218,9 +218,12 @@ export async function searchStocks(query: string): Promise<StockSearchResult[]> 
   const { data } = await req
   return (data ?? []).map(r => {
     const o = (r as typeof r & { owner?: { nickname?: string; first_name_th?: string; last_name_th?: string } | null }).owner
+    const proj = (r as typeof r & { project?: { name_en?: string | null; name_th?: string | null } | null }).project
+    // Prefer the English project name in the contract picker; fall back to Thai.
+    const displayProjectName = proj?.name_en || proj?.name_th || r.project_name
     return {
       kind: 'stock' as const,
-      id: r.id, project_name: r.project_name, unit_no: r.unit_no, room_type: r.room_type,
+      id: r.id, project_name: displayProjectName, unit_no: r.unit_no, room_type: r.room_type,
       building: r.building, floor: r.floor, status: r.status,
       rent_price: r.rent_price, deposit: r.deposit, owner_id: r.owner_id,
       owner_nickname: o?.nickname ?? null,

@@ -428,7 +428,10 @@ export function customerDisplayName(customer: Partial<Customer>): string {
 }
 
 export function stockDisplayTitle(stock: Partial<Stock>): string {
-  return [stock.project_name, stock.unit_no, formatRoomTypeEn(stock.room_type)].filter(Boolean).join(' · ') || 'ทรัพย์ไม่ระบุ'
+  // Prefer the English project name (from the joined project), falling back to
+  // the Thai name then the denormalized project_name string.
+  const projName = stock.project?.name_en || stock.project?.name_th || stock.project_name
+  return [projName, stock.unit_no, formatRoomTypeEn(stock.room_type)].filter(Boolean).join(' · ') || 'ทรัพย์ไม่ระบุ'
 }
 
 export const DOC_TYPE_LABELS: Record<ContractDocType, string> = {
