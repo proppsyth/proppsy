@@ -75,10 +75,10 @@ export default function DeleteContractButton({ contractId, category }: Props) {
     <button
       onClick={() => setConfirm(true)}
       className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 bg-white hover:bg-red-50 hover:border-red-200 text-gray-400 hover:text-red-600 text-sm font-medium rounded-lg transition"
-      title="ลบเอกสาร (= ยกเลิก) — ต้องไม่มีเอกสารอื่นผูกอยู่"
+      title="ลบ / ยกเลิกเอกสาร — ต้องไม่มีเอกสารอื่นผูกอยู่ (กู้คืนได้ภายใน 30 วัน)"
     >
       <Trash2 className="w-3.5 h-3.5" />
-      ลบ
+      ลบ / ยกเลิก
     </button>
   )
 }

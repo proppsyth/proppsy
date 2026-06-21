@@ -42,19 +42,28 @@ export default async function ContractsPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // The "ยกเลิก" tab is the trash view: it shows soft-deleted (cancelled)
+  // contracts that can be restored or permanently removed. Every other tab
+  // shows only active (non-deleted) contracts.
+  const isTrash = status === 'cancelled'
+
   let query = supabase
     .from('contracts')
     .select(`
-      id, doc_type, status, created_at, move_in_date, is_finalized, contract_category,
+      id, doc_type, status, created_at, move_in_date, is_finalized, contract_category, deleted_at,
       stock:stock(project_name, unit_no),
       owner:owners(first_name_th, last_name_th, nickname),
       customer:customers(first_name_th, last_name_th, nickname)
     `)
     .eq('agent_uid', user.id)
-    .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
-  if (status !== 'all') query = query.eq('status', status)
+  if (isTrash) {
+    query = query.not('deleted_at', 'is', null)
+  } else {
+    query = query.is('deleted_at', null)
+    if (status !== 'all') query = query.eq('status', status)
+  }
   if (category !== 'all') query = query.eq('contract_category', category)
 
   const [{ data: contracts }, { data: agentProfile }] = await Promise.all([
@@ -117,8 +126,14 @@ export default async function ContractsPage({
         ))}
       </div>
 
+      {isTrash && list.length > 0 && (
+        <p className="text-xs text-gray-400 mb-3">
+          เอกสารที่ยกเลิกจะถูกลบถาวรอัตโนมัติภายใน 30 วัน — กู้คืนหรือกดลบถาวรได้
+        </p>
+      )}
+
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <ContractList contracts={list as any} />
+      <ContractList contracts={list as any} trashMode={isTrash} />
     </div>
   )
 }

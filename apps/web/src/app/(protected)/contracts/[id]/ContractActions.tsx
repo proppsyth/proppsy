@@ -2,14 +2,13 @@
 
 import { useTransition, useState } from 'react'
 import {
-  Loader2, Send, X, FileDown, ExternalLink, Eye, Lock, CheckCircle2, ClipboardCheck, Package,
+  Loader2, FileDown, ExternalLink, Lock, CheckCircle2, ClipboardCheck, Package,
 } from 'lucide-react'
 import type { ContractStatus } from '@/types'
 import {
-  updateContractStatus, generateContractDocx, generateContractPdf, finalizeManually, activateLease,
+  generateContractDocx, generateContractPdf, finalizeManually,
   generateLeaseAttachmentsPdf, generateMoveOutAttachmentPdf,
 } from '../actions'
-import Link from 'next/link'
 
 interface Props {
   contractId: string
@@ -27,19 +26,15 @@ interface Props {
 }
 
 export default function ContractActions({
-  contractId, status, contractCategory, docType,
+  contractId, contractCategory, docType,
   pdfUrl, docxUrl, finalizedDocxUrl, finalizedPdfUrl, attachmentPdfUrl,
   templateSlug, isFinalized, finalizedAt,
 }: Props) {
-  const [isStatusPending, startStatus] = useTransition()
   const [isDocxPending, startDocx]     = useTransition()
   const [isPdfPending, startPdf]       = useTransition()
   const [isFinalizePending, startFinalize] = useTransition()
-  const [isActivatePending, startActivate] = useTransition()
   const [isAttPending, startAtt]       = useTransition()
 
-  const [activateError, setActivateError] = useState('')
-  const [statusError, setStatusError]     = useState('')
   const [docxError, setDocxError]         = useState('')
   const [pdfError, setPdfError]           = useState('')
   const [finalizeError, setFinalizeError] = useState('')
@@ -189,26 +184,8 @@ export default function ContractActions({
             </div>
           </div>
         )}
-
-        {hasTemplate && (
-          <Link
-            href={`/contracts/${contractId}/preview`}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 text-sm font-medium rounded-xl transition"
-          >
-            <Eye className="w-4 h-4" />
-            Preview เอกสาร
-          </Link>
-        )}
       </div>
     )
-  }
-
-  function changeStatus(newStatus: ContractStatus) {
-    setStatusError('')
-    startStatus(async () => {
-      const res = await updateContractStatus(contractId, newStatus)
-      if (res.error) setStatusError(res.error)
-    })
   }
 
   function handleGenerateDocx() {
@@ -253,30 +230,9 @@ export default function ContractActions({
   }
 
   const isLease   = contractCategory === 'lease'
-  const canSend   = status === 'draft'
-  const canCancel = ['draft', 'sent', 'sent_for_sign', 'viewed', 'partially_signed'].includes(status)
-  const canActivate = isLease && ['signed', 'finalized'].includes(status) && !isFinalized
 
   return (
     <div className="space-y-3">
-      {/* Preview */}
-      {hasTemplate && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
-            <h2 className="text-sm font-semibold text-gray-700">ตัวอย่างเอกสาร</h2>
-          </div>
-          <div className="p-4">
-            <Link
-              href={`/contracts/${contractId}/preview`}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 text-sm font-medium rounded-xl transition"
-            >
-              <Eye className="w-4 h-4" />
-              Preview เอกสาร
-            </Link>
-          </div>
-        </div>
-      )}
-
       {/* .docx Download (secondary — editing/custom use) */}
       {hasTemplate && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -415,58 +371,6 @@ export default function ContractActions({
             <p className="text-xs text-gray-400 leading-relaxed">
               เอกสารแยกจากสัญญา · บัตรประชาชน · ทรัพย์สินในห้อง · รูปถ่าย · กุญแจ
             </p>
-          </div>
-        </div>
-      )}
-
-      {/* Status Actions */}
-      {(canSend || canCancel || canActivate) && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/70">
-            <h2 className="text-sm font-semibold text-gray-700">เปลี่ยนสถานะ</h2>
-          </div>
-          <div className="p-4 space-y-2">
-            {canActivate && (
-              <button
-                type="button"
-                onClick={() => {
-                  setActivateError('')
-                  startActivate(async () => {
-                    const res = await activateLease(contractId)
-                    if (res.error) setActivateError(res.error)
-                  })
-                }}
-                disabled={isActivatePending}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
-              >
-                {isActivatePending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                เปิดใช้งานสัญญาเช่า
-              </button>
-            )}
-            {activateError && <p className="text-xs text-red-600">{activateError}</p>}
-            {canSend && (
-              <button
-                type="button"
-                onClick={() => changeStatus('sent_for_sign')}
-                disabled={isStatusPending}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
-              >
-                {isStatusPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                ส่งรอลงนาม
-              </button>
-            )}
-            {canCancel && (
-              <button
-                type="button"
-                onClick={() => changeStatus('cancelled')}
-                disabled={isStatusPending}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium rounded-xl transition disabled:opacity-50"
-              >
-                {isStatusPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                ยกเลิกสัญญา
-              </button>
-            )}
-            {statusError && <p className="text-xs text-red-600">{statusError}</p>}
           </div>
         </div>
       )}

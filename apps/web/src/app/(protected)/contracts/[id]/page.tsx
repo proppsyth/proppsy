@@ -14,6 +14,8 @@ import CreateChildDocPanel from '../CreateChildDocPanel'
 import CreateLeasePanel from '../CreateLeasePanel'
 import EditDraftPanel from '../EditDraftPanel'
 import DeleteContractButton from './DeleteContractButton'
+import LineBindCard from './LineBindCard'
+import { listLineGroups, type LineGroupOption } from '../../line/actions'
 import { TEMPLATE_SUPPORTED_TYPES } from '@/lib/contracts/templateRegistry'
 import ActivityPanel from '@/components/shared/ActivityPanel'
 
@@ -151,6 +153,17 @@ export default async function ContractDetailPage({
   const hasActiveLease = (relatedDocs ?? []).some(
     d => (d as { contract_category?: string | null }).contract_category === 'lease'
   )
+
+  // LINE reminder binding is offered right here once a lease is locked, so the
+  // agent doesn't have to go to the LINE page to wire it up.
+  let lineGroups: LineGroupOption[] = []
+  let lineConnected = false
+  if (isMasterLease && isFinalized) {
+    const { data: lineInteg } = await supabase
+      .from('line_integrations').select('enabled').eq('agent_uid', user.id).maybeSingle()
+    lineConnected = !!lineInteg
+    if (lineConnected) lineGroups = await listLineGroups()
+  }
 
   // Cross-reference: lease → reservation it came from; every child document
   // (invoice, receipt, commission confirm, end_contract, renewal, etc.)
@@ -364,8 +377,8 @@ export default async function ContractDetailPage({
             </Section>
           )}
 
-          {/* ── Draft: Edit Panel ── */}
-          {!isFinalized && contract.status === 'draft' && (
+          {/* ── Edit Panel — editable until the contract is locked ── */}
+          {!isFinalized && isActive && (
             <EditDraftPanel
               data={{
                 contractId:            id,
@@ -480,6 +493,18 @@ export default async function ContractDetailPage({
                 {masterContractId}
               </Link>
             </div>
+          )}
+
+          {/* ── LINE reminder binding (locked lease only) ── */}
+          {isMasterLease && isFinalized && (
+            <LineBindCard
+              contractId={contract.id}
+              connected={lineConnected}
+              groups={lineGroups}
+              groupId={(contract as { line_group_id?: string | null }).line_group_id ?? null}
+              rentEnabled={!!(contract as { line_rent_reminder_enabled?: boolean }).line_rent_reminder_enabled}
+              expiryEnabled={!!(contract as { line_expiry_reminder_enabled?: boolean }).line_expiry_reminder_enabled}
+            />
           )}
 
           {/* ── Child Doc Panel: all documents from this lease ── */}

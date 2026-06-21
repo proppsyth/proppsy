@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { Search, FileText } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Search, FileText, RotateCcw, Trash2, Loader2 } from 'lucide-react'
 import { DOC_TYPE_LABELS } from '@/types'
 import type { ContractDocType, ContractStatus, ContractCategory } from '@/types'
+import { restoreContract, hardDeleteContract } from './actions'
 
 const STATUS_COLORS: Record<ContractStatus, string> = {
   draft:              'bg-gray-100 text-gray-600',
@@ -53,9 +55,10 @@ export interface ContractRow {
 
 interface Props {
   contracts: ContractRow[]
+  trashMode?: boolean
 }
 
-export default function ContractList({ contracts }: Props) {
+export default function ContractList({ contracts, trashMode = false }: Props) {
   const [search, setSearch] = useState('')
 
   const q = search.trim().toLowerCase()
@@ -169,13 +172,60 @@ export default function ContractList({ contracts }: Props) {
                     <p className="text-xs text-gray-400 mt-0.5 truncate">{parties}</p>
                   )}
                 </div>
-                <p className="text-xs text-gray-400 flex-shrink-0 ml-2">
-                  {new Date(c.created_at).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
-                </p>
+                {trashMode ? (
+                  <TrashActions contractId={c.id} />
+                ) : (
+                  <p className="text-xs text-gray-400 flex-shrink-0 ml-2">
+                    {new Date(c.created_at).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
+                  </p>
+                )}
               </Link>
             )
           })}
         </div>
+      )}
+    </div>
+  )
+}
+
+function TrashActions({ contractId }: { contractId: string }) {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [confirmDel, setConfirmDel] = useState(false)
+
+  const stop = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation() }
+
+  return (
+    <div className="flex items-center gap-1.5 flex-shrink-0 ml-2" onClick={stop}>
+      <button
+        type="button"
+        title="กู้คืน"
+        disabled={pending}
+        onClick={(e) => { stop(e); start(async () => { await restoreContract(contractId); router.refresh() }) }}
+        className="flex items-center gap-1 px-2 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-50"
+      >
+        {pending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+        กู้คืน
+      </button>
+      {confirmDel ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={(e) => { stop(e); start(async () => { await hardDeleteContract(contractId); router.refresh() }) }}
+          className="px-2 py-1.5 text-xs text-white bg-red-600 hover:bg-red-700 rounded-lg transition disabled:opacity-50"
+        >
+          ยืนยันลบถาวร
+        </button>
+      ) : (
+        <button
+          type="button"
+          title="ลบถาวร"
+          onClick={(e) => { stop(e); setConfirmDel(true) }}
+          className="flex items-center gap-1 px-2 py-1.5 text-xs text-red-500 hover:bg-red-50 rounded-lg transition"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          ลบถาวร
+        </button>
       )}
     </div>
   )

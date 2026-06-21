@@ -113,5 +113,14 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, date: now.ymd, rentSent, expirySent })
+  // ── Housekeeping: permanently remove contracts cancelled (soft-deleted)
+  //    more than 30 days ago. ──
+  const cutoff = new Date(Date.now() - 30 * 86_400_000).toISOString()
+  const { count: purged } = await admin
+    .from('contracts')
+    .delete({ count: 'exact' })
+    .not('deleted_at', 'is', null)
+    .lt('deleted_at', cutoff)
+
+  return NextResponse.json({ ok: true, date: now.ymd, rentSent, expirySent, purged: purged ?? 0 })
 }

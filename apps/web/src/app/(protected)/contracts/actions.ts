@@ -2093,9 +2093,11 @@ export async function deleteContract(
     }
   }
 
+  // Soft-delete = cancel: tag as cancelled and stamp deleted_at. It leaves the
+  // active list, shows under the "ยกเลิก" filter, and is purged after 30 days.
   const { error } = await supabase
     .from('contracts')
-    .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+    .update({ status: 'cancelled', deleted_at: new Date().toISOString(), deleted_by: user.id })
     .eq('id', contractId)
     .eq('agent_uid', user.id)
 
@@ -2175,5 +2177,51 @@ export async function deleteContract(
 
   revalidatePath('/contracts')
   revalidatePath('/stock')
+  return {}
+}
+
+/** Restore a cancelled (soft-deleted) contract back to the active list. */
+export async function restoreContract(contractId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const { data: c } = await supabase
+    .from('contracts')
+    .select('contract_category')
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+    .not('deleted_at', 'is', null)
+    .maybeSingle()
+  if (!c) return { error: 'ไม่พบเอกสารที่ยกเลิก' }
+
+  // Restore to a sane active status (we don't track the pre-cancel status).
+  const cat = (c as { contract_category?: string }).contract_category
+  const restored = cat === 'lease' ? 'active' : 'draft'
+  const { error } = await supabase
+    .from('contracts')
+    .update({ status: restored, deleted_at: null, deleted_by: null })
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+  if (error) return { error: 'กู้คืนไม่สำเร็จ: ' + error.message }
+  revalidatePath('/contracts')
+  return {}
+}
+
+/** Permanently remove a cancelled contract now (instead of waiting 30 days). */
+export async function hardDeleteContract(contractId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  // Only already-cancelled (soft-deleted) rows can be hard-deleted.
+  const { error } = await supabase
+    .from('contracts')
+    .delete()
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+    .not('deleted_at', 'is', null)
+  if (error) return { error: 'ลบถาวรไม่สำเร็จ: ' + error.message }
+  revalidatePath('/contracts')
   return {}
 }
