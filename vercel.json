@@ -6,6 +6,12 @@
   "functions": {
     "apps/web/app/api/contracts/[id]/preview-pdf/route": {
       "maxDuration": 60
+    },
+    "apps/web/app/api/cron/line-reminders/route": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    { "path": "/api/cron/line-reminders", "schedule": "0 2 * * *" }
+  ]
 }

@@ -1,8 +1,9 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getBotInfo } from '@/lib/line/client'
+import { LEASE_REMINDER_SELECT, rentReminderMessage, pushAndLog, type LeaseForReminder } from '@/lib/line/send'
 
 export interface LineConnectionStatus {
   connected: boolean
@@ -100,5 +101,135 @@ export async function disconnectLineOa(): Promise<{ error?: string }> {
 
   if (error) return { error: 'ตัดการเชื่อมต่อไม่สำเร็จ: ' + error.message }
   revalidatePath('/line')
+  return {}
+}
+
+// ─── Per-lease group binding + reminder toggles ──────────────
+
+export interface LineGroupOption { groupId: string; groupName: string | null }
+
+export interface LeaseLineRow {
+  id: string
+  projectUnit: string
+  tenantName: string
+  rentPrice: number | null
+  endDate: string | null
+  groupId: string | null
+  rentEnabled: boolean
+  expiryEnabled: boolean
+}
+
+export async function listLineGroups(): Promise<LineGroupOption[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+  const { data } = await supabase
+    .from('line_groups')
+    .select('group_id, group_name')
+    .eq('agent_uid', user.id)
+    .eq('is_active', true)
+    .order('joined_at', { ascending: false })
+  return (data ?? []).map(g => ({ groupId: g.group_id as string, groupName: (g.group_name as string | null) ?? null }))
+}
+
+export async function listLeasesForLine(): Promise<LeaseLineRow[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data } = await supabase
+    .from('contracts')
+    .select(LEASE_REMINDER_SELECT)
+    .eq('agent_uid', user.id)
+    .eq('contract_category', 'lease')
+    .is('deleted_at', null)
+    .in('status', ['active', 'signed', 'completed'])
+    .order('created_at', { ascending: false })
+
+  return (data ?? []).map(raw => {
+    const l = raw as unknown as LeaseForReminder
+    const proj = l.stock?.project?.name_en || l.stock?.project?.name_th || l.stock?.project_name || '-'
+    const projectUnit = l.stock?.unit_no ? `${proj} · ห้อง ${l.stock.unit_no}` : proj
+    const c = l.customer
+    const tenantName = c ? (c.nickname || [c.first_name_th, c.last_name_th].filter(Boolean).join(' ') || '-') : '-'
+    return {
+      id: l.id,
+      projectUnit,
+      tenantName,
+      rentPrice: l.rent_price ?? null,
+      endDate: l.end_date ?? null,
+      groupId: (raw as { line_group_id?: string | null }).line_group_id ?? null,
+      rentEnabled: !!(raw as { line_rent_reminder_enabled?: boolean }).line_rent_reminder_enabled,
+      expiryEnabled: !!(raw as { line_expiry_reminder_enabled?: boolean }).line_expiry_reminder_enabled,
+    }
+  })
+}
+
+export async function bindLeaseGroup(contractId: string, groupId: string | null): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const patch: Record<string, unknown> = { line_group_id: groupId }
+  // Unbinding a group also turns reminders off to avoid sending to nowhere.
+  if (!groupId) { patch.line_rent_reminder_enabled = false; patch.line_expiry_reminder_enabled = false }
+
+  const { error } = await supabase
+    .from('contracts')
+    .update(patch)
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+  if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
+  revalidatePath('/line')
+  return {}
+}
+
+export async function setLeaseReminder(
+  contractId: string,
+  field: 'rent' | 'expiry',
+  value: boolean,
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const col = field === 'rent' ? 'line_rent_reminder_enabled' : 'line_expiry_reminder_enabled'
+  const { error } = await supabase
+    .from('contracts')
+    .update({ [col]: value })
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+  if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
+  revalidatePath('/line')
+  return {}
+}
+
+/** Send a sample rent-reminder card into the lease's bound group right now. */
+export async function sendTestReminder(contractId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const [{ data: integ }, { data: leaseRaw }] = await Promise.all([
+    supabase.from('line_integrations').select('channel_access_token, enabled').eq('agent_uid', user.id).maybeSingle(),
+    supabase.from('contracts').select(LEASE_REMINDER_SELECT).eq('id', contractId).eq('agent_uid', user.id).maybeSingle(),
+  ])
+
+  if (!integ?.channel_access_token) return { error: 'ยังไม่ได้เชื่อมต่อ LINE OA' }
+  if (!integ.enabled) return { error: 'การเชื่อมต่อ LINE ถูกปิดอยู่' }
+  if (!leaseRaw) return { error: 'ไม่พบสัญญาเช่า' }
+  const groupId = (leaseRaw as { line_group_id?: string | null }).line_group_id ?? null
+  if (!groupId) return { error: 'ยังไม่ได้ผูกกลุ่ม LINE กับสัญญานี้' }
+
+  const admin = await createAdminClient()
+  const res = await pushAndLog(admin, {
+    agentUid: user.id,
+    token: integ.channel_access_token,
+    groupId,
+    contractId,
+    kind: 'test',
+    message: rentReminderMessage(leaseRaw as unknown as LeaseForReminder),
+  })
+  if (!res.ok) return { error: 'ส่งไม่สำเร็จ: ' + (res.error ?? '') }
   return {}
 }

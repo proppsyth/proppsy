@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { MessageCircle } from 'lucide-react'
 import LineConnectPanel from './LineConnectPanel'
 import OnboardingGuide from './OnboardingGuide'
+import LineLeaseManager from './LineLeaseManager'
+import { listLeasesForLine, listLineGroups } from './actions'
 
 export const metadata: Metadata = { title: 'แจ้งเตือนผ่าน LINE' }
 
@@ -24,6 +26,10 @@ export default async function LinePage() {
 
   const connected = !!integ
 
+  const [leases, groups] = connected
+    ? await Promise.all([listLeasesForLine(), listLineGroups()])
+    : [[], []]
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-5 space-y-5">
       <div className="flex items-center gap-2.5">
@@ -43,14 +49,9 @@ export default async function LinePage() {
         botBasicId={integ?.bot_basic_id ?? null}
       />
 
-      <OnboardingGuide webhookUrl={WEBHOOK_URL} />
+      {connected && <LineLeaseManager leases={leases} groups={groups} />}
 
-      {connected && (
-        <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs text-blue-700">
-          ✅ เชื่อมต่อแล้ว — ขั้นถัดไป: เพิ่ม LINE OA ของคุณเข้ากลุ่มลูกค้า แล้วผูกกลุ่มกับสัญญาเช่า
-          (ฟังก์ชันผูกกลุ่ม &amp; ตั้งเวลาแจ้งเตือนกำลังจะมาในขั้นถัดไป)
-        </div>
-      )}
+      <OnboardingGuide webhookUrl={WEBHOOK_URL} />
     </div>
   )
 }
