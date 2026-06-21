@@ -59,7 +59,7 @@ export async function addProjectAlias(
       return { error: error.message }
     }
 
-    const { data: { user } } = await admin.auth.getUser()
+    const { data: { user } } = await (await createClient()).auth.getUser()
     await logActivity({
       userId: user?.id,
       entityType: 'project',

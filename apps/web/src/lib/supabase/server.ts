@@ -37,25 +37,13 @@ export function createServiceClient() {
   )
 }
 
+// Service-role client for privileged server-side work (bypasses RLS, can use the
+// GoTrue admin API). It MUST NOT forward the user's cookies: @supabase/ssr would
+// then send the user's JWT as Authorization, and PostgREST would run the request
+// as role=authenticated instead of service_role — silently breaking cross-user
+// writes (notifications, activity logs) and SECURITY DEFINER RPCs (credits, AI,
+// kill_user_sessions). Kept async so existing `await createAdminClient()` calls
+// don't change.
 export async function createAdminClient() {
-  const cookieStore = await cookies()
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {}
-        },
-      },
-    }
-  )
+  return createServiceClient()
 }
