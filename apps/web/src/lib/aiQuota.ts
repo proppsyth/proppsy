@@ -1,5 +1,5 @@
 'use server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { resolvePlan } from '@/types'
 import { getPlanLimits } from '@/lib/planLimits'
 
@@ -49,7 +49,10 @@ export async function incrementAiUsage(): Promise<{ ok: boolean; used?: number; 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { ok: false, error: 'ไม่ได้รับอนุญาต' }
 
-  const { data, error } = await supabase.rpc('increment_ai_usage', { p_user_id: user.id })
+  // Called via service role: the RPC is SECURITY DEFINER and EXECUTE is revoked
+  // from anon/authenticated so users can't bump their own quota directly.
+  const admin = await createAdminClient()
+  const { data, error } = await admin.rpc('increment_ai_usage', { p_user_id: user.id })
   if (error) return { ok: false, error: error.message }
   if (data?.error) return { ok: false, error: data.error as string }
 

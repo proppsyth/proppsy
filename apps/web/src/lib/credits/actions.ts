@@ -108,7 +108,10 @@ export async function publishStock(
     ? `เผยแพร่แบบ Premium HOT — ${stockId}`
     : `เผยแพร่แบบ Standard — ${stockId}`
 
-  const { data: result } = await supabase.rpc('spend_credits', {
+  // Service role: spend_credits is SECURITY DEFINER with EXECUTE revoked from
+  // anon/authenticated, so it can't be called directly from the browser.
+  const admin = await createAdminClient()
+  const { data: result } = await admin.rpc('spend_credits', {
     p_user_id:      user.id,
     p_amount:       cost,
     p_tx_type:      'spend',
@@ -206,7 +209,8 @@ export async function createCreditTopup(params: {
     return { error: charge.failure_message ?? 'การชำระเงินล้มเหลว กรุณาลองใหม่' }
   }
 
-  const { data: result } = await supabase.rpc('grant_credits', {
+  const admin = await createAdminClient()
+  const { data: result } = await admin.rpc('grant_credits', {
     p_user_id:      user.id,
     p_amount:       pkg.credits,
     p_tx_type:      'topup',

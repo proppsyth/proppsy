@@ -494,6 +494,18 @@ export function resolvePlan(plan?: string | null): Plan {
   return 'starter'
 }
 
+/**
+ * The plan that should actually apply right now. A paid plan whose
+ * plan_expires_at has passed falls back to 'starter' — otherwise an expired
+ * subscription would keep its higher stock/contract limits forever (the plan
+ * column is never auto-reset).
+ */
+export function effectivePlan(plan?: string | null, expiresAt?: string | null): Plan {
+  const p = resolvePlan(plan)
+  if (p !== 'starter' && expiresAt && new Date(expiresAt) < new Date()) return 'starter'
+  return p
+}
+
 export const ROOM_TYPE_LABELS: Record<string, string> = {
   'Studio':   'Studio / สตูดิโอ',
   '1BR':      '1 Bedroom / 1 ห้องนอน',

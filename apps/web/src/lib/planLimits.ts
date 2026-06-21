@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
-import { PLAN_LIMITS, resolvePlan } from '@/types'
+import { PLAN_LIMITS, resolvePlan, effectivePlan } from '@/types'
 import type { Plan } from '@/types'
 
 export interface PlanLimitRow {
@@ -86,4 +86,9 @@ export async function getAllPlanLimits(): Promise<Record<string, PlanLimitRow>> 
 
 export async function getPlanLimitsByUserPlan(rawPlan?: string | null) {
   return getPlanLimits(resolvePlan(rawPlan))
+}
+
+/** Limits for a user, honouring plan expiry (expired paid plan → starter). */
+export async function getPlanLimitsForUser(rawPlan?: string | null, expiresAt?: string | null) {
+  return getPlanLimits(effectivePlan(rawPlan, expiresAt))
 }

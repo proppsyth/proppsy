@@ -5,7 +5,7 @@ import { getGeminiApiKey } from '@/lib/ai/geminiKey'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { resolvePlan } from '@/types'
-import { getPlanLimitsByUserPlan } from '@/lib/planLimits'
+import { getPlanLimitsForUser } from '@/lib/planLimits'
 import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
 import { identifyAndEnrichProject } from '@/lib/ai/projectIdentity'
 import { logActivity } from '@/lib/activity/log'
@@ -83,13 +83,13 @@ export async function createStock(
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
 
   const [{ data: profile }, { count: stockCount }] = await Promise.all([
-    supabase.from('profiles').select('plan, account_status').eq('id', user.id).single(),
+    supabase.from('profiles').select('plan, plan_expires_at, account_status').eq('id', user.id).single(),
     supabase.from('stock').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id),
   ])
 
   // Pending accounts may still add draft stock — they just can't publish.
 
-  const limits = await getPlanLimitsByUserPlan(profile?.plan)
+  const limits = await getPlanLimitsForUser(profile?.plan, (profile as { plan_expires_at?: string | null })?.plan_expires_at)
   if (limits.maxStock !== null && (stockCount ?? 0) >= limits.maxStock) {
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxStock} ทรัพย์)` }
   }

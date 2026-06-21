@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { resolvePlan, type ContractDocType, type ContractCategory, type ContractStatus } from '@/types'
-import { getPlanLimitsByUserPlan } from '@/lib/planLimits'
+import { getPlanLimitsForUser } from '@/lib/planLimits'
 import {
   setStockReserved, setStockPendingMoveIn, setStockRented, setStockAvailable,
   captureFinalizationSnapshot, appendTimelineEvent, docTypeToCategory,
@@ -152,7 +152,7 @@ export async function createContract(
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   const [{ data: profile }, { count: contractsThisMonth }] = await Promise.all([
-    supabase.from('profiles').select('plan, account_status').eq('id', user.id).single(),
+    supabase.from('profiles').select('plan, plan_expires_at, account_status').eq('id', user.id).single(),
     // Count ALL contracts created this month, including soft-deleted ones —
     // issuing then deleting a contract still consumes a monthly slot.
     supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('agent_uid', user.id).gte('created_at', startOfMonth),
@@ -163,7 +163,7 @@ export async function createContract(
     return { error: 'บัญชีของคุณยังอยู่ระหว่างรอการอนุมัติจากแอดมิน ยังไม่สามารถออกเอกสารสัญญาได้' }
   }
 
-  const limits = await getPlanLimitsByUserPlan(profile?.plan)
+  const limits = await getPlanLimitsForUser(profile?.plan, (profile as { plan_expires_at?: string | null })?.plan_expires_at)
   if (limits.maxContractsPerMonth !== null && (contractsThisMonth ?? 0) >= limits.maxContractsPerMonth) {
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }
@@ -336,7 +336,7 @@ export async function createLeaseFromReservation(
       .eq('agent_uid', user.id)
       .eq('contract_category', 'reservation')
       .single(),
-    supabase.from('profiles').select('plan').eq('id', user.id).single(),
+    supabase.from('profiles').select('plan, plan_expires_at').eq('id', user.id).single(),
   ])
 
   if (!reservation) return { error: 'ไม่พบใบจอง หรือสถานะไม่ถูกต้อง' }
@@ -367,7 +367,7 @@ export async function createLeaseFromReservation(
     .eq('agent_uid', user.id)
     .gte('created_at', startOfMonth)
 
-  const limits = await getPlanLimitsByUserPlan(profile?.plan)
+  const limits = await getPlanLimitsForUser(profile?.plan, (profile as { plan_expires_at?: string | null })?.plan_expires_at)
   if (limits.maxContractsPerMonth !== null && (contractsThisMonth ?? 0) >= limits.maxContractsPerMonth) {
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }
@@ -582,7 +582,7 @@ export async function createChildDocument(
   }
 
   const [{ data: profile }] = await Promise.all([
-    supabase.from('profiles').select('plan').eq('id', user.id).single(),
+    supabase.from('profiles').select('plan, plan_expires_at').eq('id', user.id).single(),
   ])
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
@@ -592,7 +592,7 @@ export async function createChildDocument(
     .eq('agent_uid', user.id)
     .gte('created_at', startOfMonth)
 
-  const limits = await getPlanLimitsByUserPlan(profile?.plan)
+  const limits = await getPlanLimitsForUser(profile?.plan, (profile as { plan_expires_at?: string | null })?.plan_expires_at)
   if (limits.maxContractsPerMonth !== null && (contractsThisMonth ?? 0) >= limits.maxContractsPerMonth) {
     return { error: `ถึงขีดจำกัดแพ็กเกจแล้ว (สูงสุด ${limits.maxContractsPerMonth} ฉบับ/เดือน)` }
   }
