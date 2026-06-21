@@ -61,12 +61,19 @@ export async function incrementAiUsage(): Promise<{ ok: boolean; used?: number; 
 
   const used = data?.used as number
   const limit = data?.limit as number
-  await notify({
-    user_id: user.id,
-    type:    'ai_used',
-    title:   '✨ ใช้ AI 1 ครั้ง',
-    message: `เหลือโควต้า AI ${Math.max(0, limit - used)}/${limit} ครั้งในเดือนนี้`,
-  })
+  // Only notify when the monthly AI quota is nearly/fully used — not every call.
+  const remaining = Math.max(0, limit - used)
+  if (limit > 0 && (remaining === 3 || remaining === 0)) {
+    await notify({
+      user_id: user.id,
+      type:    'ai_used',
+      title:   remaining === 0 ? '🚫 โควต้า AI หมดแล้ว' : '⚠️ โควต้า AI ใกล้หมด',
+      message: remaining === 0
+        ? `ใช้ AI ครบ ${limit} ครั้งในเดือนนี้แล้ว — อัปเกรดแพ็กเกจเพื่อใช้ต่อ`
+        : `เหลือโควต้า AI อีก ${remaining} ครั้งในเดือนนี้`,
+      url:     '/billing',
+    })
+  }
 
   return { ok: true, used, limit }
 }
