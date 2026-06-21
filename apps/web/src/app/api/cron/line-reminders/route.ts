@@ -4,6 +4,7 @@ import {
   LEASE_REMINDER_SELECT, rentReminderMessage, expiryReminderMessage, pushAndLog,
   type LeaseForReminder,
 } from '@/lib/line/send'
+import { removeFromBucket, publicUrlToPath } from '@/lib/upload/storageServer'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -114,13 +115,23 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Housekeeping: permanently remove contracts cancelled (soft-deleted)
-  //    more than 30 days ago. ──
+  //    more than 30 days ago, freeing their generated files too. ──
   const cutoff = new Date(Date.now() - 30 * 86_400_000).toISOString()
-  const { count: purged } = await admin
+  const { data: stale } = await admin
     .from('contracts')
-    .delete({ count: 'exact' })
+    .select('id, pdf_url, docx_url, finalized_pdf_url, finalized_docx_url, attachment_pdf_url')
     .not('deleted_at', 'is', null)
     .lt('deleted_at', cutoff)
 
-  return NextResponse.json({ ok: true, date: now.ymd, rentSent, expirySent, purged: purged ?? 0 })
+  let purged = 0
+  for (const row of stale ?? []) {
+    const { error } = await admin.from('contracts').delete().eq('id', row.id)
+    if (error) continue
+    purged++
+    await removeFromBucket('documents', [
+      row.pdf_url, row.docx_url, row.finalized_pdf_url, row.finalized_docx_url, row.attachment_pdf_url,
+    ].map(u => publicUrlToPath(u as string | null, 'documents')))
+  }
+
+  return NextResponse.json({ ok: true, date: now.ymd, rentSent, expirySent, purged })
 }

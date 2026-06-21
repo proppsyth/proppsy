@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { identifyAndEnrichProject } from '@/lib/ai/projectIdentity'
+import { getGeminiApiKey } from '@/lib/ai/geminiKey'
 import { logActivity } from '@/lib/activity/log'
 
 // ─── Types ───────────────────────────────────────────────────
@@ -198,7 +199,7 @@ export async function updateProject(
 export async function enrichProject(
   rawName: string
 ): Promise<AiEnrichResult | { error: string }> {
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = getGeminiApiKey()
   if (!apiKey) return { error: 'ไม่พบ Gemini API key' }
 
   try {

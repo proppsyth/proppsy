@@ -83,12 +83,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // ── Gate 2 & 3: profile checks (only when needed) ───────────────────────────
-  // Fetch profile only for admin routes (role check) or when deactivation
-  // enforcement is needed. Skipping this on regular agent routes saves one
-  // DB round-trip per request (~100-300ms on localhost, ~5ms on Vercel).
-  const needsProfileCheck = pathname.startsWith('/admin') || pathname.startsWith('/co-agents')
-  if (needsProfileCheck) {
+  // ── Gate 2 & 3: profile checks (every protected path) ───────────────────────
+  // Deactivation must be enforced on ALL protected routes — not just /admin —
+  // otherwise a deactivated/banned user keeps a valid session and can still load
+  // the agent workspace shell. One indexed lookup (~5ms on Vercel).
+  {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role, deleted_at')

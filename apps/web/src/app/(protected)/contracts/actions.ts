@@ -11,6 +11,17 @@ import {
 import { logActivity } from '@/lib/activity/log'
 import { createLeasePackage } from '@/lib/contracts/documentEngine'
 import { computeLeaseEndDate } from '@/lib/contracts/leaseFromReservation'
+import { removePublicUrls } from '@/lib/upload/storageServer'
+import { getGeminiApiKey } from '@/lib/ai/geminiKey'
+
+// Contract-generated files (PDF/DOCX/attachments) live in the public `documents`
+// bucket today. Centralised so the storage location is easy to change later.
+const CONTRACT_FILE_BUCKET = 'documents'
+const CONTRACT_FILE_COLS = 'pdf_url, docx_url, finalized_pdf_url, finalized_docx_url, attachment_pdf_url'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function contractFileUrls(row: any): (string | null)[] {
+  return [row?.pdf_url, row?.docx_url, row?.finalized_pdf_url, row?.finalized_docx_url, row?.attachment_pdf_url]
+}
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -1872,7 +1883,7 @@ export async function translateFurnitureNames(
   const quota = await checkAiQuota()
   if (!quota.allowed) return { error: quota.error ?? 'เกินโควต้า AI', quota: { used: quota.used, limit: quota.limit } }
 
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = getGeminiApiKey()
   if (!apiKey) return { error: 'ไม่พบ Gemini API key' }
 
   try {
@@ -2214,6 +2225,15 @@ export async function hardDeleteContract(contractId: string): Promise<{ error?: 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
 
+  // Grab the file URLs before deleting so we can free them from the bucket.
+  const { data: fileRow } = await supabase
+    .from('contracts')
+    .select(CONTRACT_FILE_COLS)
+    .eq('id', contractId)
+    .eq('agent_uid', user.id)
+    .not('deleted_at', 'is', null)
+    .maybeSingle()
+
   // Only already-cancelled (soft-deleted) rows can be hard-deleted.
   const { error } = await supabase
     .from('contracts')
@@ -2222,6 +2242,9 @@ export async function hardDeleteContract(contractId: string): Promise<{ error?: 
     .eq('agent_uid', user.id)
     .not('deleted_at', 'is', null)
   if (error) return { error: 'ลบถาวรไม่สำเร็จ: ' + error.message }
+
+  if (fileRow) await removePublicUrls(CONTRACT_FILE_BUCKET, contractFileUrls(fileRow))
+
   revalidatePath('/contracts')
   return {}
 }

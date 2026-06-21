@@ -1,5 +1,7 @@
 'use server'
 
+import { getGeminiApiKey } from '@/lib/ai/geminiKey'
+
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createClient } from '@/lib/supabase/server'
 import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
@@ -25,7 +27,7 @@ const DIRECTION_LABELS: Record<string, string> = {
 }
 
 export async function generateFacebookPost(input: StockPostInput): Promise<PostResult> {
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = getGeminiApiKey()
   if (!apiKey) return { error: 'ยังไม่ได้ตั้งค่า GEMINI_API_KEY' }
 
   try {

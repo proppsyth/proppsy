@@ -1,5 +1,7 @@
 'use server'
 
+import { getGeminiApiKey } from '@/lib/ai/geminiKey'
+
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
@@ -188,7 +190,7 @@ export async function parseDocument(
   base64: string,
   mimeType: string
 ): Promise<OcrDocumentResult | { error: string }> {
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = getGeminiApiKey()
   if (!apiKey) return { error: 'ไม่พบ Gemini API key' }
 
   const { allowed, error: quotaErr } = await checkAiQuota()
@@ -210,7 +212,7 @@ export async function parseBankBook(
   base64: string,
   mimeType: string
 ): Promise<BankBookOcrResult | { error: string }> {
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = getGeminiApiKey()
   if (!apiKey) return { error: 'ไม่พบ Gemini API key' }
 
   const { allowed, error: quotaErr } = await checkAiQuota()

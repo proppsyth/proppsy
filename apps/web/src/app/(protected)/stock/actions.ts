@@ -1,5 +1,7 @@
 'use server'
 
+import { getGeminiApiKey } from '@/lib/ai/geminiKey'
+
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { resolvePlan } from '@/types'
@@ -7,6 +9,7 @@ import { getPlanLimitsByUserPlan } from '@/lib/planLimits'
 import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
 import { identifyAndEnrichProject } from '@/lib/ai/projectIdentity'
 import { logActivity } from '@/lib/activity/log'
+import { removePublicUrls } from '@/lib/upload/storageServer'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -188,6 +191,15 @@ export async function deleteStock(stockId: string): Promise<{ error?: string }> 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
 
+  // Fetch the photos first so we can free them from the bucket after the row
+  // is gone (no orphaned objects left behind).
+  const { data: existing } = await supabase
+    .from('stock')
+    .select('photo_urls, photo_thumb_urls')
+    .eq('id', stockId)
+    .eq('agent_uid', user.id)
+    .maybeSingle()
+
   const { error } = await supabase
     .from('stock')
     .delete()
@@ -195,6 +207,11 @@ export async function deleteStock(stockId: string): Promise<{ error?: string }> 
     .eq('agent_uid', user.id)
 
   if (error) return { error: 'ลบไม่สำเร็จ: ' + error.message }
+
+  await removePublicUrls('stock-photos', [
+    ...((existing?.photo_urls as string[] | null) ?? []),
+    ...((existing?.photo_thumb_urls as string[] | null) ?? []),
+  ])
 
   revalidatePath('/stock')
   return {}
@@ -215,7 +232,7 @@ export type ParseWithEntitiesResult = {
 export async function parseStockTextWithEntities(
   rawText: string
 ): Promise<ParseWithEntitiesResult | { error: string }> {
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = getGeminiApiKey()
   if (!apiKey) return { error: 'ไม่พบ Gemini API key' }
 
   {
@@ -408,7 +425,7 @@ ${rawText.slice(0, 4000)}`
 export async function parseStockText(
   rawText: string
 ): Promise<AiParseResult | { error: string }> {
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = getGeminiApiKey()
   if (!apiKey) return { error: 'ไม่พบ Gemini API key' }
 
   {
