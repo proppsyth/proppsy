@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Home as HomeIcon, FileText, UserCheck, Users, Building2,
   Calendar, TrendingUp, Zap, CreditCard, Settings, LogOut, ShieldAlert,
-  Menu, ChevronRight, Bell, Handshake, Activity,
+  Menu, ChevronRight, Bell, Handshake, Activity, MessageCircle,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -30,6 +30,7 @@ const NAV_ITEMS: { href: string; icon: LucideIcon; label: string; permission: st
   { href: '/co-agents',          icon: Handshake,       label: 'Co-Agent',          permission: null },
   { href: '/calendar',           icon: Calendar,        label: 'นัดหมาย & ปฏิทิน', permission: null },
   { href: '/commission',         icon: TrendingUp,      label: 'คอมมิชชัน',         permission: null },
+  { href: '/line',               icon: MessageCircle,   label: 'แจ้งเตือน LINE',    permission: null },
   { href: '/credits',            icon: Zap,             label: 'เครดิต',            permission: null },
 ]
 
@@ -52,6 +53,7 @@ const SHEET_GRID = [
   { href: '/co-agents',          icon: Handshake,   label: 'Co-Agent',   permission: null },
   { href: '/dashboard/activity', icon: Activity,    label: 'กิจกรรม',    permission: null },
   { href: '/commission',         icon: TrendingUp,  label: 'คอมมิชชัน',  permission: null },
+  { href: '/line',               icon: MessageCircle, label: 'LINE',     permission: null },
   { href: '/credits',            icon: Zap,         label: 'เครดิต',     permission: null },
   { href: '/billing',            icon: CreditCard,  label: 'ชำระเงิน',   permission: null },
   { href: '/profile',            icon: Settings,    label: 'ตั้งค่า',     permission: null },
