@@ -3,6 +3,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createClient } from '@/lib/supabase/server'
 import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
+import { revalidatePath } from 'next/cache'
 
 interface StockPostInput {
   stockId: string
@@ -51,7 +52,7 @@ export async function generateFacebookPost(input: StockPostInput): Promise<PostR
     ])
 
     if (!stock) return { error: 'ไม่พบข้อมูลทรัพย์' }
-    if (!stock.is_published) return { error: 'ทรัพย์นี้ยังไม่ได้เผยแพร่' }
+    // Note: publishing is NOT required — agents can draft a post anytime.
 
     // Fetch project separately (service-role-like read via user's accessible projects)
     let proj: { name_th?: string; district?: string; province?: string; bts_mrt?: string[] } | null = null
@@ -122,4 +123,21 @@ ${contactLines}
     console.error('[ai-post]', err)
     return { error: 'เกิดข้อผิดพลาด กรุณาลองใหม่' }
   }
+}
+
+/** Persist the agent's reviewed/edited post so it can be reused without AI. */
+export async function saveAiPost(stockId: string, text: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้เข้าสู่ระบบ' }
+
+  const { error } = await supabase
+    .from('stock')
+    .update({ ai_post_text: text, ai_post_updated_at: new Date().toISOString() })
+    .eq('id', stockId)
+    .eq('agent_uid', user.id)
+
+  if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
+  revalidatePath(`/stock/${stockId}`)
+  return {}
 }
