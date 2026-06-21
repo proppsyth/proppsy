@@ -39,7 +39,7 @@ export async function submitInquiry(
 
   const { data: existingRows } = await supabase
     .from('customers')
-    .select('id, nickname, phone, line_id, gender, occupation')
+    .select('id, nickname, phone, line_id, gender, occupation, notes')
     .eq('agent_uid', input.agent_uid)
     .or(orParts.join(','))
     .order('created_at', { ascending: false })
@@ -51,6 +51,11 @@ export async function submitInquiry(
     input.budget ? `งบ: ${input.budget}` : '',
     input.move_in_date ? `ย้ายเข้า: ${input.move_in_date}` : '',
   ].filter(Boolean).join(' · ') || null
+
+  // One-line summary of THIS inquiry to surface on the customer record.
+  const propertyLabel = [input.project_name, input.unit_no].filter(Boolean).join(' ')
+  const inquiryStamp = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })
+  const inquiryLine = `[${inquiryStamp}] สนใจ ${propertyLabel || 'ทรัพย์'}${notes ? ` · ${notes}` : ''}`
 
   let customerId: string
 
@@ -67,6 +72,9 @@ export async function submitInquiry(
     if (input.gender && input.gender !== existing.gender) updates.gender = input.gender
     if (input.occupation && input.occupation !== existing.occupation) updates.occupation = input.occupation
     if (input.move_in_date) updates.preferred_move_in_date = input.move_in_date
+
+    // Surface the new interest on the customer record (most recent on top).
+    updates.notes = [inquiryLine, (existing as { notes?: string | null }).notes].filter(Boolean).join('\n')
 
     await supabase.from('customers').update(updates).eq('id', customerId)
   } else {
@@ -93,7 +101,7 @@ export async function submitInquiry(
       source: 'public_listing',
       lead_status: 'lead',
       follow_up: true,
-      notes,
+      notes: inquiryLine,
     })
 
     if (customerError) {
