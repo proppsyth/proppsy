@@ -1280,9 +1280,10 @@ async function uploadPdfToStorage(
   contractId: string,
   buffer: Buffer,
 ): Promise<{ path: string; url: string } | { error: string }> {
-  const ts = Date.now()
   // PRIVATE bucket — contracts carry PII (names, national IDs, addresses).
-  const storagePath = `contracts/${userId}/${contractId}-${ts}.pdf`
+  // Stable path + upsert → regenerating overwrites the previous file instead of
+  // piling up one object per generation.
+  const storagePath = `contracts/${userId}/${contractId}.pdf`
   console.log(`[UPLOAD ${new Date().toISOString()}] start`, JSON.stringify({ contractId, bytes: buffer.length, path: storagePath }))
   const t0 = Date.now()
 
@@ -1293,7 +1294,7 @@ async function uploadPdfToStorage(
     }
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('secure-documents')
-      .upload(storagePath, buffer, { contentType: 'application/pdf', upsert: false })
+      .upload(storagePath, buffer, { contentType: 'application/pdf', upsert: true })
     if (!uploadError && uploadData) {
       const durationMs = Date.now() - t0
       console.log(`[UPLOAD ${new Date().toISOString()}] done`, JSON.stringify({ attempt, durationMs, path: storagePath }))
