@@ -46,9 +46,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true })
   }
 
+  // Record that LINE reached us (even before signature check) so the UI can show
+  // "last received" — distinguishes a console misconfig from a handler problem.
+  const firstEventType = body.events?.[0]?.type ?? 'verify'
+
   if (!validSignature(rawBody, integ.channel_secret, signature)) {
+    await admin.from('line_integrations')
+      .update({ last_webhook_at: new Date().toISOString(), last_webhook_event: 'signature_failed' })
+      .eq('agent_uid', integ.agent_uid)
     return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
   }
+
+  await admin.from('line_integrations')
+    .update({ last_webhook_at: new Date().toISOString(), last_webhook_event: firstEventType })
+    .eq('agent_uid', integ.agent_uid)
 
   for (const ev of body.events ?? []) {
     const src = ev.source

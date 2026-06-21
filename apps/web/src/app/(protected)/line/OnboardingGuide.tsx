@@ -38,16 +38,24 @@ const STEPS: { title: string; detail: string[] }[] = [
     ],
   },
   {
-    title: 'ตั้งค่าให้บอทเข้ากลุ่มได้',
+    title: 'ตั้ง Response mode = "Bot" (สำคัญที่สุด!)',
     detail: [
-      'ที่แท็บ Messaging API → เปิด "Allow bot to join group chats"',
+      'ที่ LINE Official Account Manager → ตั้งค่า → การตอบกลับ (Response settings)',
+      'เลือก Response mode = "Bot" (ห้ามเป็น "Chat") — ถ้าเป็น Chat ระบบจะไม่ได้รับสัญญาณเลย',
       'ปิด "Auto-reply messages" และ "Greeting messages" เพื่อไม่ให้บอทตอบรก',
     ],
   },
   {
-    title: 'ใส่ Webhook URL (เพื่อให้ระบบจับกลุ่มอัตโนมัติ)',
+    title: 'เปิดให้บอทเข้ากลุ่มได้',
     detail: [
-      'ที่แท็บ Messaging API → Webhook URL → วาง URL ด้านล่างนี้ แล้วเปิด "Use webhook"',
+      'ที่แท็บ Messaging API → เปิด "Allow bot to join group chats"',
+    ],
+  },
+  {
+    title: 'ใส่ Webhook URL + เปิด Use webhook (เพื่อให้ระบบจับกลุ่มอัตโนมัติ)',
+    detail: [
+      'ที่แท็บ Messaging API → Webhook URL → วาง URL ด้านล่างนี้ → กด Update',
+      'เปิดสวิตช์ "Use webhook" ให้เป็นสีเขียว แล้วกด "Verify" เพื่อทดสอบ (ควรขึ้น Success)',
     ],
   },
   {
@@ -101,8 +109,8 @@ export default function OnboardingGuide({ webhookUrl }: Props) {
                       <li key={j} className="text-xs text-gray-500 leading-relaxed">• {d}</li>
                     ))}
                   </ul>
-                  {/* Webhook URL helper appears under step 6 */}
-                  {i === 5 && (
+                  {/* Webhook URL helper appears under the "Webhook URL" step */}
+                  {s.title.startsWith('ใส่ Webhook URL') && (
                     <div className="mt-2 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-2">
                       <code className="flex-1 text-xs text-gray-700 break-all">{webhookUrl}</code>
                       <button onClick={copyWebhook}
