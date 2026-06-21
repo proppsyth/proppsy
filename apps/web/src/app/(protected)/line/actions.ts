@@ -237,7 +237,7 @@ export async function sendTestReminder(contractId: string): Promise<{ error?: st
   if (!user) return { error: 'ไม่ได้รับอนุญาต' }
 
   const [{ data: integ }, { data: leaseRaw }] = await Promise.all([
-    supabase.from('line_integrations').select('channel_access_token, enabled').eq('agent_uid', user.id).maybeSingle(),
+    supabase.from('line_integrations').select('channel_access_token, enabled, card_brand_name, card_image_url').eq('agent_uid', user.id).maybeSingle(),
     supabase.from('contracts').select(LEASE_REMINDER_SELECT).eq('id', contractId).eq('agent_uid', user.id).maybeSingle(),
   ])
 
@@ -247,6 +247,7 @@ export async function sendTestReminder(contractId: string): Promise<{ error?: st
   const groupId = (leaseRaw as { line_group_id?: string | null }).line_group_id ?? null
   if (!groupId) return { error: 'ยังไม่ได้ผูกกลุ่ม LINE กับสัญญานี้' }
 
+  const branding = { brandName: integ.card_brand_name as string | null, heroImageUrl: integ.card_image_url as string | null }
   const admin = await createAdminClient()
   const res = await pushAndLog(admin, {
     agentUid: user.id,
@@ -254,8 +255,89 @@ export async function sendTestReminder(contractId: string): Promise<{ error?: st
     groupId,
     contractId,
     kind: 'test',
-    message: rentReminderMessage(leaseRaw as unknown as LeaseForReminder),
+    message: rentReminderMessage(leaseRaw as unknown as LeaseForReminder, new Date(), branding),
   })
   if (!res.ok) return { error: 'ส่งไม่สำเร็จ: ' + (res.error ?? '') }
   return {}
+}
+
+// ─── Card branding (editable card) ───────────────────────────
+
+export interface CardSettings {
+  brandName: string | null
+  imageUrl: string | null
+  defaultBrandName: string  // suggested value from the agent's profile
+}
+
+export async function getCardSettings(): Promise<CardSettings | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const [{ data: integ }, { data: profile }] = await Promise.all([
+    supabase.from('line_integrations').select('card_brand_name, card_image_url').eq('agent_uid', user.id).maybeSingle(),
+    supabase.from('profiles').select('company_name, name').eq('id', user.id).maybeSingle(),
+  ])
+  if (!integ) return null
+  const defaultBrandName = (profile?.company_name as string | null) || (profile?.name as string | null) || ''
+  return {
+    brandName: (integ.card_brand_name as string | null) ?? null,
+    imageUrl: (integ.card_image_url as string | null) ?? null,
+    defaultBrandName,
+  }
+}
+
+export async function saveCardSettings(input: { brandName: string | null; imageUrl: string | null }): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+
+  const brand = input.brandName?.trim() || null
+  const { error } = await supabase
+    .from('line_integrations')
+    .update({ card_brand_name: brand, card_image_url: input.imageUrl || null, updated_at: new Date().toISOString() })
+    .eq('agent_uid', user.id)
+  if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
+  revalidatePath('/line')
+  return {}
+}
+
+// ─── Send history ────────────────────────────────────────────
+
+export interface LineHistoryRow {
+  id: string
+  kind: string
+  status: string
+  error: string | null
+  createdAt: string
+  contractId: string | null
+  projectUnit: string | null
+}
+
+export async function listLineHistory(limit = 100): Promise<LineHistoryRow[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data } = await supabase
+    .from('line_message_log')
+    .select('id, kind, status, error, created_at, contract_id, contract:contracts(stock:stock(unit_no, project_name, project:projects(name_en, name_th)))')
+    .eq('agent_uid', user.id)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  return (data ?? []).map(r => {
+    const stock = (r as { contract?: { stock?: { unit_no?: string | null; project_name?: string | null; project?: { name_en?: string | null; name_th?: string | null } | null } | null } | null }).contract?.stock
+    const proj = stock?.project?.name_en || stock?.project?.name_th || stock?.project_name || null
+    const projectUnit = proj ? (stock?.unit_no ? `${proj} · ห้อง ${stock.unit_no}` : proj) : null
+    return {
+      id: r.id as string,
+      kind: r.kind as string,
+      status: r.status as string,
+      error: (r.error as string | null) ?? null,
+      createdAt: r.created_at as string,
+      contractId: (r.contract_id as string | null) ?? null,
+      projectUnit,
+    }
+  })
 }

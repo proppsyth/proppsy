@@ -27,6 +27,12 @@ function row(label: string, value: string, opts: { strong?: boolean } = {}) {
   }
 }
 
+/** Per-agent card branding shown on every card. */
+export interface CardBranding {
+  brandName?: string | null
+  heroImageUrl?: string | null
+}
+
 export interface RentReminderArgs {
   projectUnit: string       // "The Base · ห้อง 25/123"
   tenantName: string
@@ -37,6 +43,22 @@ export interface RentReminderArgs {
   bankAccountNo?: string | null
   bankAccountName?: string | null
   contractUrl?: string | null
+  branding?: CardBranding
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function heroBlock(branding?: CardBranding): any | null {
+  if (!branding?.heroImageUrl) return null
+  return {
+    type: 'image', url: branding.heroImageUrl,
+    size: 'full', aspectRatio: '20:9', aspectMode: 'cover',
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function brandFooter(branding?: CardBranding): any | null {
+  if (!branding?.brandName) return null
+  return { type: 'text', text: branding.brandName, size: 'xs', color: MUTED, align: 'center', margin: 'md', wrap: true }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,27 +84,29 @@ export function buildRentReminderFlex(a: RentReminderArgs): any {
     if (a.bankAccountName) bodyContents.push({ type: 'text', text: `ชื่อบัญชี: ${a.bankAccountName}`, size: 'sm', color: INK })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const footer: any = a.contractUrl
-    ? {
-        type: 'box', layout: 'vertical', contents: [
-          { type: 'button', style: 'secondary', height: 'sm',
-            action: { type: 'uri', label: '📄 ดูไฟล์สัญญาเช่า', uri: a.contractUrl } },
-        ],
-      }
-    : undefined
+  const footerContents: object[] = []
+  if (a.contractUrl) {
+    footerContents.push({
+      type: 'button', style: 'secondary', height: 'sm',
+      action: { type: 'uri', label: '📄 ดูไฟล์สัญญาเช่า', uri: a.contractUrl },
+    })
+  }
+  const bf = brandFooter(a.branding)
+  if (bf) footerContents.push(bf)
+  const hero = heroBlock(a.branding)
 
   return {
     type: 'flex',
     altText: `แจ้งเตือนค่าเช่า ${a.projectUnit} ${baht(a.rentAmount)}`,
     contents: {
       type: 'bubble',
+      ...(hero ? { hero } : {}),
       header: {
         type: 'box', layout: 'vertical', backgroundColor: BLUE, paddingAll: 'lg',
         contents: [{ type: 'text', text: '🏠 แจ้งเตือนค่าเช่า', color: '#FFFFFF', weight: 'bold', size: 'lg' }],
       },
       body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: bodyContents },
-      ...(footer ? { footer } : {}),
+      ...(footerContents.length ? { footer: { type: 'box', layout: 'vertical', spacing: 'sm', contents: footerContents } } : {}),
     },
   }
 }
@@ -93,15 +117,28 @@ export interface ExpiryReminderArgs {
   endDateLabel: string      // "18 กรกฎาคม 2569"
   daysLeft: number
   contractUrl?: string | null
+  branding?: CardBranding
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildExpiryReminderFlex(a: ExpiryReminderArgs): any {
+  const footerContents: object[] = []
+  if (a.contractUrl) {
+    footerContents.push({
+      type: 'button', style: 'secondary', height: 'sm',
+      action: { type: 'uri', label: '📄 ดูไฟล์สัญญาเช่า', uri: a.contractUrl },
+    })
+  }
+  const bf = brandFooter(a.branding)
+  if (bf) footerContents.push(bf)
+  const hero = heroBlock(a.branding)
+
   return {
     type: 'flex',
     altText: `สัญญาเช่าใกล้หมด ${a.projectUnit} (อีก ${a.daysLeft} วัน)`,
     contents: {
       type: 'bubble',
+      ...(hero ? { hero } : {}),
       header: {
         type: 'box', layout: 'vertical', backgroundColor: BLUE_DARK, paddingAll: 'lg',
         contents: [{ type: 'text', text: '⏰ สัญญาเช่าใกล้หมด', color: '#FFFFFF', weight: 'bold', size: 'lg' }],
@@ -116,14 +153,7 @@ export function buildExpiryReminderFlex(a: ExpiryReminderArgs): any {
           { type: 'text', text: 'แจ้งล่วงหน้าเพื่อตัดสินใจต่อสัญญา', size: 'xs', color: MUTED, margin: 'md', wrap: true },
         ],
       },
-      ...(a.contractUrl ? {
-        footer: {
-          type: 'box', layout: 'vertical', contents: [
-            { type: 'button', style: 'secondary', height: 'sm',
-              action: { type: 'uri', label: '📄 ดูไฟล์สัญญาเช่า', uri: a.contractUrl } },
-          ],
-        },
-      } : {}),
+      ...(footerContents.length ? { footer: { type: 'box', layout: 'vertical', spacing: 'sm', contents: footerContents } } : {}),
     },
   }
 }

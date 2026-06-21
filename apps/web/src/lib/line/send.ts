@@ -2,7 +2,7 @@
 // "send test" action and the daily cron. Pure formatting + a push-and-log call.
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { pushMessage } from './client'
-import { buildRentReminderFlex, buildExpiryReminderFlex } from './flex'
+import { buildRentReminderFlex, buildExpiryReminderFlex, type CardBranding } from './flex'
 import { ownerDisplayName, customerDisplayName, type Owner, type Customer } from '@/types'
 
 const THAI_MONTHS = [
@@ -41,7 +41,7 @@ function contractUrl(l: LeaseForReminder): string | null {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function rentReminderMessage(l: LeaseForReminder, when: Date = new Date()): any {
+export function rentReminderMessage(l: LeaseForReminder, when: Date = new Date(), branding?: CardBranding): any {
   return buildRentReminderFlex({
     projectUnit:     projectUnit(l),
     tenantName:      l.customer ? customerDisplayName(l.customer as unknown as Partial<Customer>) : '-',
@@ -52,11 +52,12 @@ export function rentReminderMessage(l: LeaseForReminder, when: Date = new Date()
     bankAccountNo:   l.owner?.bank_account_no ?? null,
     bankAccountName: l.owner?.bank_account_name ?? (l.owner ? ownerDisplayName(l.owner as unknown as Partial<Owner>) : null),
     contractUrl:     contractUrl(l),
+    branding,
   })
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function expiryReminderMessage(l: LeaseForReminder, daysLeft: number): any {
+export function expiryReminderMessage(l: LeaseForReminder, daysLeft: number, branding?: CardBranding): any {
   const end = l.end_date ? new Date(l.end_date) : new Date()
   return buildExpiryReminderFlex({
     projectUnit:  projectUnit(l),
@@ -64,6 +65,7 @@ export function expiryReminderMessage(l: LeaseForReminder, daysLeft: number): an
     endDateLabel: thaiDateLong(end),
     daysLeft,
     contractUrl:  contractUrl(l),
+    branding,
   })
 }
 

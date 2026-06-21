@@ -2,10 +2,13 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { MessageCircle } from 'lucide-react'
+import Link from 'next/link'
+import { History } from 'lucide-react'
 import LineConnectPanel from './LineConnectPanel'
 import OnboardingGuide from './OnboardingGuide'
 import LineLeaseManager from './LineLeaseManager'
-import { listLeasesForLine, listLineGroups } from './actions'
+import LineCardSettings from './LineCardSettings'
+import { listLeasesForLine, listLineGroups, getCardSettings } from './actions'
 
 export const metadata: Metadata = { title: 'แจ้งเตือนผ่าน LINE' }
 
@@ -66,20 +69,28 @@ export default async function LinePage() {
   const lastWebhookAt = (integ as { last_webhook_at?: string | null } | null)?.last_webhook_at ?? null
   const lastWebhookEvent = (integ as { last_webhook_event?: string | null } | null)?.last_webhook_event ?? null
 
-  const [leases, groups] = connected
-    ? await Promise.all([listLeasesForLine(), listLineGroups()])
-    : [[], []]
+  const [leases, groups, cardSettings] = connected
+    ? await Promise.all([listLeasesForLine(), listLineGroups(), getCardSettings()])
+    : [[], [], null]
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-5 space-y-5">
-      <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
-          <MessageCircle className="w-5 h-5 text-green-600" />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
+            <MessageCircle className="w-5 h-5 text-green-600" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold text-gray-800">แจ้งเตือนผ่าน LINE</h1>
+            <p className="text-xs text-gray-500">เชื่อม LINE OA ของคุณ เพื่อส่งแจ้งเตือนค่าเช่า &amp; วันหมดสัญญาเข้ากลุ่มลูกค้าอัตโนมัติ</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-lg font-semibold text-gray-800">แจ้งเตือนผ่าน LINE</h1>
-          <p className="text-xs text-gray-500">เชื่อม LINE OA ของคุณ เพื่อส่งแจ้งเตือนค่าเช่า &amp; วันหมดสัญญาเข้ากลุ่มลูกค้าอัตโนมัติ</p>
-        </div>
+        {connected && (
+          <Link href="/line/history"
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 flex-shrink-0">
+            <History className="w-4 h-4" /> ประวัติการส่ง
+          </Link>
+        )}
       </div>
 
       <LineConnectPanel
@@ -94,6 +105,8 @@ export default async function LinePage() {
       )}
 
       {connected && <LineLeaseManager leases={leases} groups={groups} />}
+
+      {connected && cardSettings && <LineCardSettings settings={cardSettings} />}
 
       <OnboardingGuide webhookUrl={WEBHOOK_URL} />
     </div>

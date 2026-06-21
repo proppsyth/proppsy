@@ -37,15 +37,20 @@ export async function GET(req: NextRequest) {
   const now = bangkokNow()
   const todayDate = new Date(`${now.ymd}T00:00:00Z`)
 
-  // Agents with an enabled LINE integration → token map.
+  // Agents with an enabled LINE integration → token + branding map.
   const { data: integrations } = await admin
     .from('line_integrations')
-    .select('agent_uid, channel_access_token, enabled')
+    .select('agent_uid, channel_access_token, enabled, card_brand_name, card_image_url')
     .eq('enabled', true)
 
   const tokenByAgent = new Map<string, string>()
+  const brandingByAgent = new Map<string, { brandName: string | null; heroImageUrl: string | null }>()
   for (const i of integrations ?? []) {
     tokenByAgent.set(i.agent_uid as string, i.channel_access_token as string)
+    brandingByAgent.set(i.agent_uid as string, {
+      brandName: (i.card_brand_name as string | null) ?? null,
+      heroImageUrl: (i.card_image_url as string | null) ?? null,
+    })
   }
   if (tokenByAgent.size === 0) return NextResponse.json({ ok: true, sent: 0, note: 'no enabled integrations' })
 
@@ -71,6 +76,7 @@ export async function GET(req: NextRequest) {
 
     const lease = raw as unknown as LeaseForReminder
     const contractId = lease.id
+    const branding = brandingByAgent.get(agentUid)
 
     // ── Monthly rent reminder ──
     if (r.line_rent_reminder_enabled) {
@@ -80,7 +86,7 @@ export async function GET(req: NextRequest) {
       if (effDay === now.day && !alreadyToday) {
         const res = await pushAndLog(admin, {
           agentUid, token, groupId, contractId,
-          kind: 'rent_reminder', message: rentReminderMessage(lease, todayDate),
+          kind: 'rent_reminder', message: rentReminderMessage(lease, todayDate, branding),
         })
         if (res.ok) {
           rentSent++
@@ -97,7 +103,7 @@ export async function GET(req: NextRequest) {
       if (daysLeft <= 30 && daysLeft >= 0 && !alreadyReminded) {
         const res = await pushAndLog(admin, {
           agentUid, token, groupId, contractId,
-          kind: 'expiry_reminder', message: expiryReminderMessage(lease, daysLeft),
+          kind: 'expiry_reminder', message: expiryReminderMessage(lease, daysLeft, branding),
         })
         if (res.ok) {
           expirySent++

@@ -121,7 +121,7 @@ export function usePropertyImages(options: {
 // Single-file uploader for ID cards, signatures, profile photos, news covers.
 // Supports both public and private (signed URL) buckets.
 
-export type DocumentCategory = 'id-cards' | 'signatures' | 'profiles' | 'news-covers' | 'article-covers' | 'banner-images' | 'partner-logos' | 'bank-books'
+export type DocumentCategory = 'id-cards' | 'signatures' | 'profiles' | 'news-covers' | 'article-covers' | 'banner-images' | 'partner-logos' | 'bank-books' | 'line-cards'
 
 const DOCS_BUCKET = 'documents'
 const SECURE_BUCKET = 'secure-documents'
