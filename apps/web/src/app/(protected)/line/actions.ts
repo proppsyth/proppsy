@@ -2,7 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { getBotInfo } from '@/lib/line/client'
+import { getBotInfo, getGroupSummary } from '@/lib/line/client'
 import { LEASE_REMINDER_SELECT, rentReminderMessage, pushAndLog, type LeaseForReminder } from '@/lib/line/send'
 
 export interface LineConnectionStatus {
@@ -129,7 +129,33 @@ export async function listLineGroups(): Promise<LineGroupOption[]> {
     .eq('agent_uid', user.id)
     .eq('is_active', true)
     .order('joined_at', { ascending: false })
-  return (data ?? []).map(g => ({ groupId: g.group_id as string, groupName: (g.group_name as string | null) ?? null }))
+
+  const groups = (data ?? []).map(g => ({ groupId: g.group_id as string, groupName: (g.group_name as string | null) ?? null }))
+
+  // Lazily fill in display names for groups the webhook captured without one
+  // (the webhook skips the LINE summary API to stay fast). Best-effort.
+  const missing = groups.filter(g => !g.groupName)
+  if (missing.length > 0) {
+    const { data: integ } = await supabase
+      .from('line_integrations')
+      .select('channel_access_token')
+      .eq('agent_uid', user.id)
+      .maybeSingle()
+    const token = integ?.channel_access_token as string | undefined
+    if (token) {
+      const admin = await createAdminClient()
+      await Promise.all(missing.map(async g => {
+        const name = await getGroupSummary(token, g.groupId)
+        if (name) {
+          g.groupName = name
+          await admin.from('line_groups').update({ group_name: name })
+            .eq('agent_uid', user.id).eq('group_id', g.groupId)
+        }
+      }))
+    }
+  }
+
+  return groups
 }
 
 export async function listLeasesForLine(): Promise<LeaseLineRow[]> {
