@@ -9,7 +9,6 @@ import { getPlanLimitsForUser } from '@/lib/planLimits'
 import { checkAiQuota, incrementAiUsage } from '@/lib/aiQuota'
 import { identifyAndEnrichProject } from '@/lib/ai/projectIdentity'
 import { logActivity } from '@/lib/activity/log'
-import { notify } from '@/lib/notifications/notify'
 import { removePublicUrls } from '@/lib/upload/storageServer'
 
 // ─── Types ───────────────────────────────────────────────────
@@ -117,14 +116,6 @@ export async function createStock(
     metadata: { unit_no: input.unit_no, listing_type: input.listing_type },
   })
 
-  await notify({
-    user_id: user.id,
-    type:    'stock_created',
-    title:   '🏠 เพิ่มทรัพย์ใหม่',
-    message: `${[input.project_name, input.unit_no].filter(Boolean).join(' ') || id} ถูกเพิ่มแล้ว`,
-    url:     `/stock/${id}`,
-  })
-
   revalidatePath('/stock')
   return { id }
 }
@@ -161,14 +152,6 @@ export async function updateStock(
     action: 'updated',
     title: `แก้ไขทรัพย์ ${stockId}`,
     metadata: { status: input.status, ...(autoUnpublish ? { auto_unpublished: true } : {}) },
-  })
-
-  await notify({
-    user_id: user.id,
-    type:    'stock_updated',
-    title:   '✏️ แก้ไขทรัพย์',
-    message: `${[input.project_name, input.unit_no].filter(Boolean).join(' ') || stockId} ถูกแก้ไขแล้ว`,
-    url:     `/stock/${stockId}`,
   })
 
   revalidatePath('/stock')

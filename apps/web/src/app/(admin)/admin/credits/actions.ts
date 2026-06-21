@@ -3,6 +3,7 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { sendEmail, buildCreditGrantedEmail, siteUrl } from '@/lib/email'
+import { notify } from '@/lib/notifications/notify'
 
 async function assertAdmin(): Promise<string> {
   const supabase = await createClient()
@@ -55,6 +56,14 @@ export async function adminAdjustCredits(params: {
       } catch (err) {
         console.error('credit grant email error:', err)
       }
+
+      await notify({
+        user_id: params.userId,
+        type:    'admin_credit_granted',
+        title:   `🎁 ได้รับเครดิต +${params.amount}`,
+        message: `แอดมินเพิ่มเครดิตให้ ${params.amount} เครดิต · คงเหลือ ${data.balance} เครดิต`,
+        url:     '/credits',
+      })
 
       revalidatePath('/admin/credits')
       return { newBalance: data.balance }

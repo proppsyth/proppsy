@@ -24,9 +24,18 @@ export type NotificationType =
   | 'inquiry'
   | 'esign_viewed'
   | 'esign_signed'
-  // Stock activity
-  | 'stock_created'
-  | 'stock_updated'
+  // Credits & AI
+  | 'credit_spent'
+  | 'ai_used'
+  | 'admin_credit_granted'
+  | 'admin_plan_changed'
+  | 'plan_expiring'
+  // Calendar / appointments
+  | 'appointment_today'
+  // LINE rent reminder summary
+  | 'rent_reminder_sent'
+  // Listing view milestones
+  | 'listing_views_10'
 
 export interface AppNotification {
   id: string

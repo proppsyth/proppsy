@@ -2,6 +2,7 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { resolvePlan } from '@/types'
 import { getPlanLimits } from '@/lib/planLimits'
+import { notify } from '@/lib/notifications/notify'
 
 export type AiQuotaInfo = { used: number; limit: number }
 
@@ -58,5 +59,14 @@ export async function incrementAiUsage(): Promise<{ ok: boolean; used?: number; 
   if (error) return { ok: false, error: error.message }
   if (data?.error) return { ok: false, error: data.error as string }
 
-  return { ok: true, used: data?.used as number, limit: data?.limit as number }
+  const used = data?.used as number
+  const limit = data?.limit as number
+  await notify({
+    user_id: user.id,
+    type:    'ai_used',
+    title:   '✨ ใช้ AI 1 ครั้ง',
+    message: `เหลือโควต้า AI ${Math.max(0, limit - used)}/${limit} ครั้งในเดือนนี้`,
+  })
+
+  return { ok: true, used, limit }
 }

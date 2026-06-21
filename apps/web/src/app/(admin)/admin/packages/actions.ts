@@ -4,6 +4,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { bustPlanLimitsCache } from '@/lib/planLimits'
 import { sendEmail, buildPlanChangedEmail, siteUrl } from '@/lib/email'
+import { notify } from '@/lib/notifications/notify'
 import type { Plan } from '@/types'
 
 export type PlanLimitsInput = {
@@ -67,6 +68,14 @@ export async function setUserPlan(
       .update({ plan, plan_expires_at: planExpiresAt })
       .eq('id', userId)
     if (error) return { error: error.message }
+
+    await notify({
+      user_id: userId,
+      type:    'admin_plan_changed',
+      title:   '📦 แพ็กเกจของคุณถูกอัปเดต',
+      message: `แพ็กเกจปัจจุบัน: ${plan}${planExpiresAt ? ` · หมดอายุ ${new Date(planExpiresAt).toLocaleDateString('th-TH')}` : ''}`,
+      url:     '/profile',
+    })
 
     // Notify the agent that admin changed their plan — best-effort, non-blocking
     try {

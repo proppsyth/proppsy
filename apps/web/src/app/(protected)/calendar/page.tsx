@@ -5,7 +5,6 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import type { Appointment } from '@/types'
 import AppointmentList from '../appointments/AppointmentList'
-import { checkLeaseExpiryNotifications } from './lease-expiry-check'
 
 export const metadata: Metadata = { title: 'นัดหมาย & ปฏิทิน' }
 
@@ -45,8 +44,9 @@ export default async function CalendarPage({
   const monthStartStr = monthStart.toLocaleDateString('en-CA')
   const monthEndStr = monthEnd.toLocaleDateString('en-CA')
 
-  // Non-blocking: fire & forget lease expiry notifications
-  void checkLeaseExpiryNotifications()
+  // Lease-expiry notifications are now fired reliably by the daily cron
+  // (/api/cron/line-reminders), so we no longer trigger them on calendar render
+  // to avoid duplicate notifications.
 
   const [
     { data: monthAppointments },

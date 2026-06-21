@@ -2,6 +2,7 @@
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { notify } from '@/lib/notifications/notify'
 import type { CreditTransaction } from '@/types'
 import {
   CREDIT_COST,
@@ -143,6 +144,14 @@ export async function publishStock(
     })
     .eq('id', stockId)
     .eq('agent_uid', user.id)
+
+  await notify({
+    user_id: user.id,
+    type:    'credit_spent',
+    title:   `💳 ใช้เครดิต ${cost} เครดิต`,
+    message: `${tier === 'premium' ? 'เผยแพร่ Premium HOT' : 'เผยแพร่'} ${stockId} · คงเหลือ ${result.balance} เครดิต`,
+    url:     `/stock/${stockId}`,
+  })
 
   revalidatePath('/stock')
   revalidatePath(`/stock/${stockId}`)
