@@ -37,11 +37,15 @@ function projectUnit(l: LeaseForReminder): string {
 }
 
 function contractUrl(l: LeaseForReminder): string | null {
-  return l.finalized_pdf_url || l.pdf_url || null
+  // Stored value is now a private secure-documents path — not usable in a LINE
+  // button. Only pass through legacy public http URLs; otherwise the caller must
+  // supply a signed URL via the override param.
+  const v = l.finalized_pdf_url || l.pdf_url || null
+  return v && /^https?:\/\//.test(v) ? v : null
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function rentReminderMessage(l: LeaseForReminder, when: Date = new Date(), branding?: CardBranding): any {
+export function rentReminderMessage(l: LeaseForReminder, when: Date = new Date(), branding?: CardBranding, contractUrlSigned?: string | null): any {
   return buildRentReminderFlex({
     projectUnit:     projectUnit(l),
     tenantName:      l.customer ? customerDisplayName(l.customer as unknown as Partial<Customer>) : '-',
@@ -51,20 +55,20 @@ export function rentReminderMessage(l: LeaseForReminder, when: Date = new Date()
     bankName:        l.owner?.bank_name ?? null,
     bankAccountNo:   l.owner?.bank_account_no ?? null,
     bankAccountName: l.owner?.bank_account_name ?? (l.owner ? ownerDisplayName(l.owner as unknown as Partial<Owner>) : null),
-    contractUrl:     contractUrl(l),
+    contractUrl:     contractUrlSigned ?? contractUrl(l),
     branding,
   })
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function expiryReminderMessage(l: LeaseForReminder, daysLeft: number, branding?: CardBranding): any {
+export function expiryReminderMessage(l: LeaseForReminder, daysLeft: number, branding?: CardBranding, contractUrlSigned?: string | null): any {
   const end = l.end_date ? new Date(l.end_date) : new Date()
   return buildExpiryReminderFlex({
     projectUnit:  projectUnit(l),
     tenantName:   l.customer ? customerDisplayName(l.customer as unknown as Partial<Customer>) : '-',
     endDateLabel: thaiDateLong(end),
     daysLeft,
-    contractUrl:  contractUrl(l),
+    contractUrl:  contractUrlSigned ?? contractUrl(l),
     branding,
   })
 }

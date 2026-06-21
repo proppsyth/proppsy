@@ -4,7 +4,7 @@ import {
   LEASE_REMINDER_SELECT, rentReminderMessage, expiryReminderMessage, pushAndLog,
   type LeaseForReminder,
 } from '@/lib/line/send'
-import { removeFromBucket, publicUrlToPath } from '@/lib/upload/storageServer'
+import { removeContractFiles, signContractFile } from '@/lib/upload/storageServer'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -85,9 +85,10 @@ export async function GET(req: NextRequest) {
       const effDay = payDay > 0 ? Math.min(payDay, lastDayOfMonth(now.year, now.month)) : 0
       const alreadyToday = (r.line_last_rent_reminded_on as string | null) === now.ymd
       if (effDay === now.day && !alreadyToday) {
+        const signed = await signContractFile(lease.finalized_pdf_url || lease.pdf_url || null, 60 * 60 * 24 * 30)
         const res = await pushAndLog(admin, {
           agentUid, token, groupId, contractId,
-          kind: 'rent_reminder', message: rentReminderMessage(lease, todayDate, branding),
+          kind: 'rent_reminder', message: rentReminderMessage(lease, todayDate, branding, signed),
         })
         if (res.ok) {
           rentSent++
@@ -102,9 +103,10 @@ export async function GET(req: NextRequest) {
       const daysLeft = Math.round((end.getTime() - todayDate.getTime()) / 86_400_000)
       const alreadyReminded = !!(r.line_last_expiry_reminded_on as string | null)
       if (daysLeft <= 30 && daysLeft >= 0 && !alreadyReminded) {
+        const signed = await signContractFile(lease.finalized_pdf_url || lease.pdf_url || null, 60 * 60 * 24 * 30)
         const res = await pushAndLog(admin, {
           agentUid, token, groupId, contractId,
-          kind: 'expiry_reminder', message: expiryReminderMessage(lease, daysLeft, branding),
+          kind: 'expiry_reminder', message: expiryReminderMessage(lease, daysLeft, branding, signed),
         })
         if (res.ok) {
           expirySent++
@@ -128,9 +130,9 @@ export async function GET(req: NextRequest) {
     const { error } = await admin.from('contracts').delete().eq('id', row.id)
     if (error) continue
     purged++
-    await removeFromBucket('documents', [
+    await removeContractFiles([
       row.pdf_url, row.docx_url, row.finalized_pdf_url, row.finalized_docx_url, row.attachment_pdf_url,
-    ].map(u => publicUrlToPath(u as string | null, 'documents')))
+    ])
   }
 
   return NextResponse.json({ ok: true, date: now.ymd, rentSent, expirySent, purged })

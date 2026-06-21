@@ -26,3 +26,36 @@ export async function removeFromBucket(bucket: string, paths: (string | null | u
 export async function removePublicUrls(bucket: string, urls: (string | null | undefined)[]): Promise<void> {
   await removeFromBucket(bucket, urls.map(u => publicUrlToPath(u, bucket)))
 }
+
+const CONTRACT_BUCKET = 'secure-documents'
+const isHttp = (v?: string | null) => !!v && /^https?:\/\//.test(v)
+
+/**
+ * Resolve a stored contract-file value to a usable URL.
+ * New files are stored as private `secure-documents` paths → returns a short
+ * signed URL. Legacy values that are already public http URLs pass through.
+ */
+export async function signContractFile(value: string | null | undefined, expiresIn = 3600): Promise<string | null> {
+  if (!value) return null
+  if (isHttp(value)) return value
+  try {
+    const admin = await createAdminClient()
+    const { data } = await admin.storage.from(CONTRACT_BUCKET).createSignedUrl(value, expiresIn)
+    return data?.signedUrl ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Delete contract files: private paths from secure-documents, legacy http from documents. */
+export async function removeContractFiles(values: (string | null | undefined)[]): Promise<void> {
+  const paths: string[] = []
+  const legacyDocs: (string | null)[] = []
+  for (const v of values) {
+    if (!v) continue
+    if (isHttp(v)) legacyDocs.push(publicUrlToPath(v, 'documents'))
+    else paths.push(v)
+  }
+  await removeFromBucket(CONTRACT_BUCKET, paths)
+  await removeFromBucket('documents', legacyDocs)
+}

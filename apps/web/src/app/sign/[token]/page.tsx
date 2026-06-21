@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { DOC_TYPE_LABELS } from '@/types'
 import type { ContractDocType } from '@/types'
 import SigningClient from './SigningClient'
+import { signContractFile } from '@/lib/upload/storageServer'
 import { CheckCircle, Shield } from 'lucide-react'
 
 export const metadata: Metadata = { title: 'ลงนามสัญญา — Proppsy' }
@@ -148,9 +149,9 @@ export default async function ContractSignPage({
       roomType={stock?.room_type ?? null}
       ownerFullName={ownerFullName}
       tenantFullName={tenantFullName}
-      docxUrl={contract?.docx_url ?? null}
-      pdfUrl={contract?.finalized_pdf_url ?? contract?.pdf_url ?? null}
-      attachmentUrl={(contract as { attachment_pdf_url?: string | null })?.attachment_pdf_url ?? null}
+      docxUrl={await signContractFile(contract?.docx_url ?? null, 86400)}
+      pdfUrl={await signContractFile(contract?.finalized_pdf_url ?? contract?.pdf_url ?? null, 86400)}
+      attachmentUrl={await signContractFile((contract as { attachment_pdf_url?: string | null })?.attachment_pdf_url ?? null, 86400)}
       rentPrice={contract?.rent_price ?? null}
       depositAmount={contract?.deposit_amount ?? null}
       depositMonths={contract?.deposit_months ?? null}

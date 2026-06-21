@@ -11,12 +11,11 @@ import {
 import { logActivity } from '@/lib/activity/log'
 import { createLeasePackage } from '@/lib/contracts/documentEngine'
 import { computeLeaseEndDate } from '@/lib/contracts/leaseFromReservation'
-import { removePublicUrls } from '@/lib/upload/storageServer'
+import { removeContractFiles, signContractFile } from '@/lib/upload/storageServer'
 import { getGeminiApiKey } from '@/lib/ai/geminiKey'
 
-// Contract-generated files (PDF/DOCX/attachments) live in the public `documents`
-// bucket today. Centralised so the storage location is easy to change later.
-const CONTRACT_FILE_BUCKET = 'documents'
+// Contract-generated files (PDF/DOCX/attachments) are stored in the PRIVATE
+// secure-documents bucket as paths; resolve signed URLs on read.
 const CONTRACT_FILE_COLS = 'pdf_url, docx_url, finalized_pdf_url, finalized_docx_url, attachment_pdf_url'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function contractFileUrls(row: any): (string | null)[] {
@@ -1184,9 +1183,11 @@ export async function generateContractDocx(
       template.hasBuiltInSignatures ? undefined : signatures,
     )
 
-    const path = `${user.id}/${contractId}.docx`
+    // Contract files contain PII → store in the PRIVATE secure-documents bucket
+    // as a path; callers resolve a short signed URL on read.
+    const path = `contracts/${user.id}/${contractId}.docx`
     const { error: uploadError } = await supabase.storage
-      .from('documents')
+      .from('secure-documents')
       .upload(path, docxBuffer, {
         contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         upsert: true,
@@ -1194,12 +1195,11 @@ export async function generateContractDocx(
 
     if (uploadError) return { error: 'อัปโหลดไฟล์ไม่สำเร็จ: ' + uploadError.message }
 
-    const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
-
-    await supabase.from('contracts').update({ docx_url: publicUrl }).eq('id', contractId)
+    await supabase.from('contracts').update({ docx_url: path }).eq('id', contractId)
 
     revalidatePath(`/contracts/${contractId}`)
-    return { url: publicUrl }
+    const signed = await signContractFile(path)
+    return { url: signed ?? path }
   } catch (err) {
     console.error('docx generation error:', err)
     return { error: 'สร้างเอกสารไม่สำเร็จ: ' + String(err) }
@@ -1279,9 +1279,10 @@ async function uploadPdfToStorage(
   userId: string,
   contractId: string,
   buffer: Buffer,
-): Promise<{ url: string } | { error: string }> {
+): Promise<{ path: string; url: string } | { error: string }> {
   const ts = Date.now()
-  const storagePath = `${userId}/${contractId}-${ts}.pdf`
+  // PRIVATE bucket — contracts carry PII (names, national IDs, addresses).
+  const storagePath = `contracts/${userId}/${contractId}-${ts}.pdf`
   console.log(`[UPLOAD ${new Date().toISOString()}] start`, JSON.stringify({ contractId, bytes: buffer.length, path: storagePath }))
   const t0 = Date.now()
 
@@ -1291,13 +1292,14 @@ async function uploadPdfToStorage(
       console.log(`[UPLOAD ${new Date().toISOString()}] retry`, JSON.stringify({ attempt, contractId }))
     }
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('documents')
+      .from('secure-documents')
       .upload(storagePath, buffer, { contentType: 'application/pdf', upsert: false })
     if (!uploadError && uploadData) {
       const durationMs = Date.now() - t0
       console.log(`[UPLOAD ${new Date().toISOString()}] done`, JSON.stringify({ attempt, durationMs, path: storagePath }))
-      const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(storagePath)
-      return { url: publicUrl }
+      // Store the path in DB; hand back a signed URL for immediate viewing.
+      const signed = await signContractFile(storagePath)
+      return { path: storagePath, url: signed ?? storagePath }
     }
     const errMsg = uploadError?.message ?? 'unknown'
     console.error(`[UPLOAD ${new Date().toISOString()}] attempt.failed`, JSON.stringify({ attempt, error: errMsg }))
@@ -1430,7 +1432,7 @@ export async function generateContractPdf(
 
       const uploadResult = await uploadPdfToStorage(supabase, user.id, contract.id, buffer)
       if ('error' in uploadResult) return uploadResult
-      await supabase.from('contracts').update({ pdf_url: uploadResult.url }).eq('id', contractId)
+      await supabase.from('contracts').update({ pdf_url: uploadResult.path }).eq('id', contractId)
       return { url: uploadResult.url }
     }
 
@@ -1588,7 +1590,7 @@ export async function generateContractPdf(
 
     const mainUpload = await uploadPdfToStorage(supabase, user.id, contractId, buffer)
     if ('error' in mainUpload) return mainUpload
-    await supabase.from('contracts').update({ pdf_url: mainUpload.url }).eq('id', contractId)
+    await supabase.from('contracts').update({ pdf_url: mainUpload.path }).eq('id', contractId)
     return { url: mainUpload.url }
   } catch (err) {
     console.error('[PDF] generateContractPdf error:', err)
@@ -1742,11 +1744,11 @@ export async function generateLeaseAttachmentsPdf(
 
     await supabase
       .from('contracts')
-      .update({ attachment_pdf_url: uploadResult.url } as Record<string, unknown>)
+      .update({ attachment_pdf_url: uploadResult.path } as Record<string, unknown>)
       .eq('id', contractId)
 
     revalidatePath(`/contracts/${contractId}`)
-    console.log(`[ATT ${new Date().toISOString()}] done url=${uploadResult.url}`)
+    console.log(`[ATT ${new Date().toISOString()}] done`)
     return { url: uploadResult.url }
   } catch (err) {
     console.error('[ATT] generateLeaseAttachmentsPdf error:', err)
@@ -1845,7 +1847,7 @@ export async function generateMoveOutAttachmentPdf(
 
     const uploadResult = await uploadPdfToStorage(supabase, user.id, `${contractId}_moveout`, buffer)
     if ('error' in uploadResult) return uploadResult
-    await supabase.from('contracts').update({ attachment_pdf_url: uploadResult.url } as Record<string, unknown>).eq('id', contractId)
+    await supabase.from('contracts').update({ attachment_pdf_url: uploadResult.path } as Record<string, unknown>).eq('id', contractId)
     revalidatePath(`/contracts/${contractId}`)
     return { url: uploadResult.url }
   } catch (err) {
@@ -2243,7 +2245,7 @@ export async function hardDeleteContract(contractId: string): Promise<{ error?: 
     .not('deleted_at', 'is', null)
   if (error) return { error: 'ลบถาวรไม่สำเร็จ: ' + error.message }
 
-  if (fileRow) await removePublicUrls(CONTRACT_FILE_BUCKET, contractFileUrls(fileRow))
+  if (fileRow) await removeContractFiles(contractFileUrls(fileRow))
 
   revalidatePath('/contracts')
   return {}

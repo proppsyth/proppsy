@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getBotInfo, getGroupSummary } from '@/lib/line/client'
+import { signContractFile } from '@/lib/upload/storageServer'
 import { LEASE_REMINDER_SELECT, rentReminderMessage, pushAndLog, type LeaseForReminder } from '@/lib/line/send'
 
 export interface LineConnectionStatus {
@@ -248,6 +249,8 @@ export async function sendTestReminder(contractId: string): Promise<{ error?: st
   if (!groupId) return { error: 'ยังไม่ได้ผูกกลุ่ม LINE กับสัญญานี้' }
 
   const branding = { brandName: integ.card_brand_name as string | null, heroImageUrl: integ.card_image_url as string | null }
+  const lease = leaseRaw as unknown as LeaseForReminder
+  const signedContract = await signContractFile(lease.finalized_pdf_url || lease.pdf_url || null, 60 * 60 * 24 * 30)
   const admin = await createAdminClient()
   const res = await pushAndLog(admin, {
     agentUid: user.id,
@@ -255,7 +258,7 @@ export async function sendTestReminder(contractId: string): Promise<{ error?: st
     groupId,
     contractId,
     kind: 'test',
-    message: rentReminderMessage(leaseRaw as unknown as LeaseForReminder, new Date(), branding),
+    message: rentReminderMessage(lease, new Date(), branding, signedContract),
   })
   if (!res.ok) return { error: 'ส่งไม่สำเร็จ: ' + (res.error ?? '') }
   return {}

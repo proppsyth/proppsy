@@ -16,6 +16,7 @@ import EditDraftPanel from '../EditDraftPanel'
 import DeleteContractButton from './DeleteContractButton'
 import LineBindCard from './LineBindCard'
 import { listLineGroups, type LineGroupOption } from '../../line/actions'
+import { signContractFile } from '@/lib/upload/storageServer'
 import { TEMPLATE_SUPPORTED_TYPES } from '@/lib/contracts/templateRegistry'
 import ActivityPanel from '@/components/shared/ActivityPanel'
 
@@ -664,11 +665,11 @@ export default async function ContractDetailPage({
             status={contract.status as ContractStatus}
             contractCategory={contractMeta.contract_category ?? null}
             docType={contract.doc_type}
-            pdfUrl={contract.pdf_url}
-            docxUrl={contract.docx_url ?? null}
-            finalizedDocxUrl={(contract as { finalized_docx_url?: string }).finalized_docx_url ?? null}
-            finalizedPdfUrl={(contract as { finalized_pdf_url?: string }).finalized_pdf_url ?? null}
-            attachmentPdfUrl={(contract as { attachment_pdf_url?: string | null }).attachment_pdf_url ?? null}
+            pdfUrl={await signContractFile(contract.pdf_url)}
+            docxUrl={await signContractFile(contract.docx_url ?? null)}
+            finalizedDocxUrl={await signContractFile((contract as { finalized_docx_url?: string }).finalized_docx_url ?? null)}
+            finalizedPdfUrl={await signContractFile((contract as { finalized_pdf_url?: string }).finalized_pdf_url ?? null)}
+            attachmentPdfUrl={await signContractFile((contract as { attachment_pdf_url?: string | null }).attachment_pdf_url ?? null)}
             templateSlug={contract.template_slug ?? null}
             isFinalized={isFinalized}
             finalizedAt={(contract as { finalized_at?: string }).finalized_at ?? null}
