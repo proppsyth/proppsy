@@ -2,6 +2,7 @@
 
 import { createServiceClient } from '@/lib/supabase/server'
 import { pushLineMessage, buildInquiryNotification } from '@/lib/lineOa'
+import { notify } from '@/lib/notifications/notify'
 import { sendEmail, buildInquiryEmail, siteUrl } from '@/lib/email'
 
 export interface InquiryInput {
@@ -110,6 +111,15 @@ export async function submitInquiry(
     budget: input.budget || null,
     move_in_date: input.move_in_date || null,
     notes,
+  })
+
+  // In-app bell notification for the agent
+  await notify({
+    user_id: input.agent_uid,
+    type:    'inquiry',
+    title:   existing ? '🔄 ลูกค้าเดิมสนใจทรัพย์อีกครั้ง' : '🔥 มีคนสนใจทรัพย์',
+    message: `${input.nickname.trim()} สนใจ ${[input.project_name, input.unit_no].filter(Boolean).join(' ') || 'ทรัพย์ของคุณ'}`,
+    url:     `/stock/${input.stock_id}`,
   })
 
   // LINE notification — best-effort, non-blocking

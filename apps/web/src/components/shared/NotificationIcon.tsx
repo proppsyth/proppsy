@@ -21,6 +21,11 @@ const NOTIFICATION_LUCIDE: Record<string, LucideIcon> = {
   booking_created:     ClipboardList,
   lease_created:       FileText,
   renewal_created:     RefreshCw,
+  inquiry:             Flame,
+  esign_viewed:        Eye,
+  esign_signed:        PenLine,
+  stock_created:       Home,
+  stock_updated:       PenLine,
 }
 
 // Neutral, monochrome notification icon (no emoji).

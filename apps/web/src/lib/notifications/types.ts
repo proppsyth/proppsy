@@ -20,6 +20,13 @@ export type NotificationType =
   | 'booking_created'
   | 'lease_created'
   | 'renewal_created'
+  // Leads & e-sign activity
+  | 'inquiry'
+  | 'esign_viewed'
+  | 'esign_signed'
+  // Stock activity
+  | 'stock_created'
+  | 'stock_updated'
 
 export interface AppNotification {
   id: string

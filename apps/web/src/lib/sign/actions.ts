@@ -7,6 +7,7 @@ import { createHash } from 'crypto'
 import type { SignerRole, ContractSigner } from '@/types'
 import { handleAllSignedIfComplete } from '@/lib/contracts/signingEngine'
 import { logActivity } from '@/lib/activity/log'
+import { notify } from '@/lib/notifications/notify'
 import { sendEmail, buildSignedEmail, siteUrl } from '@/lib/email'
 
 const SIGNER_ROLE_TH: Record<string, string> = {
@@ -73,6 +74,27 @@ export async function recordSignerViewed(
     event_type: 'link_opened',
     user_agent: userAgent,
   })
+
+  // Bell notification: someone opened the document to read it
+  {
+    const { data: c } = await supabase
+      .from('contracts')
+      .select('agent_uid, stock:stock(project_name, unit_no)')
+      .eq('id', signer.contract_id)
+      .single()
+    const agentUid = (c as { agent_uid?: string } | null)?.agent_uid
+    if (agentUid) {
+      const stock = (c as { stock?: { project_name?: string | null; unit_no?: string | null } | null })?.stock
+      const label = [stock?.project_name, stock?.unit_no].filter(Boolean).join(' · ')
+      await notify({
+        user_id: agentUid,
+        type:    'esign_viewed',
+        title:   '👁️ มีคนเปิดอ่านเอกสาร',
+        message: `เอกสาร ${signer.contract_id}${label ? ' · ' + label : ''} ถูกเปิดอ่านแล้ว`,
+        url:     `/contracts/${signer.contract_id}`,
+      })
+    }
+  }
 
   await logActivity({
     entityType: 'esign',
@@ -149,6 +171,22 @@ export async function submitSignature(params: {
       await supabase.from('owners').update({ signature_url: signatureUrl }).eq('id', contract.owner_id)
     } else if (signer.signer_role === 'tenant' && contract.customer_id) {
       await supabase.from('customers').update({ signature_url: signatureUrl }).eq('id', contract.customer_id)
+    }
+  }
+
+  // In-app bell notification to the agent that someone signed
+  {
+    const agentUid = (contract as { agent_uid?: string } | null)?.agent_uid
+    if (agentUid) {
+      const stock = (contract as { stock?: { project_name?: string | null; unit_no?: string | null } | null }).stock
+      const label = [stock?.project_name, stock?.unit_no].filter(Boolean).join(' · ')
+      await notify({
+        user_id: agentUid,
+        type:    'esign_signed',
+        title:   '✍️ มีการลงนามเอกสาร',
+        message: `${signerName || 'ผู้ลงนาม'} ลงนาม ${signer.contract_id}${label ? ' · ' + label : ''}`,
+        url:     `/contracts/${signer.contract_id}`,
+      })
     }
   }
 
