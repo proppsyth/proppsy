@@ -141,6 +141,8 @@ export function useDocumentUpload(options: {
   enableWatermark?: boolean
   watermarkStyle?: 'bank-book'
   initialUrl?: string
+  /** Max width (px) for the WebP downscale. Defaults to 1280. */
+  maxWidth?: number
 }): DocumentUploadState {
   const [url, setUrl] = useState(options.initialUrl ?? '')
   const [progress, setProgress] = useState<UploadProgress>(IDLE)
@@ -162,7 +164,7 @@ export function useDocumentUpload(options: {
         ? await applyBankBookWatermark(file)
         : options.enableWatermark
           ? await applyIdCardWatermark(file)
-          : await processToWebp(file, 1280)
+          : await processToWebp(file, options.maxWidth ?? 1280)
 
       setProgress({ phase: 'uploading', percent: 65 })
       const path = `${folder}${Date.now()}.webp`
@@ -183,7 +185,7 @@ export function useDocumentUpload(options: {
     } catch (e) {
       setProgress({ phase: 'error', percent: 0, error: (e as Error).message })
     }
-  }, [bucket, folder, options.enableWatermark, options.watermarkStyle, options.isPrivate, url])
+  }, [bucket, folder, options.enableWatermark, options.watermarkStyle, options.isPrivate, options.maxWidth, url])
 
   const clear = useCallback(() => {
     setUrl('')

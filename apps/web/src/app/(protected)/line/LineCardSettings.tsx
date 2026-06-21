@@ -16,6 +16,7 @@ export default function LineCardSettings({ settings }: { settings: CardSettings 
   const { url, progress, upload, clear } = useDocumentUpload({
     category: 'line-cards',
     initialUrl: settings.imageUrl ?? undefined,
+    maxWidth: 1024, // card hero is small — downscale for size + speed (stored as WebP)
   })
   const uploading = progress.phase === 'processing' || progress.phase === 'uploading'
 

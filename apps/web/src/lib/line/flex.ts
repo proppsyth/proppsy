@@ -88,7 +88,7 @@ export function buildRentReminderFlex(a: RentReminderArgs): any {
   if (a.contractUrl) {
     footerContents.push({
       type: 'button', style: 'secondary', height: 'sm',
-      action: { type: 'uri', label: '📄 ดูไฟล์สัญญาเช่า', uri: a.contractUrl },
+      action: { type: 'uri', label: 'ดูไฟล์สัญญาเช่า', uri: a.contractUrl },
     })
   }
   const bf = brandFooter(a.branding)
@@ -103,7 +103,7 @@ export function buildRentReminderFlex(a: RentReminderArgs): any {
       ...(hero ? { hero } : {}),
       header: {
         type: 'box', layout: 'vertical', backgroundColor: BLUE, paddingAll: 'lg',
-        contents: [{ type: 'text', text: '🏠 แจ้งเตือนค่าเช่า', color: '#FFFFFF', weight: 'bold', size: 'lg' }],
+        contents: [{ type: 'text', text: 'แจ้งเตือนค่าเช่า', color: '#FFFFFF', weight: 'bold', size: 'lg' }],
       },
       body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: bodyContents },
       ...(footerContents.length ? { footer: { type: 'box', layout: 'vertical', spacing: 'sm', contents: footerContents } } : {}),
@@ -126,7 +126,7 @@ export function buildExpiryReminderFlex(a: ExpiryReminderArgs): any {
   if (a.contractUrl) {
     footerContents.push({
       type: 'button', style: 'secondary', height: 'sm',
-      action: { type: 'uri', label: '📄 ดูไฟล์สัญญาเช่า', uri: a.contractUrl },
+      action: { type: 'uri', label: 'ดูไฟล์สัญญาเช่า', uri: a.contractUrl },
     })
   }
   const bf = brandFooter(a.branding)
@@ -141,7 +141,7 @@ export function buildExpiryReminderFlex(a: ExpiryReminderArgs): any {
       ...(hero ? { hero } : {}),
       header: {
         type: 'box', layout: 'vertical', backgroundColor: BLUE_DARK, paddingAll: 'lg',
-        contents: [{ type: 'text', text: '⏰ สัญญาเช่าใกล้หมด', color: '#FFFFFF', weight: 'bold', size: 'lg' }],
+        contents: [{ type: 'text', text: 'สัญญาเช่าใกล้หมด', color: '#FFFFFF', weight: 'bold', size: 'lg' }],
       },
       body: {
         type: 'box', layout: 'vertical', spacing: 'sm', contents: [
