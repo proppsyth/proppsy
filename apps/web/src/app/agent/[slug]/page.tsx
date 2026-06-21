@@ -134,6 +134,13 @@ export default async function AgentProfilePage({
 
   const stocks = (stocksRaw ?? []) as unknown as StockCard[]
 
+  // Trust-signal totals (all-time, across this agent's account).
+  const [{ count: totalStock }, { count: totalContracts }, { count: totalCustomers }] = await Promise.all([
+    supabase.from('stock').select('id', { count: 'exact', head: true }).eq('agent_uid', agent.id),
+    supabase.from('contracts').select('id', { count: 'exact', head: true }).eq('agent_uid', agent.id).is('deleted_at', null),
+    supabase.from('customers').select('id', { count: 'exact', head: true }).eq('agent_uid', agent.id),
+  ])
+
   const displayName = agent.nickname
     || agent.name
     || [agent.first_name_th, agent.last_name_th].filter(Boolean).join(' ')
@@ -218,6 +225,20 @@ export default async function AgentProfilePage({
               </div>
             </div>
           </div>
+        </div>
+
+        {/* ── Trust stats ──────────────────────────────────────── */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {[
+            { label: 'ทรัพย์ทั้งหมด', value: totalStock ?? 0 },
+            { label: 'สัญญาที่ออก', value: totalContracts ?? 0 },
+            { label: 'ลูกค้าที่ดูแล', value: totalCustomers ?? 0 },
+          ].map(s => (
+            <div key={s.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
+              <p className="text-2xl font-bold text-blue-600">{s.value.toLocaleString('th-TH')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+            </div>
+          ))}
         </div>
 
         {/* ── Listings ─────────────────────────────────────────── */}
