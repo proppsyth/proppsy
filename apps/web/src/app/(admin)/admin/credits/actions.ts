@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { sendEmail, buildCreditGrantedEmail, siteUrl } from '@/lib/email'
 
@@ -20,7 +20,10 @@ export async function adminAdjustCredits(params: {
 }): Promise<{ error?: string; newBalance?: number }> {
   try {
     await assertAdmin()
-    const admin = await createAdminClient()
+    // Pure service-role client: credit RPCs (SECURITY DEFINER) have EXECUTE
+    // revoked from authenticated, and createAdminClient runs as the admin's JWT
+    // role, so the RPC would be denied.
+    const admin = createServiceClient()
 
     if (params.amount === 0) return { error: 'จำนวนเครดิตต้องไม่เป็น 0' }
 

@@ -1,5 +1,5 @@
 'use server'
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { resolvePlan } from '@/types'
 import { getPlanLimits } from '@/lib/planLimits'
 
@@ -49,9 +49,11 @@ export async function incrementAiUsage(): Promise<{ ok: boolean; used?: number; 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { ok: false, error: 'ไม่ได้รับอนุญาต' }
 
-  // Called via service role: the RPC is SECURITY DEFINER and EXECUTE is revoked
-  // from anon/authenticated so users can't bump their own quota directly.
-  const admin = await createAdminClient()
+  // Pure service-role client (no user cookie → role=service_role). The RPC is
+  // SECURITY DEFINER with EXECUTE revoked from anon/authenticated, and
+  // createAdminClient would still run as the user's JWT role, so use
+  // createServiceClient here.
+  const admin = createServiceClient()
   const { data, error } = await admin.rpc('increment_ai_usage', { p_user_id: user.id })
   if (error) return { ok: false, error: error.message }
   if (data?.error) return { ok: false, error: data.error as string }

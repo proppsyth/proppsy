@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { CreditTransaction } from '@/types'
 import {
@@ -110,7 +110,7 @@ export async function publishStock(
 
   // Service role: spend_credits is SECURITY DEFINER with EXECUTE revoked from
   // anon/authenticated, so it can't be called directly from the browser.
-  const admin = await createAdminClient()
+  const admin = createServiceClient()
   const { data: result, error: rpcError } = await admin.rpc('spend_credits', {
     p_user_id:      user.id,
     p_amount:       cost,
@@ -212,7 +212,7 @@ export async function createCreditTopup(params: {
     return { error: charge.failure_message ?? 'การชำระเงินล้มเหลว กรุณาลองใหม่' }
   }
 
-  const admin = await createAdminClient()
+  const admin = createServiceClient()
   const { data: result } = await admin.rpc('grant_credits', {
     p_user_id:      user.id,
     p_amount:       pkg.credits,
@@ -230,7 +230,7 @@ export async function createCreditTopup(params: {
 // ─── Grant starter free credits (call after account approval) ─
 
 export async function grantStarterCredits(userId: string): Promise<void> {
-  const admin = await createAdminClient()
+  const admin = createServiceClient()
   await admin.rpc('grant_credits', {
     p_user_id:     userId,
     p_amount:      STARTER_FREE_CREDITS,
@@ -258,7 +258,7 @@ export async function adminGrantCredits(params: {
     .single()
   if (profile?.role !== 'admin') return { error: 'ไม่มีสิทธิ์' }
 
-  const admin = await createAdminClient()
+  const admin = createServiceClient()
   const { data } = await admin.rpc('grant_credits', {
     p_user_id:     params.userId,
     p_amount:      Math.abs(params.amount),
