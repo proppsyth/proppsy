@@ -111,7 +111,7 @@ export async function publishStock(
   // Service role: spend_credits is SECURITY DEFINER with EXECUTE revoked from
   // anon/authenticated, so it can't be called directly from the browser.
   const admin = await createAdminClient()
-  const { data: result } = await admin.rpc('spend_credits', {
+  const { data: result, error: rpcError } = await admin.rpc('spend_credits', {
     p_user_id:      user.id,
     p_amount:       cost,
     p_tx_type:      'spend',
@@ -123,7 +123,10 @@ export async function publishStock(
   if (result?.error === 'insufficient_credits') {
     return { error: 'เครดิตไม่เพียงพอ', balance: result.balance, insufficientCredits: true }
   }
-  if (result?.error) return { error: result.error }
+  // Fail closed: never publish unless the deduction actually succeeded.
+  if (rpcError || !result?.ok) {
+    return { error: 'หักเครดิตไม่สำเร็จ กรุณาลองใหม่' }
+  }
 
   const premiumExpiry = new Date()
   premiumExpiry.setDate(premiumExpiry.getDate() + 30)
