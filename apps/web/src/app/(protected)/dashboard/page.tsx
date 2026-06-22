@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { BannerStrip } from '@/components/shared/BannerZone'
 import PendingApprovalBanner from '@/components/shared/PendingApprovalBanner'
+import PushInstallBanner from '@/components/shared/PushInstallBanner'
 import { PLAN_META, resolvePlan } from '@/types'
 
 export const metadata: Metadata = { title: 'แดชบอร์ด' }
@@ -208,6 +209,9 @@ export default async function DashboardPage() {
     <div className="p-4 lg:p-8 pt-6">
       {/* Dashboard top banner */}
       <BannerStrip position="dashboard_top" />
+
+      {/* Enable push / install PWA prompt */}
+      <PushInstallBanner />
 
       {/* Pending approval notice */}
       {profile?.account_status === 'pending' && <PendingApprovalBanner />}

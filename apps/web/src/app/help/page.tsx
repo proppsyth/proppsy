@@ -3,7 +3,7 @@ import Link from 'next/link'
 import {
   ChevronDown, ArrowLeft, BookOpen, HelpCircle,
   Home, Bot, CreditCard, FileText, PenLine, Calendar, DollarSign,
-  ClipboardList, User,
+  ClipboardList, User, Bell, Smartphone,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import PublicNav from '@/components/shared/PublicNav'
@@ -109,6 +109,30 @@ export default function HelpPage() {
           <BookOpen className="w-4 h-4 text-gray-500" /> คู่มือการใช้งาน
         </h2>
         <div className="space-y-2 mb-10">
+
+          <Guide title="ติดตั้งแอป & เปิดการแจ้งเตือน (Push)" icon={Bell}>
+            <p>รับแจ้งเตือนเด้งหน้าจอ (มีคนสนใจทรัพย์ · ลงนามสัญญา · ค่าเช่าครบกำหนด · นัดหมาย) แม้ปิดแอปอยู่ — ทำครั้งเดียว</p>
+
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-3">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 mb-2"><Smartphone className="w-3.5 h-3.5" /> iPhone / iPad (จำเป็นต้องติดตั้งก่อน)</p>
+              <Step n={1} text="เปิดเว็บใน Safari → กดปุ่มแชร์ (ไอคอนสี่เหลี่ยมลูกศรขึ้น ด้านล่าง)" />
+              <Step n={2} text="เลือก “เพิ่มไปยังหน้าจอโฮม” (Add to Home Screen) → เพิ่ม" />
+              <Step n={3} text="เปิดแอป Proppsy จากไอคอนบนหน้าจอโฮม (ไม่ใช่จาก Safari)" />
+              <Step n={4} text="กดไอคอนกระดิ่ง → อนุญาตการแจ้งเตือน" />
+              <p className="text-xs text-gray-400 mt-2">⚠️ iOS ส่ง push ได้เฉพาะเมื่อเปิดจากไอคอนที่ติดตั้งแล้วเท่านั้น (ต้อง iOS 16.4 ขึ้นไป)</p>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-3">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 mb-2"><Smartphone className="w-3.5 h-3.5" /> Android / คอมพิวเตอร์ (Chrome)</p>
+              <Step n={1} text="เปิดเว็บ Proppsy แล้วเข้าสู่ระบบ" />
+              <Step n={2} text="กดไอคอนกระดิ่งมุมบนขวา → อนุญาตการแจ้งเตือน" />
+              <Step n={3} text="(ไม่บังคับ) กด “ติดตั้งแอป” จากเมนูเบราว์เซอร์เพื่อใช้งานสะดวกขึ้น" />
+            </div>
+
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-800">
+              💡 ปรับเปิด/ปิดแจ้งเตือนแต่ละประเภทได้ที่ ไอคอนกระดิ่ง → ⚙️ ตั้งค่า · push เด้งได้แม้ปิดแอป ส่วนตัวเลขกระดิ่งจะอัปเดตสดเมื่อเปิดหน้าอยู่
+            </div>
+          </Guide>
 
           <Guide title="การเพิ่มและจัดการทรัพย์" icon={Home}>
             <Step n={1} text="ไปที่เมนู ทรัพย์ → กดปุ่ม เพิ่มทรัพย์ใหม่" />
