@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server'
 import type { NotifyInput } from './types'
+import { isTypeEnabled } from './categories'
 
 /**
  * Create a notification record and fire a browser push (if subscribed).
@@ -11,6 +12,16 @@ import type { NotifyInput } from './types'
  */
 export async function notify(input: NotifyInput): Promise<void> {
   const admin = await createAdminClient()
+
+  // Respect the user's notification preferences (announcements bypass this).
+  const { data: prof } = await admin
+    .from('profiles')
+    .select('notification_prefs')
+    .eq('id', input.user_id)
+    .maybeSingle()
+  if (!isTypeEnabled(prof?.notification_prefs as Record<string, boolean> | null, input.type)) {
+    return
+  }
 
   const { error } = await admin.from('notifications').insert({
     user_id: input.user_id,

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Bell, X, CheckCheck, Loader2, BellOff, BellRing } from 'lucide-react'
+import Link from 'next/link'
+import { Bell, X, CheckCheck, Loader2, BellOff, BellRing, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
   fetchNotifications,
@@ -208,6 +209,14 @@ export default function NotificationBell({ userId }: Props) {
                     อ่านทั้งหมด
                   </button>
                 )}
+                <Link
+                  href="/notifications/settings"
+                  onClick={() => setOpen(false)}
+                  title="ตั้งค่าการแจ้งเตือน"
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-500"
+                >
+                  <Settings className="w-4 h-4" />
+                </Link>
                 <button
                   onClick={() => setOpen(false)}
                   className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition"

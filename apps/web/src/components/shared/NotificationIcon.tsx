@@ -1,7 +1,7 @@
 import {
   PenLine, X, CalendarClock, AlertTriangle, CircleAlert, Home,
   Eye, Flame, Rocket, ClipboardList, FileText, RefreshCw, Bell,
-  Coins, Sparkles, BadgeCheck, Calendar, Send,
+  Coins, Sparkles, BadgeCheck, Calendar, Send, Megaphone,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -33,6 +33,7 @@ const NOTIFICATION_LUCIDE: Record<string, LucideIcon> = {
   appointment_today:   Calendar,
   rent_reminder_sent:  Send,
   listing_views_10:    Eye,
+  announcement:        Megaphone,
 }
 
 // Neutral, monochrome notification icon (no emoji).

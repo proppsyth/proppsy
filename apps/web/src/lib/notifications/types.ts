@@ -36,6 +36,8 @@ export type NotificationType =
   | 'rent_reminder_sent'
   // Listing view milestones
   | 'listing_views_10'
+  // System / admin broadcast (always delivered)
+  | 'announcement'
 
 export interface AppNotification {
   id: string

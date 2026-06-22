@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Building2, Coins, Package, Receipt,
   FileText, FileCode, MapPin, Newspaper, BookOpen, Image as GalleryIcon,
   HelpCircle, BarChart3, ScrollText, Settings, LogOut, Menu, X, ArrowLeft, Handshake, Video, Variable,
-  Tags, GitMerge,
+  Tags, GitMerge, Megaphone,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
@@ -65,6 +65,7 @@ const NAV_SECTIONS = [
   {
     label: 'ระบบ',
     items: [
+      { href: '/admin/notify', icon: Megaphone, label: 'ประชาสัมพันธ์' },
       { href: '/admin/logs', icon: ScrollText, label: 'System Logs' },
       { href: '/admin/settings', icon: Settings, label: 'ตั้งค่า' },
     ],

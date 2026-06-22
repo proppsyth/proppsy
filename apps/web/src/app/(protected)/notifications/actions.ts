@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
 import type { AppNotification } from '@/lib/notifications/types'
 
 export async function fetchNotifications(limit = 50): Promise<AppNotification[]> {
@@ -36,4 +37,31 @@ export async function markAllNotificationsRead(): Promise<void> {
     .update({ is_read: true })
     .eq('user_id', user.id)
     .eq('is_read', false)
+}
+
+// ─── Notification preferences ────────────────────────────────
+
+export async function getNotificationPrefs(): Promise<Record<string, boolean>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return {}
+  const { data } = await supabase
+    .from('profiles')
+    .select('notification_prefs')
+    .eq('id', user.id)
+    .maybeSingle()
+  return (data?.notification_prefs as Record<string, boolean> | null) ?? {}
+}
+
+export async function saveNotificationPrefs(prefs: Record<string, boolean>): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'ไม่ได้รับอนุญาต' }
+  const { error } = await supabase
+    .from('profiles')
+    .update({ notification_prefs: prefs })
+    .eq('id', user.id)
+  if (error) return { error: 'บันทึกไม่สำเร็จ: ' + error.message }
+  revalidatePath('/notifications')
+  return {}
 }
